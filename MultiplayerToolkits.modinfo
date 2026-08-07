@@ -84,7 +84,23 @@
 			</Properties>
 			<File>UI/Options/Options.xml</File>
 		</ImportFiles>
-		<!-- 待启用：FE_Check_Mod_IDs(20) | FE_Replace_StagingRoom(100000) | FE_Import_StagingRoom(100010) | FE_Replace_NetConnectionIcon(1000) -->
+		<!-- 条目3：替换准备房间界面（LoadOrder 100000 压过其他同类模组；MPH LoadOrder 9999，共存时以本 mod 为准） -->
+		<ReplaceUIScript id="FE_Replace_StagingRoom">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>StagingRoom</LuaContext>
+				<LuaReplace>UI/StagingRoom/StagingRoom.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<!-- 条目3：导入准备房间的 XML 布局与 Lua（XML 同名覆盖原版布局） -->
+		<ImportFiles id="FE_Import_StagingRoom">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>UI/StagingRoom/StagingRoom.xml</File>
+			<File>UI/StagingRoom/StagingRoom.lua</File>
+		</ImportFiles>
+		<!-- 待启用：FE_Check_Mod_IDs(20) | FE_Replace_NetConnectionIcon(1000) -->
 	</FrontEndActions>
 	<InGameActions>
 		<!-- 游戏内上下文注册同一份文本文件（其中的 LOC_MPT_FE_DUMMY_TEXT 为虚构示例，无任何引用） -->
@@ -103,5 +119,7 @@
 		<File>Config/Config_Disaster.sql</File>
 		<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 		<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
+		<File>UI/StagingRoom/StagingRoom.lua</File>
+		<File>UI/StagingRoom/StagingRoom.xml</File>
 	</Files>
 </Mod>
