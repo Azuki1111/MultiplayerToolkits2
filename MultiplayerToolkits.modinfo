@@ -67,7 +67,7 @@
 			<Properties>
 				<LoadOrder>100</LoadOrder>
 			</Properties>
-			<File>Config/Config_Base_Text.xml</File>
+			<File>Config/Config_Base_Text.sql</File>
 		</UpdateText>
 		<!-- 条目2：灾害强度下限 0 到 -1（完全无灾害），强制后置防覆盖 -->
 		<UpdateDatabase id="FE_Config_DD">
@@ -99,7 +99,7 @@
 		<File>UI/Options/Options.xml</File>
 		<File>Text/InGame_Text_Dummy.sql</File>
 		<File>Config/Config_Base.xml</File>
-		<File>Config/Config_Base_Text.xml</File>
+		<File>Config/Config_Base_Text.sql</File>
 		<File>Config/Config_Disaster.sql</File>
 	</Files>
 </Mod>
