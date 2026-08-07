@@ -74,7 +74,7 @@ m_CivTooltip.HeaderIM = InstanceManager:new("HeaderInstance", "Top", m_CivToolti
 local m_bTeamsValid = true;						-- Are the teams valid for game start?
 local g_everyoneConnected = true;				-- Is everyone network connected to the game?
 local g_badPlayerForMapSize = false;			-- Are there too many active civs for this map?
-local g_notEnoughPlayers = false;				-- Is there at least two players in the game?
+local g_notEnoughPlayers = false;				-- Is there at least one player in the game?（联机工具箱2.0：允许单人开局）
 local g_everyoneReady = false;					-- Is everyone ready to play?
 local g_everyoneModReady = true;				-- Does everyone have the mods for this game?
 local g_humanRequiredFilled = true;				-- Are all the human required slots filled by humans?
@@ -129,7 +129,11 @@ local g_slotTypeData =
 -- local MAX_EVER_PLAYERS : number = 12; -- hardwired max possible players in multiplayer, determined by how many players 
 local MAX_EVER_PLAYERS : number = 20; -- hardwired max possible players in multiplayer, determined by how many players 
 -- ----------------------------------------------------------------------------
-local MIN_EVER_PLAYERS : number = 2;  -- hardwired min possible players in multiplayer, the game does bad things if there aren't at least two players on different teams.
+-- ============================================================================
+-- 联机工具箱2.0：最小开局人数 2 -> 1（参考 RL_Pangaea：allow single player games）
+-- local MIN_EVER_PLAYERS : number = 2;  -- hardwired min possible players in multiplayer, the game does bad things if there aren't at least two players on different teams.
+local MIN_EVER_PLAYERS : number = 1;  -- hardwired min possible players in multiplayer, allow single player games.
+-- ----------------------------------------------------------------------------
 -- ============================================================================
 -- 联机工具箱2.0：官方支持人数上限 8 -> 20（仅影响超上限警告文本，跟随 MAX_EVER_PLAYERS）
 -- local MAX_SUPPORTED_PLAYERS : number = 8; -- Max number of officially supported players in multiplayer.  You can play with more than this number, but QA hasn't vetted it.
@@ -1455,7 +1459,11 @@ function CheckShowSlotButton(slotData :table, playerID: number)
 			-- We allow them to bypass the minimum player count because 
 			-- a human player must occupy the slot for the game to launch. 
 			if(not GameConfiguration.IsPlayByCloud() or slotData.slotStatus ~= SlotStatus.SS_OPEN) then
-				if(GameConfiguration.GetParticipatingPlayerCount() <= g_currentMinPlayers)	 then
+				-- ============================================================================
+				-- 联机工具箱2.0：允许把AI关到只剩1名参与者（配合单人开局）；最后1个槽位仍不可关
+				-- if(GameConfiguration.GetParticipatingPlayerCount() <= g_currentMinPlayers)	 then
+				if(GameConfiguration.GetParticipatingPlayerCount() <= 1)	 then
+				-- ----------------------------------------------------------------------------
 					return false;				
 				end
 			end
@@ -2103,7 +2111,11 @@ function UpdateReadyButton_Hotseat()
 			Controls.ReadyButton:SetText("");
 			Controls.ReadyButton:LocalizeAndSetToolTip("LOC_READY_BLOCKED_HOTSEAT_NO_HUMAN_PLAYERS_TT");
 			Controls.ReadyButton:SetDisabled(true);
-		elseif(g_hotseatNumHumanPlayers + g_hotseatNumAIPlayers < 2) then
+		-- ============================================================================
+		-- 联机工具箱2.0：热座模式允许单人开局（参考 RL_Pangaea），关闭全部AI后仅剩1名真人也可开始
+		-- elseif(g_hotseatNumHumanPlayers + g_hotseatNumAIPlayers < 2) then
+		elseif(g_hotseatNumHumanPlayers + g_hotseatNumAIPlayers < 1) then
+		-- ----------------------------------------------------------------------------
 			Controls.StartLabel:SetText(Locale.ToUpper(Locale.Lookup("LOC_READY_BLOCKED_NOT_ENOUGH_PLAYERS")));
 			Controls.ReadyButton:SetText("");
 			Controls.ReadyButton:LocalizeAndSetToolTip("LOC_READY_BLOCKED_NOT_ENOUGH_PLAYERS_TT");
