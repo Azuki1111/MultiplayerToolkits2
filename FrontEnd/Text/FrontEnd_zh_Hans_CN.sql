@@ -9,4 +9,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_LEADER_POOL_BAN_DESC', 'zh_Hans_CN', '被选中的领袖在本局中不可选用'),
 ('LOC_LEADER_POOL_BAN_TOOLTIP', 'zh_Hans_CN', '[COLOR_RED]领袖不可用[ENDCOLOR]'),
 -- 虚构示例：游戏内文本占位（无任何引用）
-('LOC_MPT_FE_DUMMY_TEXT', 'zh_Hans_CN', '联机工具箱 2.0 前端虚构占位文本');
+('LOC_MPT_FE_DUMMY_TEXT', 'zh_Hans_CN', '联机工具箱 2.0 前端虚构占位文本'),
+-- 条目3.2：快捷打开/关闭AI按钮
+('LOC_MPT_FE_AI_SLOTS_NAME', 'zh_Hans_CN', 'AI槽位'),
+('LOC_MPT_FE_AI_SLOTS_TOOLTIP', 'zh_Hans_CN', '左键：关闭所有空位与AI槽位[NEWLINE]右键：打开所有槽位（会清除已有AI）');

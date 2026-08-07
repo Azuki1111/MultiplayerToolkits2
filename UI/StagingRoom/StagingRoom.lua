@@ -389,6 +389,7 @@ function OnGameConfigChanged()
 	end
 	OnMapMaxMajorPlayersChanged(MapConfiguration.GetMaxMajorPlayers());	
 	OnMapMinMajorPlayersChanged(MapConfiguration.GetMinMajorPlayers());
+	UpdateAISlotsButtonState();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
 end
 
 -------------------------------------------------
@@ -815,6 +816,7 @@ function OnMultiplayerHostMigrated( newHostID : number )
 
 		OnChat( newHostID, -1, PlayerHostMigratedChatStr, false );
 		UI.PlaySound("Play_MP_Host_Migration");
+		UpdateAISlotsButtonState();	-- 联机工具箱2.0：房主迁移后刷新「AI槽位」按钮可见性（条目3.2）
 	end
 end
 
@@ -2484,6 +2486,7 @@ function OnShow()
 	-- g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 12);
 	g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), MAX_EVER_PLAYERS);
 	-- ----------------------------------------------------------------------------
+	UpdateAISlotsButtonState();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
 	m_shownPBCReadyPopup = false;
 	m_exitReadyWait = false;
 
@@ -3305,6 +3308,68 @@ function GetInviteTT()
 	return Locale.Lookup("LOC_INVITE_BUTTON_TT");
 end
 
+-- ###########################################################################
+-- 联机工具箱2.0 自定义函数区
+-- 本区域集中存放本 mod 新增的功能函数，每个函数均带注释与用法说明。
+-- ###########################################################################
+
+-- ============================================================================
+-- 快捷打开/关闭AI（条目3.2，参考联机工具箱1.67 OnCloseAIButtonL/R 并重写）
+-- 用法：房主点击顶部「AI槽位」按钮 —— 左键关闭全部非真人槽位，右键全部打开为 OPEN。
+-- 效率说明：仅状态发生变化的槽位才执行 SetSlotStatus + 广播；
+--          UI 刷新链（排序/重绘/校验/尺寸重算）在循环结束后统一执行一次。
+-- ============================================================================
+
+-------------------------------------------------
+-- SetAllNonHumanSlots
+-- 将全部非真人槽位设置为目标状态（仅房主可执行）。
+-- newSlotStatus : SlotStatus.SS_CLOSED（左键关闭）或 SlotStatus.SS_OPEN（右键打开）
+-------------------------------------------------
+function SetAllNonHumanSlots( newSlotStatus )
+	if not Network.IsGameHost() then
+		return;
+	end
+	local playerIDs = GameConfiguration.GetMultiplayerPlayerIDs();
+	for _, playerID in ipairs(playerIDs) do
+		local pPlayerConfig = PlayerConfigurations[playerID];
+		if not pPlayerConfig:IsHuman() and pPlayerConfig:GetSlotStatus() ~= newSlotStatus then
+			pPlayerConfig:SetSlotStatus(newSlotStatus);
+			Network.BroadcastPlayerInfo(playerID);
+		end
+	end
+	-- 刷新链只执行一次（参照原版 OnSlotType 的单槽刷新顺序）
+	Controls.PlayerListStack:SortChildren(SortPlayerListStack);
+	m_iFirstClosedSlot = -1;
+	UpdateAllPlayerEntries();
+	CheckTeamsValid();
+	CheckGameAutoStart();
+	Controls.PlayerListStack:CalculateSize();
+	Controls.PlayersScrollPanel:CalculateSize();
+	Resize();
+end
+
+-------------------------------------------------
+-- OnAISlotsButtonL / OnAISlotsButtonR
+-- 「AI槽位」按钮左键（全关）/ 右键（全开）回调。
+-------------------------------------------------
+function OnAISlotsButtonL()
+	SetAllNonHumanSlots(SlotStatus.SS_CLOSED);
+end
+
+function OnAISlotsButtonR()
+	UI.PlaySound("Play_UI_Click");	-- GridButton 右键不自动播放点击音
+	SetAllNonHumanSlots(SlotStatus.SS_OPEN);
+end
+
+-------------------------------------------------
+-- UpdateAISlotsButtonState
+-- 刷新「AI槽位」按钮可见性：仅房主、非热座、非云端时显示。
+-- 调用点：OnShow / OnGameConfigChanged / OnMultiplayerHostMigrated。
+-------------------------------------------------
+function UpdateAISlotsButtonState()
+	Controls.AISlotsButton:SetHide(not Network.IsGameHost() or GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud());
+end
+
 -- ===========================================================================
 --	Initialize screen
 -- ===========================================================================
@@ -3333,6 +3398,12 @@ function Initialize()
 	Controls.ReadyCheck:RegisterCallback( Mouse.eLClick, OnReadyButton );
 	Controls.ReadyCheck:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	Controls.JoinCodeText:RegisterCallback( Mouse.eLClick, OnClickToCopy );
+	-- ============================================================================
+	-- 联机工具箱2.0：注册「AI槽位」按钮回调（条目3.2）
+	-- ----------------------------------------------------------------------------
+	Controls.AISlotsButton:RegisterCallback( Mouse.eLClick, OnAISlotsButtonL );
+	Controls.AISlotsButton:RegisterCallback( Mouse.eRClick, OnAISlotsButtonR );
+	Controls.AISlotsButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
 	Controls.InviteButton:SetToolTipString(GetInviteTT());
 

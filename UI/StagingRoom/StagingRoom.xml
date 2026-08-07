@@ -17,6 +17,8 @@
 				<Grid Style="ShellHeaderButtonGrid">
 					<GridButton ID="BackButton" Style="ShellButtonOrnateFlat" Anchor="R,C" Offset="1,0" String="LOC_MULTIPLAYER_BACK"/>
 					<Stack ID="LeftTopButtonStack" Anchor="L,C" Offset="1,0" StackGrowth="Right" Padding="10">
+						<!-- 联机工具箱2.0：快捷打开/关闭AI按钮（左键全关非真人槽位，右键全部打开），仅房主可见 -->
+						<GridButton ID="AISlotsButton" Style="ShellButtonOrnateFlat" Anchor="L,C" Offset="0,0" Size="120,38" String="LOC_MPT_FE_AI_SLOTS_NAME" ToolTip="LOC_MPT_FE_AI_SLOTS_TOOLTIP"/>
 						<GridButton ID="EndGameButton" Style="ShellButtonOrnateFlat" Anchor="L,C" Offset="0,0" String="LOC_MULTIPLAYER_END_GAME" Hidden="1"/>
 						<GridButton ID="QuitGameButton" Style="ShellButtonOrnateFlat" Anchor="L,C" Offset="0,0" String="LOC_MULTIPLAYER_QUIT_GAME" Hidden="1"/>
 					</Stack>
