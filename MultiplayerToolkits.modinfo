@@ -99,14 +99,12 @@ LoadOrder 规约：
 		</UpdateDatabase>
 		-->
 		<!-- 条目1：LAN 玩家名长度 64（整文件同名覆盖，唯一改动 MaxLength 22 -> 64） -->
-		<!--
 		<ImportFiles id="FE_Replace_Options">
 			<Properties>
 				<LoadOrder>1000</LoadOrder>
 			</Properties>
 			<File>UI/Options/Options.xml</File>
 		</ImportFiles>
-		-->
 		<!-- 条目3/4：替换准备房间界面（真 MPH 在用则让位），LoadOrder 100000 压过其他同类模组 -->
 		<!--
 		<ReplaceUIScript id="FE_Replace_StagingRoom">
@@ -143,5 +141,7 @@ LoadOrder 规约：
 	</InGameActions>
 <!-- 包含文件（随功能条目落地逐步登记） -->
 	<Files>
+		<!-- 条目1：Options 同名覆盖 -->
+		<File>UI/Options/Options.xml</File>
 	</Files>
 </Mod>
