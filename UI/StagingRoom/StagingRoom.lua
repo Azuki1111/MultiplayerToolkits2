@@ -3387,78 +3387,81 @@ function OnAISlotsButtonR()
 end
 
 -- ============================================================================
--- 快捷分队（条目3.3，移植联机工具箱1.67 TPT_GetRandomTeam/OnRandomTeamButtonL-R 并重写）
+-- 快捷分队（条目3.3，移植联机工具箱1.67 并重写；评分机制已重设计为纯谐波位次分 + 相邻结对随机）
 -- 用法：房主左键点击玩家列表「队伍」列表头 —— 随机平衡分队；右键 —— 按槽位顺序1212分队。
 -- 机制：SetTeam + BroadcastPlayerInfo 后由原版 PlayerInfoChanged 事件链自动刷新条目与队伍下拉。
 -- ============================================================================
 
 -------------------------------------------------
--- GetBaseRatio
--- 计算 121212 交错分队的基准平衡比值（纯计算，供平衡阈值使用）。
+-- GetSlotOrderScore
+-- 楼层位次分（纯函数）：score(i) = 1 / (i + SCORE_SMOOTHING)
+-- 位置 i 按玩家 ID 升序（1 起），分数严格单调递减（ID 顺序越低评分越高）；
+-- 首尾比 (N+1)/2 随人数线性增长，相邻位区分度不随人数稀释。
+-- 分数语义 = 楼层优势（伟人招募/奇观建造的结算优先权），分队目标为两队总分差最小。
 -------------------------------------------------
-function GetBaseRatio( playerCount )
-	local floorA : number = 0;
-	local floorB : number = 0;
-	local isA : boolean = true;
-	for i = 1, playerCount do
-		if isA then
-			floorA = floorA + (i + playerCount / 2) ^ -1;
-		else
-			floorB = floorB + (i + playerCount / 2) ^ -1;
-		end
-		isA = not isA;
-	end
-	return math.max(floorA, floorB) / math.min(floorA, floorB);
+local SCORE_SMOOTHING : number = 1;	-- 谐波平滑常数（越大曲线越平；1.67 原式为 N/2，大房间会抹平相邻位区分度）
+local MAX_BALANCE_ATTEMPTS : number = 10;	-- 最优保留的最大尝试次数
+function GetSlotOrderScore( position )
+	return 1 / (position + SCORE_SMOOTHING);
 end
 
 -------------------------------------------------
 -- GetBalancedRandomTeams
--- 随机平衡分队（1.67 递归版改为迭代）：随机抽一半为 A 队，
--- 按槽位序权重 (i + HalfFloor)^-1 计算两队平衡比值，超过 1212 基准阈值则重抽。
--- 返回 playerID -> boolean（true = A 队）。
+-- 随机平衡分队（相邻结对随机 + 最优保留）：
+-- 1. 相邻位置结对 (1,2)(3,4)…，每对内抛硬币随机一人进 A 队，奇数人时最后一人随机进队；
+-- 2. 最多 MAX_BALANCE_ATTEMPTS 次尝试，保留两队楼层总分差最小的一份，
+--    分差 <= 最小结对分差（精度极限）时提前结束；
+-- 3. 返回 playerID -> boolean（true = A 队）。
 -------------------------------------------------
 function GetBalancedRandomTeams( playerIDs, maxAttempts )
 	local playerCount : number = #playerIDs;
-	local teamAssignment : table = {};
+	local bestAssignment : table = {};
 	for _, playerID in ipairs(playerIDs) do
-		teamAssignment[playerID] = false;
+		bestAssignment[playerID] = false;
 	end
 	if playerCount <= 1 then
-		return teamAssignment;
+		return bestAssignment;
 	end
 
-	local halfFloor : number = playerCount / 2;
-	local pickCount : number = math.ceil(halfFloor);
-	local baseRatio : number = GetBaseRatio(playerCount);
-	local maxRatio : number = baseRatio + (baseRatio - 1) * 0.1;
+	-- 预算位次分与最小结对分差（精度极限）
+	local scores : table = {};
+	local minPairGap : number = 1;
+	for position = 2, playerCount do
+		scores[position - 1] = GetSlotOrderScore(position - 1);
+		minPairGap = math.min(minPairGap, GetSlotOrderScore(position - 1) - GetSlotOrderScore(position));
+	end
+	scores[playerCount] = GetSlotOrderScore(playerCount);
 
-	for attempt = 1, (maxAttempts or 100) do
-		-- 随机抽 pickCount 名玩家为 A 队
-		for _, playerID in ipairs(playerIDs) do
-			teamAssignment[playerID] = false;
-		end
-		local pool : table = { unpack(playerIDs) };
-		for i = 1, pickCount do
-			local pickIndex : number = math.random(1, #pool);
-			teamAssignment[table.remove(pool, pickIndex)] = true;
-		end
-		-- 计算两队平衡比值
-		local floorA : number = 0;
-		local floorB : number = 0;
-		for i, playerID in ipairs(playerIDs) do
-			if teamAssignment[playerID] then
-				floorA = floorA + (i + halfFloor) ^ -1;
+	local bestScoreDiff : number = math.huge;
+	for attempt = 1, (maxAttempts or MAX_BALANCE_ATTEMPTS) do
+		local teamAssignment : table = {};
+		local signedScoreDiff : number = 0;	-- A 队总分 - B 队总分
+		local position : number = 1;
+		while position <= playerCount do
+			local assignFirstToA : boolean = math.random() < 0.5;
+			if position + 1 <= playerCount then
+				-- 结对内随机一人进 A 队，分差伸缩相消
+				teamAssignment[playerIDs[position]] = assignFirstToA;
+				teamAssignment[playerIDs[position + 1]] = not assignFirstToA;
+				local pairGap : number = scores[position] - scores[position + 1];
+				signedScoreDiff = signedScoreDiff + (assignFirstToA and pairGap or -pairGap);
+				position = position + 2;
 			else
-				floorB = floorB + (i + halfFloor) ^ -1;
+				-- 奇数人最后一人随机进队
+				teamAssignment[playerIDs[position]] = assignFirstToA;
+				signedScoreDiff = signedScoreDiff + (assignFirstToA and scores[position] or -scores[position]);
+				position = position + 1;
 			end
 		end
-		local minFloor : number = math.min(floorA, floorB);
-		local ratio : number = minFloor > 0 and math.max(floorA, floorB) / minFloor or 1;
-		if ratio <= maxRatio then
-			break;
+		if math.abs(signedScoreDiff) < bestScoreDiff then
+			bestScoreDiff = math.abs(signedScoreDiff);
+			bestAssignment = teamAssignment;
+			if bestScoreDiff <= minPairGap then
+				break;	-- 已达精度极限，提前结束
+			end
 		end
 	end
-	return teamAssignment;
+	return bestAssignment;
 end
 
 -------------------------------------------------
