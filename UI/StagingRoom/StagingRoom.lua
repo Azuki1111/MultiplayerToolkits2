@@ -3324,15 +3324,17 @@ end
 -- SetAllNonHumanSlots
 -- 将全部非真人槽位设置为目标状态（仅房主可执行）。
 -- newSlotStatus : SlotStatus.SS_CLOSED（左键关闭）或 SlotStatus.SS_OPEN（右键打开）
+-- 遍历说明：遍历全部槽位 0..g_currentMaxPlayers-1（不用 GetMultiplayerPlayerIDs，
+--          该列表不含已关闭槽位，会导致关闭过的槽位右键开不回来）；
+--          槽位总数由地图尺寸上限决定，本函数不做扩容。
 -------------------------------------------------
 function SetAllNonHumanSlots( newSlotStatus )
 	if not Network.IsGameHost() then
 		return;
 	end
-	local playerIDs = GameConfiguration.GetMultiplayerPlayerIDs();
-	for _, playerID in ipairs(playerIDs) do
+	for playerID = 0, g_currentMaxPlayers - 1 do
 		local pPlayerConfig = PlayerConfigurations[playerID];
-		if not pPlayerConfig:IsHuman() and pPlayerConfig:GetSlotStatus() ~= newSlotStatus then
+		if pPlayerConfig ~= nil and not pPlayerConfig:IsHuman() and pPlayerConfig:GetSlotStatus() ~= newSlotStatus then
 			pPlayerConfig:SetSlotStatus(newSlotStatus);
 			Network.BroadcastPlayerInfo(playerID);
 		end
