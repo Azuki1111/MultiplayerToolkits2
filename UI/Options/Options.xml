@@ -89,11 +89,11 @@
 								<Stack Anchor="R,T" StackGrowth="Left" Padding="5">
 									<Grid Style="EditTextArea" Size="400,30" InnerPadding="6,6">
 <!-- ============================================================================ -->
-<!-- 联机工具箱2.0：修改本局玩家名称上限 22 -> 64 -->
+<!-- 联机工具箱2.0：修改本局玩家名称上限 22 -> 45 -->
 <!--
 										<EditBox ID="LANPlayerNameEdit" Anchor="L,C" Offset="0,0" Size="parent,23" EditMode="1" Style="FontNormal14" ColorSet="BodyTextCool" FontStyle="stroke" MaxLength="22"/>
 -->
-										<EditBox ID="LANPlayerNameEdit" Anchor="L,C" Offset="0,0" Size="parent,23" EditMode="1" Style="FontNormal14" ColorSet="BodyTextCool" FontStyle="stroke" MaxLength="64"/>
+										<EditBox ID="LANPlayerNameEdit" Anchor="L,C" Offset="0,0" Size="parent,23" EditMode="1" Style="FontNormal14" ColorSet="BodyTextCool" FontStyle="stroke" MaxLength="45"/>
 <!-- ============================================================================ -->
 									</Grid>
 									<Label Anchor="L,C" Style="ShellOptionText" WrapWidth="350" String="LOC_OPTIONS_LAN_PLAYER_NAME"/>

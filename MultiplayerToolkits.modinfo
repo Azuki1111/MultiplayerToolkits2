@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+=========================================================================================================================================================
+███╗   ███╗██╗   ██╗██╗  ████████╗██╗██████╗ ██╗      █████╗ ██╗   ██╗███████╗██████╗     ████████╗ ██████╗  ██████╗ ██╗     ██╗  ██╗██╗████████╗███████╗
+████╗ ████║██║   ██║██║  ╚══██╔══╝██║██╔══██╗██║     ██╔══██╗╚██╗ ██╔╝██╔════╝██╔══██╗    ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██║ ██╔╝██║╚══██╔══╝██╔════╝
+██╔████╔██║██║   ██║██║     ██║   ██║██████╔╝██║     ███████║ ╚████╔╝ █████╗  ██████╔╝       ██║   ██║   ██║██║   ██║██║     █████╔╝ ██║   ██║   ███████╗
+██║╚██╔╝██║██║   ██║██║     ██║   ██║██╔═══╝ ██║     ██╔══██║  ╚██╔╝  ██╔══╝  ██╔══██╗       ██║   ██║   ██║██║   ██║██║     ██╔═██╗ ██║   ██║   ╚════██║
+██║ ╚═╝ ██║╚██████╔╝███████╗██║   ██║██║     ███████╗██║  ██║   ██║   ███████╗██║  ██║       ██║   ╚██████╔╝╚██████╔╝███████╗██║  ██╗██║   ██║   ███████║
+╚═╝     ╚═╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝       ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚══════╝
+=========================================================================================================================================================
+-->
 <!-- 联机工具箱 2.0 前端（Multiplayer Toolkits 2.0 FrontEnd）：融合联机工具箱与 MPH 前端功能，作者 号码菌Synora -->
 <!-- LoadOrder 规约：1-99 配置 | 100-999 文本 | 1000-9999 UI替换 | 10000+ 覆盖型替换 | 99999+ 强制后置 -->
 <Mod id="00000000-7369-4685-ab5f-bf77bc22b54e" version="1">
@@ -16,8 +26,8 @@
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
 		<Text id="LOC_MPT_FE_NAME">
-			<en_US>[ICON_ADDITIONALCONTENT]Multiplayer Toolkits [COLOR:ResGoldLabelCS]2.0 FrontEnd[ENDCOLOR]</en_US>
-			<zh_Hans_CN>[ICON_ADDITIONALCONTENT]联机工具箱 [COLOR:ResGoldLabelCS]2.0 前端[ENDCOLOR]</zh_Hans_CN>
+			<en_US>[ICON_ADDITIONALCONTENT]Multiplayer Toolkits [COLOR:ResGoldLabelCS]2.0.0 FrontEnd[ENDCOLOR]</en_US>
+			<zh_Hans_CN>[ICON_ADDITIONALCONTENT]联机工具箱 [COLOR:ResGoldLabelCS]2.0.0 前端[ENDCOLOR]</zh_Hans_CN>
 		</Text>
 		<Text id="LOC_MPT_FE_DESCRIPTION">
 			<en_US>[ICON_Bolt][COLOR:ResGoldLabelCS]Multiplayer Toolkits 2.0 FrontEnd[ENDCOLOR]
@@ -45,7 +55,7 @@
 		</Text>
 	</LocalizedText>
 	<FrontEndActions>
-		<!-- 条目1：LAN 玩家名长度 64（整文件同名覆盖原版 Options.xml，唯一改动 MaxLength 22 到 64） -->
+		<!-- 条目1：LAN 玩家名长度 45（整文件同名覆盖原版 Options.xml，唯一改动 MaxLength 22 到 45） -->
 		<ImportFiles id="FE_Replace_Options">
 			<Properties>
 				<LoadOrder>1000</LoadOrder>
