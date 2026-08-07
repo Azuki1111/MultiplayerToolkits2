@@ -393,7 +393,7 @@ function OnGameConfigChanged()
 	end
 	OnMapMaxMajorPlayersChanged(MapConfiguration.GetMaxMajorPlayers());	
 	OnMapMinMajorPlayersChanged(MapConfiguration.GetMinMajorPlayers());
-	UpdateAISlotsButtonState();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
+	UpdateCustomButtonsState();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
 end
 
 -------------------------------------------------
@@ -820,7 +820,7 @@ function OnMultiplayerHostMigrated( newHostID : number )
 
 		OnChat( newHostID, -1, PlayerHostMigratedChatStr, false );
 		UI.PlaySound("Play_MP_Host_Migration");
-		UpdateAISlotsButtonState();	-- 联机工具箱2.0：房主迁移后刷新「AI槽位」按钮可见性（条目3.2）
+		UpdateCustomButtonsState();	-- 联机工具箱2.0：房主迁移后刷新「AI槽位」按钮可见性（条目3.2）
 	end
 end
 
@@ -2509,7 +2509,7 @@ function OnShow()
 	-- g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 12);
 	g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), MAX_EVER_PLAYERS);
 	-- ----------------------------------------------------------------------------
-	UpdateAISlotsButtonState();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
+	UpdateCustomButtonsState();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
 	m_shownPBCReadyPopup = false;
 	m_exitReadyWait = false;
 
@@ -3386,13 +3386,159 @@ function OnAISlotsButtonR()
 	SetAllNonHumanSlots(SlotStatus.SS_OPEN);
 end
 
+-- ============================================================================
+-- 快捷分队（条目3.3，移植联机工具箱1.67 TPT_GetRandomTeam/OnRandomTeamButtonL-R 并重写）
+-- 用法：房主左键点击玩家列表「队伍」列表头 —— 随机平衡分队；右键 —— 按槽位顺序1212分队。
+-- 机制：SetTeam + BroadcastPlayerInfo 后由原版 PlayerInfoChanged 事件链自动刷新条目与队伍下拉。
+-- ============================================================================
+
 -------------------------------------------------
--- UpdateAISlotsButtonState
--- 刷新「AI槽位」按钮可见性：仅房主、非热座、非云端时显示。
+-- GetBaseRatio
+-- 计算 121212 交错分队的基准平衡比值（纯计算，供平衡阈值使用）。
+-------------------------------------------------
+function GetBaseRatio( playerCount )
+	local floorA : number = 0;
+	local floorB : number = 0;
+	local isA : boolean = true;
+	for i = 1, playerCount do
+		if isA then
+			floorA = floorA + (i + playerCount / 2) ^ -1;
+		else
+			floorB = floorB + (i + playerCount / 2) ^ -1;
+		end
+		isA = not isA;
+	end
+	return math.max(floorA, floorB) / math.min(floorA, floorB);
+end
+
+-------------------------------------------------
+-- GetBalancedRandomTeams
+-- 随机平衡分队（1.67 递归版改为迭代）：随机抽一半为 A 队，
+-- 按槽位序权重 (i + HalfFloor)^-1 计算两队平衡比值，超过 1212 基准阈值则重抽。
+-- 返回 playerID -> boolean（true = A 队）。
+-------------------------------------------------
+function GetBalancedRandomTeams( playerIDs, maxAttempts )
+	local playerCount : number = #playerIDs;
+	local teamAssignment : table = {};
+	for _, playerID in ipairs(playerIDs) do
+		teamAssignment[playerID] = false;
+	end
+	if playerCount <= 1 then
+		return teamAssignment;
+	end
+
+	local halfFloor : number = playerCount / 2;
+	local pickCount : number = math.ceil(halfFloor);
+	local baseRatio : number = GetBaseRatio(playerCount);
+	local maxRatio : number = baseRatio + (baseRatio - 1) * 0.1;
+
+	for attempt = 1, (maxAttempts or 100) do
+		-- 随机抽 pickCount 名玩家为 A 队
+		for _, playerID in ipairs(playerIDs) do
+			teamAssignment[playerID] = false;
+		end
+		local pool : table = { unpack(playerIDs) };
+		for i = 1, pickCount do
+			local pickIndex : number = math.random(1, #pool);
+			teamAssignment[table.remove(pool, pickIndex)] = true;
+		end
+		-- 计算两队平衡比值
+		local floorA : number = 0;
+		local floorB : number = 0;
+		for i, playerID in ipairs(playerIDs) do
+			if teamAssignment[playerID] then
+				floorA = floorA + (i + halfFloor) ^ -1;
+			else
+				floorB = floorB + (i + halfFloor) ^ -1;
+			end
+		end
+		local minFloor : number = math.min(floorA, floorB);
+		local ratio : number = minFloor > 0 and math.max(floorA, floorB) / minFloor or 1;
+		if ratio <= maxRatio then
+			break;
+		end
+	end
+	return teamAssignment;
+end
+
+-------------------------------------------------
+-- GetRandomTeamIDs
+-- 返回一奇一偶两个队伍 ID（错开队伍配色，避免固定颜色）。
+-------------------------------------------------
+function GetRandomTeamIDs()
+	return 2 * math.random(1, 6) - 1, 2 * math.random(1, 5);
+end
+
+-------------------------------------------------
+-- AssignTeams
+-- 快捷分队核心（仅房主可执行）：
+-- 收集全部参与者（排除观察者），按 teamAssignment 表分配队伍，
+-- 观察者/空位置为无队伍；每名玩家只 SetTeam + 广播一次。
+-- playerIDs      : GameConfiguration.GetMultiplayerPlayerIDs()
+-- teamAssignment : playerID -> boolean（true = A 队），nil 表示按顺序交错
+-------------------------------------------------
+function AssignTeams( playerIDs, teamAssignment )
+	if not Network.IsGameHost() then
+		return;
+	end
+	local teamID_A : number, teamID_B : number = GetRandomTeamIDs();
+	local useTeamA : boolean = true;
+	for _, playerID in ipairs(playerIDs) do
+		local pPlayerConfig = PlayerConfigurations[playerID];
+		local isParticipant : boolean = pPlayerConfig:IsParticipant() and pPlayerConfig:GetLeaderTypeName() ~= "LEADER_SPECTATOR";
+		local newTeam : number = -1;
+		if isParticipant then
+			-- 注意不能用 a and b or c 写法：teamAssignment[playerID] 为 false 时会错误落到 useTeamA
+			local assignA : boolean;
+			if teamAssignment ~= nil then
+				assignA = teamAssignment[playerID] == true;
+			else
+				assignA = useTeamA;
+				useTeamA = not useTeamA;
+			end
+			newTeam = assignA and teamID_A or teamID_B;
+		end
+		pPlayerConfig:SetTeam(newTeam);
+		Network.BroadcastPlayerInfo(playerID);
+	end
+end
+
+-------------------------------------------------
+-- OnRandomTeamButtonL / OnRandomTeamButtonR
+-- 「队伍」列表头左键（随机平衡分队）/ 右键（顺序1212分队）回调。
+-------------------------------------------------
+function OnRandomTeamButtonL()
+	if not Network.IsGameHost() then
+		return;
+	end
+	local playerIDs = GameConfiguration.GetMultiplayerPlayerIDs();
+	local participantIDs : table = {};
+	for _, playerID in ipairs(playerIDs) do
+		local pPlayerConfig = PlayerConfigurations[playerID];
+		if pPlayerConfig:IsParticipant() and pPlayerConfig:GetLeaderTypeName() ~= "LEADER_SPECTATOR" then
+			table.insert(participantIDs, playerID);
+		end
+	end
+	AssignTeams(playerIDs, GetBalancedRandomTeams(participantIDs));
+end
+
+function OnRandomTeamButtonR()
+	UI.PlaySound("Play_UI_Click");	-- GridButton 右键不自动播放点击音
+	if not Network.IsGameHost() then
+		return;
+	end
+	AssignTeams(GameConfiguration.GetMultiplayerPlayerIDs(), nil);
+end
+
+-------------------------------------------------
+-- UpdateCustomButtonsState
+-- 刷新本 mod 自定义按钮（AI槽位 / 快捷分队）可见性：仅房主、非热座、非云端时显示。
 -- 调用点：OnShow / OnGameConfigChanged / OnMultiplayerHostMigrated。
 -------------------------------------------------
-function UpdateAISlotsButtonState()
-	Controls.AISlotsButton:SetHide(not Network.IsGameHost() or GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud());
+function UpdateCustomButtonsState()
+	local hideButtons : boolean = not Network.IsGameHost() or GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud();
+	Controls.AISlotsButton:SetHide(hideButtons);
+	Controls.RandomTeamButton:SetHide(hideButtons);
 end
 
 -- ===========================================================================
@@ -3424,11 +3570,14 @@ function Initialize()
 	Controls.ReadyCheck:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	Controls.JoinCodeText:RegisterCallback( Mouse.eLClick, OnClickToCopy );
 	-- ============================================================================
-	-- 联机工具箱2.0：注册「AI槽位」按钮回调（条目3.2）
+	-- 联机工具箱2.0：注册「AI槽位」按钮回调（条目3.2）与「快捷分队」按钮回调（条目3.3）
 	-- ----------------------------------------------------------------------------
 	Controls.AISlotsButton:RegisterCallback( Mouse.eLClick, OnAISlotsButtonL );
 	Controls.AISlotsButton:RegisterCallback( Mouse.eRClick, OnAISlotsButtonR );
 	Controls.AISlotsButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.RandomTeamButton:RegisterCallback( Mouse.eLClick, OnRandomTeamButtonL );
+	Controls.RandomTeamButton:RegisterCallback( Mouse.eRClick, OnRandomTeamButtonR );
+	Controls.RandomTeamButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
 	Controls.InviteButton:SetToolTipString(GetInviteTT());
 

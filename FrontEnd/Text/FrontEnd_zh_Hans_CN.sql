@@ -12,4 +12,6 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_FE_DUMMY_TEXT', 'zh_Hans_CN', '联机工具箱 2.0 前端虚构占位文本'),
 -- 条目3.2：快捷打开/关闭AI按钮
 ('LOC_MPT_FE_AI_SLOTS_NAME', 'zh_Hans_CN', 'AI槽位'),
-('LOC_MPT_FE_AI_SLOTS_TOOLTIP', 'zh_Hans_CN', '左键：关闭所有空位与AI槽位[NEWLINE]右键：打开所有槽位（会清除已有AI）');
+('LOC_MPT_FE_AI_SLOTS_TOOLTIP', 'zh_Hans_CN', '左键：关闭所有空位与AI槽位[NEWLINE]右键：打开所有槽位（会清除已有AI）'),
+-- 条目3.3：快捷分队按钮（队伍列表头）
+('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'zh_Hans_CN', '左键：随机平衡分队[NEWLINE]右键：按顺序1212分队[NEWLINE]仅房主可用');

@@ -55,6 +55,8 @@
 				</Grid>
 
 				<Grid Anchor="L,T" Size="68,28" Style="ShellHeaderButton" ID="SortbyTeam" >
+					<!-- 联机工具箱2.0：快捷分队按钮（左键随机平衡分队/右键顺序1212分队，仅房主可用），隐形覆盖队伍列表头 -->
+					<GridButton Anchor="L,C" ID="RandomTeamButton" Style="ShellHeaderButton" Offset="0,0" Size="parent,parent" Hidden="0" ToolTip="LOC_MPT_FE_RANDOM_TEAM_TOOLTIP"/>
 					<Label Anchor="L,C" Offset="7,1" String="LOC_MULTIPLAYER_TEAM_HEADER" Style="FontNormal14" FontStyle="Shadow" ColorSet="ServerColumnHeader"/>
 				</Grid>
 
