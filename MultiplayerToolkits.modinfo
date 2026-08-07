@@ -100,6 +100,21 @@
 			<File>UI/StagingRoom/StagingRoom.xml</File>
 			<File>UI/StagingRoom/StagingRoom.lua</File>
 		</ImportFiles>
+		<!-- 单人游戏模式：替换高级设置界面，允许移除全部AI、1人开局（参考 RL_Pangaea，唯一改动 minPlayers 为 1） -->
+		<ReplaceUIScript id="FE_Replace_AdvancedSetup">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>AdvancedSetup</LuaContext>
+				<LuaReplace>UI/AdvancedSetup/AdvancedSetup.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<!-- 单人游戏模式：导入高级设置 Lua（XML 未改不导入） -->
+		<ImportFiles id="FE_Import_AdvancedSetup">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>UI/AdvancedSetup/AdvancedSetup.lua</File>
+		</ImportFiles>
 		<!-- 待启用：FE_Check_Mod_IDs(20) | FE_Replace_NetConnectionIcon(1000) -->
 	</FrontEndActions>
 	<InGameActions>
@@ -121,5 +136,6 @@
 		<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		<File>UI/StagingRoom/StagingRoom.lua</File>
 		<File>UI/StagingRoom/StagingRoom.xml</File>
+		<File>UI/AdvancedSetup/AdvancedSetup.lua</File>
 	</Files>
 </Mod>
