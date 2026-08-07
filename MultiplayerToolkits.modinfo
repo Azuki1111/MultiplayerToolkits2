@@ -8,4 +8,140 @@
 ██║ ╚═╝ ██║╚██████╔╝███████╗██║   ██║██║     ███████╗██║  ██║   ██║   ███████╗██║  ██║       ██║   ╚██████╔╝╚██████╔╝███████╗██║  ██╗██║   ██║   ███████║
 ╚═╝     ╚═╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝       ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚══════╝
 =========================================================================================================================================================
+联机工具箱 2.0 前端（Multiplayer Toolkits 2.0 FrontEnd）
+融合「联机工具箱」与「MPH」的前端功能并加以优化，功能清单与流程规范见 计划.md。
+2025-08 号码菌Synora
+
+LoadOrder 规约：
+	  1–99     配置 / 数据库
+	  100–999  文本
+	  1000–9999 UI 替换 / 面板
+	  10000+   覆盖型替换（防 DLC / 其他模组覆盖）
+	  99999+   强制后置（如灾害强度下限类 SQL）
 -->
+<Mod id="00000000-7369-4685-ab5f-bf77bc22b54e" version="1">
+	<Properties>
+		<Name>LOC_MPT_FE_NAME</Name>
+		<Description>LOC_MPT_FE_DESCRIPTION</Description>
+		<Teaser>LOC_MPT_FE_TEASER</Teaser>
+		<Authors>LOC_MPT_FE_AUTHORS</Authors>
+		<SpecialThanks>LOC_MPT_FE_THANKS</SpecialThanks>
+		<AffectsSavedGames>0</AffectsSavedGames>
+		<CompatibleVersions>1.2,2.0</CompatibleVersions>
+		<!-- 最后更新的时间戳，模组版本一致性校验以此为版本指纹，每次更新必须修改！ -->
+		<Created>1786102357</Created>
+	</Properties>
+<!-- 本地化文本（前端 mod 信息；当前为占位，mod 完成时统一完善，Description 多用 [NEWLINE] 排版） -->
+	<LocalizedText>
+		<Text id="LOC_MPT_FE_NAME">
+			<en_US>[ICON_ADDITIONALCONTENT]Multiplayer Toolkits [COLOR:ResGoldLabelCS]2.0 FrontEnd[ENDCOLOR]</en_US>
+			<zh_Hans_CN>[ICON_ADDITIONALCONTENT]联机工具箱 [COLOR:ResGoldLabelCS]2.0 前端[ENDCOLOR]</zh_Hans_CN>
+		</Text>
+		<Text id="LOC_MPT_FE_DESCRIPTION">
+			<en_US>[ICON_Bolt][COLOR:ResGoldLabelCS]Multiplayer Toolkits 2.0 FrontEnd[ENDCOLOR]
+			[NEWLINE][NEWLINE][icon_Exclamation]FrontEnd features
+			[NEWLINE][NEWLINE][icon_You]Staging Room enhancements
+			[NEWLINE][icon_You]Mod version consistency check
+			[NEWLINE][icon_You]Game setup presets for MP</en_US>
+			<zh_Hans_CN>[ICON_Bolt][COLOR:ResGoldLabelCS]联机工具箱 2.0 前端[ENDCOLOR]
+			[NEWLINE][NEWLINE][icon_Exclamation]前端功能
+			[NEWLINE][NEWLINE][icon_You]准备房间增强
+			[NEWLINE][icon_You]模组版本一致性校验
+			[NEWLINE][icon_You]联机常用游戏设置预设</zh_Hans_CN>
+		</Text>
+		<Text id="LOC_MPT_FE_TEASER">
+			<en_US>[size_32][COLOR:ResGoldLabelCS]Multiplayer Toolkits FrontEnd[ENDCOLOR]</en_US>
+			<zh_Hans_CN>[size_32][COLOR:ResGoldLabelCS]联机工具箱 前端[ENDCOLOR]</zh_Hans_CN>
+		</Text>
+		<Text id="LOC_MPT_FE_AUTHORS">
+			<en_US>[COLOR:ResGoldLabelCS]Synora[ENDCOLOR]</en_US>
+			<zh_Hans_CN>[COLOR:ResGoldLabelCS]号码菌[ENDCOLOR]</zh_Hans_CN>
+		</Text>
+		<Text id="LOC_MPT_FE_THANKS">
+			<en_US>Mod check / BP features adapted from Multiplayer Helper (MPH) by Cisco, D. &amp; Jack The Narrator, MIT License © 2024 BetterBalancedGame. Features also reference Team PVP Tools 1.67.</en_US>
+			<zh_Hans_CN>模组校验 / BP 功能改编自 Multiplayer Helper (MPH)，作者 Cisco, D. 与 Jack The Narrator，MIT 协议 © 2024 BetterBalancedGame。部分功能参考联机工具箱 1.67。</zh_Hans_CN>
+		</Text>
+	</LocalizedText>
+<!-- 约束标准 -->
+	<ActionCriteria>
+		<!-- 真 MPH 不在用（本 mod 已融合其功能，避免双协议 / 双界面冲突） -->
+		<Criteria id="Disable_MPH">
+			<ModInUse inverse="1">619ac86e-d99d-4bf3-b8f0-8c5b8c402567</ModInUse>	<!-- Multiplayer Helper -->
+		</Criteria>
+	</ActionCriteria>
+<!-- 前端文件（骨架：各 action 随功能条目落地逐步启用，注释说明各段作用） -->
+	<FrontEndActions>
+		<!-- 条目2：联机常用游戏设置预设（默认无蛮族/回合60秒/允许重复文明领袖/禁用领袖池参数），LoadOrder 1–99 -->
+		<!--
+		<UpdateDatabase id="FE_Config_Base">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>Config/GameConfig_BASE.xml</File>
+		</UpdateDatabase>
+		-->
+		<!-- 条目2：灾害强度下限改为 -1（完全无灾害），强制后置防覆盖 -->
+		<!--
+		<UpdateDatabase id="FE_Config_DD">
+			<Properties>
+				<LoadOrder>99999</LoadOrder>
+			</Properties>
+			<File>Config/DD_Config.sql</File>
+		</UpdateDatabase>
+		-->
+		<!-- 条目4.1：准备房间必装模组校验表（版本一致性校验的数据源） -->
+		<!--
+		<UpdateDatabase id="FE_Check_Mod_IDs">
+			<Properties>
+				<LoadOrder>20</LoadOrder>
+			</Properties>
+			<File>Config/Check_Mod_IDs.sql</File>
+		</UpdateDatabase>
+		-->
+		<!-- 条目1：LAN 玩家名长度 64（整文件同名覆盖，唯一改动 MaxLength 22 -> 64） -->
+		<!--
+		<ImportFiles id="FE_Replace_Options">
+			<Properties>
+				<LoadOrder>1000</LoadOrder>
+			</Properties>
+			<File>UI/Options/Options.xml</File>
+		</ImportFiles>
+		-->
+		<!-- 条目3/4：替换准备房间界面（真 MPH 在用则让位），LoadOrder 100000 压过其他同类模组 -->
+		<!--
+		<ReplaceUIScript id="FE_Replace_StagingRoom">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<Criteria>Disable_MPH</Criteria>
+				<LuaContext>StagingRoom</LuaContext>
+				<LuaReplace>UI/StagingRoom/StagingRoom.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="FE_Import_StagingRoom">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+				<Criteria>Disable_MPH</Criteria>
+			</Properties>
+			<File>UI/StagingRoom/StagingRoom.xml</File>
+			<File>UI/StagingRoom/StagingRoom.lua</File>
+			<File>Core/Storage.lua</File>
+		</ImportFiles>
+		-->
+		<!-- 条目3.7：网络连接显示优化（同名覆盖原版 Scripts/NetConnectionIconLogic.lua） -->
+		<!--
+		<ImportFiles id="FE_Replace_NetConnectionIcon">
+			<Properties>
+				<LoadOrder>1000</LoadOrder>
+			</Properties>
+			<File>Scripts/NetConnectionIconLogic.lua</File>
+		</ImportFiles>
+		-->
+	</FrontEndActions>
+<!-- 游戏内文件（当前无） -->
+	<InGameActions>
+
+	</InGameActions>
+<!-- 包含文件（随功能条目落地逐步登记） -->
+	<Files>
+	</Files>
+</Mod>
