@@ -2111,11 +2111,7 @@ function UpdateReadyButton_Hotseat()
 			Controls.ReadyButton:SetText("");
 			Controls.ReadyButton:LocalizeAndSetToolTip("LOC_READY_BLOCKED_HOTSEAT_NO_HUMAN_PLAYERS_TT");
 			Controls.ReadyButton:SetDisabled(true);
-		-- ============================================================================
-		-- 联机工具箱2.0：热座模式允许单人开局（参考 RL_Pangaea），关闭全部AI后仅剩1名真人也可开始
-		-- elseif(g_hotseatNumHumanPlayers + g_hotseatNumAIPlayers < 2) then
-		elseif(g_hotseatNumHumanPlayers + g_hotseatNumAIPlayers < 1) then
-		-- ----------------------------------------------------------------------------
+		elseif(g_hotseatNumHumanPlayers + g_hotseatNumAIPlayers < 2) then
 			Controls.StartLabel:SetText(Locale.ToUpper(Locale.Lookup("LOC_READY_BLOCKED_NOT_ENOUGH_PLAYERS")));
 			Controls.ReadyButton:SetText("");
 			Controls.ReadyButton:LocalizeAndSetToolTip("LOC_READY_BLOCKED_NOT_ENOUGH_PLAYERS_TT");
