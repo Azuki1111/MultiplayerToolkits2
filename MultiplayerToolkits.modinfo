@@ -60,21 +60,21 @@
 			<Properties>
 				<LoadOrder>10</LoadOrder>
 			</Properties>
-			<File>Config/GameConfig_BASE.xml</File>
+			<File>Config/Config_Base.xml</File>
 		</UpdateDatabase>
 		<!-- 条目2：Config 新增参数的本地化文本（禁用领袖池） -->
 		<UpdateText id="FE_Config_Text">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
 			</Properties>
-			<File>Config/GameConfig_BASE_Text.xml</File>
+			<File>Config/Config_Base_Text.xml</File>
 		</UpdateText>
 		<!-- 条目2：灾害强度下限 0 到 -1（完全无灾害），强制后置防覆盖 -->
 		<UpdateDatabase id="FE_Config_DD">
 			<Properties>
 				<LoadOrder>99999</LoadOrder>
 			</Properties>
-			<File>Config/DD_Config.sql</File>
+			<File>Config/Config_Disaster.sql</File>
 		</UpdateDatabase>
 		<!-- 条目1：LAN 玩家名长度 45（整文件同名覆盖原版 Options.xml，唯一改动 MaxLength 22 到 45） -->
 		<ImportFiles id="FE_Replace_Options">
@@ -91,15 +91,15 @@
 			<Properties>
 				<LoadOrder>100</LoadOrder>
 			</Properties>
-			<File>Text/InGameText.sql</File>
+			<File>Text/InGame_Text_Dummy.sql</File>
 		</UpdateText>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
 		<File>UI/Options/Options.xml</File>
-		<File>Text/InGameText.sql</File>
-		<File>Config/GameConfig_BASE.xml</File>
-		<File>Config/GameConfig_BASE_Text.xml</File>
-		<File>Config/DD_Config.sql</File>
+		<File>Text/InGame_Text_Dummy.sql</File>
+		<File>Config/Config_Base.xml</File>
+		<File>Config/Config_Base_Text.xml</File>
+		<File>Config/Config_Disaster.sql</File>
 	</Files>
 </Mod>
