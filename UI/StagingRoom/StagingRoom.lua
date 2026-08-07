@@ -393,7 +393,7 @@ function OnGameConfigChanged()
 	end
 	OnMapMaxMajorPlayersChanged(MapConfiguration.GetMaxMajorPlayers());	
 	OnMapMinMajorPlayersChanged(MapConfiguration.GetMinMajorPlayers());
-	UpdateCustomButtonsState();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
+	RefreshHostPermissions();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
 end
 
 -------------------------------------------------
@@ -820,7 +820,7 @@ function OnMultiplayerHostMigrated( newHostID : number )
 
 		OnChat( newHostID, -1, PlayerHostMigratedChatStr, false );
 		UI.PlaySound("Play_MP_Host_Migration");
-		UpdateCustomButtonsState();	-- 联机工具箱2.0：房主迁移后刷新「AI槽位」按钮可见性（条目3.2）
+		RefreshHostPermissions();	-- 联机工具箱2.0：房主迁移后刷新「AI槽位」按钮可见性（条目3.2）
 	end
 end
 
@@ -1939,7 +1939,11 @@ function UpdatePlayerEntry(playerID)
 		
 		-- TeamPullDown is not controlled by PlayerConfigurationValuesToUI and is set manually.
 		local noTeams = GameConfiguration.GetValue("NO_TEAMS");
-		playerEntry.TeamPullDown:SetDisabled(not bCanChangePlayerValues or noTeams);
+		-- ============================================================================
+		-- 联机工具箱2.0：房主可修改其他真人玩家的队伍（条目3.4）；OnTeamPull 内部已 SetTeam + 广播
+		-- playerEntry.TeamPullDown:SetDisabled(not bCanChangePlayerValues or noTeams);
+		playerEntry.TeamPullDown:SetDisabled((not bCanChangePlayerValues and not CanHostEditOtherPlayer(playerID)) or noTeams);
+		-- ----------------------------------------------------------------------------
 		local teamID:number = pPlayerConfig:GetTeam();
 		-- If the game is in progress and this player is on a team by themselves, display it as if they are on no team.
 		-- We do this to be consistent with the ingame UI.
@@ -2509,7 +2513,7 @@ function OnShow()
 	-- g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 12);
 	g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), MAX_EVER_PLAYERS);
 	-- ----------------------------------------------------------------------------
-	UpdateCustomButtonsState();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
+	RefreshHostPermissions();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
 	m_shownPBCReadyPopup = false;
 	m_exitReadyWait = false;
 
@@ -2825,6 +2829,15 @@ function SetupSplitLeaderPulldown(playerId:number, instance:table, pulldownContr
 				entry.Button:SetToolTipString(nil);			
 
 				entry.Button:RegisterCallback(Mouse.eLClick, function()
+					-- ============================================================================
+					-- 联机工具箱2.0：房主修改其他真人玩家的领袖（条目3.4）——直接写 PlayerConfigurations + 广播，
+					-- 不走参数系统（其 Config_CanWriteParameter 对非本地玩家返回 false 会静默失败）；
+					-- 房主路径不执行下方备用色重置，保留对方原配色。
+					-- ----------------------------------------------------------------------------
+					if CanHostEditOtherPlayer(playerId) then
+						HostSetPlayerLeader(playerId, v);
+						return;
+					end
 					if(info == nil) then info = GetPlayerInfo(domain, value); end
 
 					--  if the user picked random, hide the civ icon again
@@ -2850,7 +2863,11 @@ function SetupSplitLeaderPulldown(playerId:number, instance:table, pulldownContr
 			local notExternalEnabled = not CheckExternalEnabled(playerId, enabled, true, parameter);
 			local singleOrEmpty = #parameter.Values <= 1;
 
-            control:SetDisabled(notExternalEnabled or singleOrEmpty);
+			-- ============================================================================
+			-- 联机工具箱2.0：房主可打开其他真人玩家的领袖下拉（条目3.4）
+			-- control:SetDisabled(notExternalEnabled or singleOrEmpty);
+			control:SetDisabled((notExternalEnabled and not CanHostEditOtherPlayer(playerId)) or singleOrEmpty);
+			-- ----------------------------------------------------------------------------
 		end,
 	--	SetVisible = function(visible)
 	--		control:SetHide(not visible);
@@ -3533,10 +3550,84 @@ function OnRandomTeamButtonR()
 	AssignTeams(GameConfiguration.GetMultiplayerPlayerIDs(), nil);
 end
 
+-- ============================================================================
+-- 房主权限提升（条目3.4，参考乔尔定制mod：直接写 PlayerConfigurations 绕过参数系统权限门）
+-- 机制：原版的队伍/领袖修改限制只是 UI 禁用与参数系统的 Config_CanWriteParameter 权限门，
+--      本区域函数在房主操作其他真人玩家时放开 UI、并直接写 PlayerConfigurations + 广播。
+-- ============================================================================
+
+-------------------------------------------------
+-- CanHostEditOtherPlayer
+-- 统一判定「房主可编辑该真人玩家」：本机是房主、非热座、目标非本机、
+-- SS_TAKEN、目标未 ready、未锁定、游戏未开始（PREGAME）、房主自己未 ready。
+-- 调用点：队伍下拉禁用、领袖下拉启用、领袖下拉点击拦截。
+-------------------------------------------------
+function CanHostEditOtherPlayer( playerId )
+	if not Network.IsGameHost() or GameConfiguration.IsHotseat() then
+		return false;
+	end
+	if playerId == Network.GetLocalPlayerID() then
+		return false;
+	end
+	local pPlayerConfig = PlayerConfigurations[playerId];
+	local localPlayerConfig = PlayerConfigurations[Network.GetLocalPlayerID()];
+	return pPlayerConfig ~= nil
+		and pPlayerConfig:GetSlotStatus() == SlotStatus.SS_TAKEN
+		and not pPlayerConfig:GetReady()
+		and not pPlayerConfig:IsLocked()
+		and GameConfiguration.GetGameState() == GameStateTypes.GAMESTATE_PREGAME
+		and localPlayerConfig ~= nil and not localPlayerConfig:GetReady();
+end
+
+-------------------------------------------------
+-- HostSetPlayerLeader
+-- 房主修改其他玩家的所选领袖（仅房主可执行）：
+-- 直接写 PlayerConfigurations 绕过参数系统权限门，
+-- 逐条复刻 Player_WriteParameterValues 的 PlayerLeader 分支（PlayerSetupLogic.lua:57-90）。
+-- playerId : 目标玩家 ID；valueRow : 领袖下拉的 DomainValues 行（.Value 为领袖类型名）
+-- 末尾广播 + 本地即时刷新，其他玩家客户端实时看到变化。
+-------------------------------------------------
+function HostSetPlayerLeader( playerId, valueRow )
+	if not CanHostEditOtherPlayer(playerId) then
+		return;
+	end
+	local pPlayerConfig = PlayerConfigurations[playerId];
+	local leaderType = valueRow.Value;
+	if leaderType == -1 or leaderType == "RANDOM" then
+		pPlayerConfig:SetLeaderName(nil);
+		pPlayerConfig:SetLeaderTypeName(nil);
+		pPlayerConfig:SetLeaderRandomPoolID(LeaderRandomPoolTypes.LEADER_RANDOM_POOL_DEFAULT);
+	elseif leaderType == "RANDOM_POOL1" then
+		pPlayerConfig:SetLeaderName(nil);
+		pPlayerConfig:SetLeaderTypeName(nil);
+		pPlayerConfig:SetLeaderRandomPoolID(LeaderRandomPoolTypes.LEADER_RANDOM_POOL_1);
+	elseif leaderType == "RANDOM_POOL2" then
+		pPlayerConfig:SetLeaderName(nil);
+		pPlayerConfig:SetLeaderTypeName(nil);
+		pPlayerConfig:SetLeaderRandomPoolID(LeaderRandomPoolTypes.LEADER_RANDOM_POOL_2);
+	else
+		pPlayerConfig:SetLeaderName(valueRow.RawName or valueRow.Name);
+		pPlayerConfig:SetLeaderTypeName(leaderType);
+	end
+	Network.BroadcastPlayerInfo(playerId);	-- 广播：其他玩家实时看到变化
+	UpdatePlayerEntry(playerId);			-- 本地即时刷新
+end
+
+-------------------------------------------------
+-- RefreshHostPermissions
+-- 统一房主刷新判定：每次进入房间或房主变化时调用，统一进行权限判定。
+-- 1. 刷新本 mod 自定义按钮（AI槽位 / 快捷分队）可见性；
+-- 2. 重评估所有玩家条目的下拉可编辑状态（队伍/领袖放开随房主身份即时生效/失效）。
+-- 调用点：OnShow / OnGameConfigChanged / OnMultiplayerHostMigrated。
+-------------------------------------------------
+function RefreshHostPermissions()
+	UpdateCustomButtonsState();
+	UpdateAllPlayerEntries();
+end
+
 -------------------------------------------------
 -- UpdateCustomButtonsState
 -- 刷新本 mod 自定义按钮（AI槽位 / 快捷分队）可见性：仅房主、非热座、非云端时显示。
--- 调用点：OnShow / OnGameConfigChanged / OnMultiplayerHostMigrated。
 -------------------------------------------------
 function UpdateCustomButtonsState()
 	local hideButtons : boolean = not Network.IsGameHost() or GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud();
