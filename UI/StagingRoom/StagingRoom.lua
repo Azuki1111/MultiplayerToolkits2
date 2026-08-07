@@ -1073,6 +1073,10 @@ function CheckTeamsValid()
 	m_bTeamsValid = false;
 	local noTeamPlayers : boolean = false;
 	local teamTest : number = TeamTypes.NO_TEAM;
+	-- ============================================================================
+	-- 联机工具箱2.0：允许只有1个玩家时开始游戏 —— 统计 full-civ 参与者数，单人时队伍视为有效
+	-- ----------------------------------------------------------------------------
+	local participantCount : number = 0;
     
 	-- Teams are invalid if all players are on the same team.
 	local player_ids = GameConfiguration.GetParticipatingPlayerIDs();
@@ -1080,6 +1084,7 @@ function CheckTeamsValid()
 		local curPlayerConfig = PlayerConfigurations[iPlayer];
 		if( curPlayerConfig:IsParticipant() 
 		and curPlayerConfig:GetCivilizationLevelTypeID() == CivilizationLevelTypes.CIVILIZATION_LEVEL_FULL_CIV ) then
+			participantCount = participantCount + 1;	-- 联机工具箱2.0：累计参与者数
 			local curTeam : number = curPlayerConfig:GetTeam();
 			if(curTeam == TeamTypes.NO_TEAM) then
 				-- If someone doesn't have a team, it means that teams are valid.
@@ -1093,6 +1098,12 @@ function CheckTeamsValid()
 				return;
 			end
 		end
+	end
+	-- ============================================================================
+	-- 联机工具箱2.0：单人局无「全员同队」冲突概念，队伍视为有效（2人及以上逻辑不变）
+	-- ----------------------------------------------------------------------------
+	if(participantCount == 1) then
+		m_bTeamsValid = true;
 	end
 end
 
@@ -1181,7 +1192,11 @@ function CheckGameAutoStart()
 		end
 		
 		-- Check player count
-		if(totalPlayers < g_currentMinPlayers) then
+		-- ============================================================================
+		-- 联机工具箱2.0：允许只有1个玩家时开始游戏（最小开局人数 g_currentMinPlayers -> 1，0人仍阻止）
+		-- if(totalPlayers < g_currentMinPlayers) then
+		if(totalPlayers < 1) then
+		-- ----------------------------------------------------------------------------
 			print("CheckGameAutoStart: Can't start game because there are not enough players. " .. totalPlayers .. "/" .. g_currentMinPlayers);
 			startCountdown = false;
 			g_notEnoughPlayers = true;
