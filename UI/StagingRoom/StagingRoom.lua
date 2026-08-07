@@ -124,9 +124,17 @@ local g_slotTypeData =
 	{ name ="LOC_MP_SWAP_PLAYER",		tooltip = "TXT_KEY_MP_SWAP_BUTTON_TT",	hotseatOnly=false,	slotStatus=-1,						hotseatInProgress = true,		hotseatAllowed=true },		
 };
 
-local MAX_EVER_PLAYERS : number = 12; -- hardwired max possible players in multiplayer, determined by how many players 
+-- ============================================================================
+-- 联机工具箱2.0：修改房间最大人数 12 -> 20
+-- local MAX_EVER_PLAYERS : number = 12; -- hardwired max possible players in multiplayer, determined by how many players 
+local MAX_EVER_PLAYERS : number = 20; -- hardwired max possible players in multiplayer, determined by how many players 
+-- ----------------------------------------------------------------------------
 local MIN_EVER_PLAYERS : number = 2;  -- hardwired min possible players in multiplayer, the game does bad things if there aren't at least two players on different teams.
-local MAX_SUPPORTED_PLAYERS : number = 8; -- Max number of officially supported players in multiplayer.  You can play with more than this number, but QA hasn't vetted it.
+-- ============================================================================
+-- 联机工具箱2.0：官方支持人数上限 8 -> 20（仅影响超上限警告文本，跟随 MAX_EVER_PLAYERS）
+-- local MAX_SUPPORTED_PLAYERS : number = 8; -- Max number of officially supported players in multiplayer.  You can play with more than this number, but QA hasn't vetted it.
+local MAX_SUPPORTED_PLAYERS : number = 20; -- Max number of officially supported players in multiplayer.  You can play with more than this number, but QA hasn't vetted it.
+-- ----------------------------------------------------------------------------
 local g_currentMaxPlayers : number = MAX_EVER_PLAYERS;
 local g_currentMinPlayers : number = MIN_EVER_PLAYERS;
 	
@@ -2471,7 +2479,11 @@ end
 -------------------------------------------------
 function OnShow()
 	-- Fetch g_currentMaxPlayers because it might be stale due to loading a save.
-	g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 12);
+	-- ============================================================================
+	-- 联机工具箱2.0：OnShow 中硬编码的人数上限 12 -> MAX_EVER_PLAYERS（与上方常量统一，避免两处不同步）
+	-- g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 12);
+	g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), MAX_EVER_PLAYERS);
+	-- ----------------------------------------------------------------------------
 	m_shownPBCReadyPopup = false;
 	m_exitReadyWait = false;
 
