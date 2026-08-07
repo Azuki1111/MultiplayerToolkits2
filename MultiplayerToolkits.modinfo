@@ -135,13 +135,22 @@ LoadOrder 规约：
 		</ImportFiles>
 		-->
 	</FrontEndActions>
-<!-- 游戏内文件（当前无） -->
+<!-- 游戏内文件 -->
 	<InGameActions>
-
+		<!-- 虚构示例：游戏内文本更新（UpdateText，LoadOrder 100–999 文本段）。
+		     插入的 LOC_MPT_FE_DUMMY_TEXT 标签无任何引用，纯占位演示挂载方式 -->
+		<UpdateText id="IG_Text_Dummy">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>Text/InGameText.sql</File>
+		</UpdateText>
 	</InGameActions>
 <!-- 包含文件（随功能条目落地逐步登记） -->
 	<Files>
 		<!-- 条目1：Options 同名覆盖 -->
 		<File>UI/Options/Options.xml</File>
+		<!-- 虚构示例：游戏内文本 -->
+		<File>Text/InGameText.sql</File>
 	</Files>
 </Mod>
