@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 联机工具箱2.0：联机常用游戏设置预设（参考联机工具箱1.67 Config/GameConfig_BASE.xml），仅改前端建房默认值 -->
+<GameInfo>
+	<Parameters>
+		<!-- 无蛮族：默认开启 -->
+		<Update>
+			<Where ParameterId="NoBarbarians"/>
+			<Set DefaultValue="1"/>
+		</Update>
+		<!-- 回合时间：默认 60 秒 -->
+		<Update>
+			<Where ParameterId="TurnTimerTime"/>
+			<Set DefaultValue="60"/>
+		</Update>
+		<!-- 无重复文明：默认关闭（允许重复文明） -->
+		<Update>
+			<Where ParameterId="NoDupeCivilizations"/>
+			<Set DefaultValue="0"/>
+		</Update>
+		<!-- 无重复领袖：默认关闭（允许重复领袖） -->
+		<Update>
+			<Where ParameterId="NoDupeLeaders"/>
+			<Set DefaultValue="0"/>
+		</Update>
+		<!-- 禁用领袖池：新增参数（UxHint=InvertSelection 即勾选即禁用），为条目4.2 BP 面板的前置落地项 -->
+		<Row Key1="Ruleset" Key2="RULESET_EXPANSION_2" ParameterId="LeaderPoolBan" Name="LOC_LEADER_POOL_BAN_NAME" Description="LOC_LEADER_POOL_BAN_DESC" Domain="Players:Expansion2_Players" Hash="0" Array="1" ConfigurationGroup="Game" ConfigurationId="LEADER_POOL_BAN" GroupId="MapOptions" UxHint="InvertSelection" SortIndex="220"/>
+	</Parameters>
+</GameInfo>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 联机工具箱2.0：Config 新增参数的本地化文本（LeaderPoolBan 禁用领袖池），走 FrontEndActions UpdateText -->
+<GameData>
+	<LocalizedText>
+		<Replace Tag="LOC_LEADER_POOL_BAN_NAME" Language="zh_Hans_CN">
+			<Text>禁用领袖</Text>
+		</Replace>
+		<Replace Tag="LOC_LEADER_POOL_BAN_NAME" Language="en_US">
+			<Text>Banned Leaders</Text>
+		</Replace>
+		<Replace Tag="LOC_LEADER_POOL_BAN_DESC" Language="zh_Hans_CN">
+			<Text>被选中的领袖在本局中不可选用</Text>
+		</Replace>
+		<Replace Tag="LOC_LEADER_POOL_BAN_DESC" Language="en_US">
+			<Text>Selected leaders cannot be chosen in this game</Text>
+		</Replace>
+		<Replace Tag="LOC_LEADER_POOL_BAN_TOOLTIP" Language="zh_Hans_CN">
+			<Text>[COLOR_RED]领袖不可用[ENDCOLOR]</Text>
+		</Replace>
+		<Replace Tag="LOC_LEADER_POOL_BAN_TOOLTIP" Language="en_US">
+			<Text>[COLOR_RED]Leader unavailable[ENDCOLOR]</Text>
+		</Replace>
+	</LocalizedText>
+</GameData>
