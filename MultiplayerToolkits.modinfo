@@ -44,12 +44,6 @@
 			<zh_Hans_CN>模组校验 / BP 功能改编自 Multiplayer Helper (MPH)，作者 Cisco, D. 与 Jack The Narrator，MIT 协议 © 2024 BetterBalancedGame。部分功能参考联机工具箱 1.67。</zh_Hans_CN>
 		</Text>
 	</LocalizedText>
-	<!-- 约束标准：Disable_MPH = 真 MPH 不在用时才启用本 mod 的 StagingRoom 替换（避免双协议冲突） -->
-	<ActionCriteria>
-		<Criteria id="Disable_MPH">
-			<ModInUse inverse="1">619ac86e-d99d-4bf3-b8f0-8c5b8c402567</ModInUse>
-		</Criteria>
-	</ActionCriteria>
 	<FrontEndActions>
 		<!-- 条目1：LAN 玩家名长度 64（整文件同名覆盖原版 Options.xml，唯一改动 MaxLength 22 到 64） -->
 		<ImportFiles id="FE_Replace_Options">
@@ -58,7 +52,7 @@
 			</Properties>
 			<File>UI/Options/Options.xml</File>
 		</ImportFiles>
-		<!-- 待启用：FE_Config_Base(10) | FE_Config_DD(99999) | FE_Check_Mod_IDs(20) | FE_Replace_StagingRoom(100000, Disable_MPH) | FE_Import_StagingRoom(100010, Disable_MPH) | FE_Replace_NetConnectionIcon(1000) -->
+		<!-- 待启用：FE_Config_Base(10) | FE_Config_DD(99999) | FE_Check_Mod_IDs(20) | FE_Replace_StagingRoom(100000) | FE_Import_StagingRoom(100010) | FE_Replace_NetConnectionIcon(1000) -->
 	</FrontEndActions>
 	<InGameActions>
 		<!-- 虚构示例：游戏内文本更新（插入的 LOC_MPT_FE_DUMMY_TEXT 无任何引用，纯演示挂载方式） -->
