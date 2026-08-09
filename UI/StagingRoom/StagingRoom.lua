@@ -3657,7 +3657,7 @@ end
 -------------------------------------------------
 -- BuildChangelog
 -- 从 MPT_Changelog 表构建公告列表；数据静态，每次加载只在首次打开面板时构建一次。
--- 行高自适应：行高 = max(默认高28, 文本实际高 + 内边距12)（参考 GME 的行高处理）。
+-- 行高自适应（GME 式）：行高 = max(默认高44, 文本实际高 + 内边距24)。
 -------------------------------------------------
 local m_changelogHeaderIM = InstanceManager:new("ChangelogHeaderInstance", "HeaderRoot", Controls.ChangelogStack);
 local m_changelogEntryIM = InstanceManager:new("ChangelogEntryInstance", "EntryRoot", Controls.ChangelogStack);
@@ -3691,13 +3691,12 @@ function BuildChangelog()
 				isLatestGroup = false;
 			end
 			headerInstance.HeaderText:SetText(headerText);
+			headerInstance.HeaderRoot:SetSizeY(math.max(44, headerInstance.HeaderText:GetSizeY() + 24));
 		end
-		-- 单条公告：序号 + 文本，行高随文本自适应
+		-- 单条公告：序号并入文本，行高随文本自适应
 		local entryInstance = m_changelogEntryIM:GetInstance();
-		entryInstance.SeqLabel:SetText(tostring(row.Seq) .. ".");
-		entryInstance.EntryText:SetText(Locale.Lookup(row.TextTag));
-		local rowHeight : number = math.max(28, entryInstance.EntryText:GetSizeY() + 12);
-		entryInstance.EntryRoot:SetSizeY(rowHeight);
+		entryInstance.EntryText:SetText(tostring(row.Seq) .. ". " .. Locale.Lookup(row.TextTag));
+		entryInstance.EntryRoot:SetSizeY(math.max(44, entryInstance.EntryText:GetSizeY() + 24));
 	end
 
 	Controls.ChangelogStack:CalculateSize();

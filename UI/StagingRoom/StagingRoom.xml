@@ -230,32 +230,37 @@
 			</AlphaAnim>
 
 			<Container ID="TooltipContainer" Size="420,720" Anchor="R,C" Offset="-10,10"/>
-
-			<!-- 联机工具箱2.0：左下角按钮组（条目3.5 更新公告按钮；条目3.6 广告轮播预留位置，参考 BSR 左下按钮样式） -->
-			<Stack ID="BottomLeftButtonStack" Anchor="L,B" StackGrowth="Up" Padding="8" Offset="10,8">
-				<Button ID="ChangelogButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_FE_CHANGELOG_TOOLTIP">
-					<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_HAMBURGER_MENU"/>
-					<Label Anchor="L,C" String="LOC_MPT_FE_CHANGELOG_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
-				</Button>
-			</Stack>
-
-			<!-- 联机工具箱2.0：更新公告面板（条目3.5，数据驱动 MPT_Changelog 表；点击面板外 / X / ESC 关闭） -->
-			<GridButton ID="ChangelogModalBlocker" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1"/>
-			<Container ID="ChangelogPanel" Anchor="C,C" Size="640,560" Hidden="1">
-				<Grid Style="SubContainer2" Size="parent,parent"/>
-				<Label ID="ChangelogTitle" Anchor="C,T" Offset="0,12" Style="ShellHeader" String="LOC_MPT_FE_CHANGELOG_TITLE"/>
-				<Image Anchor="C,T" Offset="0,44" Size="parent-40,4" Texture="Controls_DecoMapScale" StretchMode="Tile" Color="20,55,70,255"/>
-				<Button ID="ChangelogCloseButton" Anchor="R,T" Offset="8,8" Texture="Shell_XButton" Size="37,37" ToolTip="LOC_MULTIPLAYER_BACK"/>
-				<ScrollPanel ID="ChangelogScrollPanel" Anchor="C,T" Offset="0,56" Size="parent-40,parent-76" Vertical="1" AutoScrollBar="1">
-					<Stack ID="ChangelogStack" StackGrowth="Down" Padding="4" Anchor="C,T"/>
-					<ScrollBar Style="Slider_Blue" Anchor="R,T" Offset="-4,0"/>
-				</ScrollPanel>
-			</Container>
 		</Container>
 	</Box>
 
 	<!-- Hotseat bottom deco -->
 	<Image ID="HotseatDeco" Anchor="C,B" Size="963,45" Offset="0,55" Texture="Controls_BorderDeco" StretchMode="Tile" Color="255,255,255,20"/>
+
+	<!-- 联机工具箱2.0：左下角按钮组（条目3.5 更新公告按钮；条目3.6 广告轮播预留位置） -->
+	<!-- 根级控件 Anchor L,B 对屏幕坐标（参考 Poker PokerOpenButton / BSR BGStack），而非 MainWindow 内 -->
+	<Stack ID="BottomLeftButtonStack" Anchor="L,B" StackGrowth="Up" Padding="8" Offset="0,0">
+		<Button ID="ChangelogButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_FE_CHANGELOG_TOOLTIP">
+			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_HAMBURGER_MENU"/>
+			<Label Anchor="L,C" String="LOC_MPT_FE_CHANGELOG_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
+		</Button>
+	</Stack>
+
+	<!-- 联机工具箱2.0：更新公告面板（条目3.5，数据驱动 MPT_Changelog 表；点击面板外 / X / ESC 关闭） -->
+	<!-- 根级全屏遮挡 + 屏幕居中；边框/背景 texture 参考 Poker_Blackjack_21.xml Main_Poker -->
+	<GridButton ID="ChangelogModalBlocker" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1"/>
+	<Container ID="ChangelogPanel" Anchor="C,C" Size="640,560" Hidden="1">
+		<Box Anchor="C,C" Size="parent,parent" Color="11,27,40,255"/>
+		<Image Anchor="C,B" Size="parent,parent" Texture="Wood_Pattern"/>
+		<Grid Anchor="C,C" Size="parent+9,parent+9" Style="WindowFrameTopOnly"/>
+		<Image Anchor="C,T" Size="parent,44" Color="61,112,154,255" Texture="Controls_Gradient_HalfRadial"/>
+		<Label ID="ChangelogTitle" Anchor="C,T" Offset="0,14" Style="FontFlair24" FontStyle="Glow" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255" SmallCaps="28" SmallCapsType="EveryWord" String="LOC_MPT_FE_CHANGELOG_TITLE"/>
+		<Button ID="ChangelogCloseButton" Anchor="R,T" Offset="-3,-1" Size="44,44" Texture="Controls_CloseLarge"/>
+		<Grid Anchor="C,T" Offset="0,44" Size="parent-6,8" Style="Divider3Grid"/>
+		<ScrollPanel ID="ChangelogScrollPanel" Anchor="C,T" Offset="0,56" Size="parent-40,parent-76" Vertical="1" AutoScrollBar="1">
+			<Stack ID="ChangelogStack" StackGrowth="Down" Padding="4" Anchor="C,T"/>
+			<ScrollBar Style="Slider_Blue" Anchor="R,T" Offset="-4,0"/>
+		</ScrollPanel>
+	</Container>
 
 
 
@@ -550,17 +555,24 @@
 		</AlphaAnim>
 	</Instance>
 
-	<!-- 联机工具箱2.0：更新公告实例（条目3.5；HeaderRoot 为版本组头，EntryRoot 为单条公告，行高由 Lua 自适应） -->
+	<!-- 联机工具箱2.0：更新公告实例（条目3.5；结构与样式遵循 GME GMEUpdateItemInstance，行高由 Lua 自适应） -->
 	<Instance Name="ChangelogHeaderInstance">
-		<Grid ID="HeaderRoot" Size="parent,36" Color="0,0,0,80">
-			<Label ID="HeaderText" Anchor="L,C" Offset="10,0" Style="FontFlair18" FontStyle="Glow" ColorSet="ShellHeader"/>
+		<Grid ID="HeaderRoot" Size="parent,44" Color="GreatPeopleRowUnOwned" Style="SubContainer2">
+			<Container Size="parent-40,parent" Offset="20,0">
+				<Stack StackGrowth="Bottom" Size="parent,auto" Anchor="L,C">
+					<Label ID="HeaderText" Style="FontNormal16" SmallCaps="22" WrapWidth="parent" SmallCapsType="Every"/>
+				</Stack>
+			</Container>
 		</Grid>
 	</Instance>
 
 	<Instance Name="ChangelogEntryInstance">
-		<Grid ID="EntryRoot" Size="parent,28" Color="0,0,0,40">
-			<Label ID="SeqLabel" Anchor="L,T" Offset="8,6" Style="FontNormal14" ColorSet="ShellControl"/>
-			<Label ID="EntryText" Anchor="L,T" Offset="36,4" Style="FontNormal14" WrapWidth="parent-56"/>
+		<Grid ID="EntryRoot" Size="parent,44" Color="GreatPeopleRowUnOwned" Style="SubContainer2">
+			<Container Size="parent-40,parent" Offset="20,0">
+				<Stack StackGrowth="Bottom" Size="parent,auto" Anchor="L,C">
+					<Label ID="EntryText" WrapWidth="parent" Color="GreatPeopleRow" Style="FontNormal14"/>
+				</Stack>
+			</Container>
 		</Grid>
 	</Instance>
 
