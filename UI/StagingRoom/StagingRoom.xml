@@ -259,9 +259,10 @@
 		<Label ID="ChangelogTitle" Anchor="C,T" Offset="0,14" Style="FontFlair24" FontStyle="Glow" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255" SmallCaps="28" SmallCapsType="EveryWord" String="LOC_MPT_FE_CHANGELOG_TITLE"/>
 		<Grid Anchor="C,T" Offset="0,44" Size="parent-6,8" Style="Divider3Grid"/>
 		<ScrollPanel ID="ChangelogScrollPanel" Anchor="C,T" Offset="0,56" Size="parent-40,parent-76" Vertical="1" AutoScrollBar="1">
-			<Stack ID="ChangelogStack" StackGrowth="Down" Padding="4" Anchor="C,T"/>
+			<!-- Padding 20：每个实例下方留一行空白间距 -->
+			<Stack ID="ChangelogStack" StackGrowth="Down" Padding="20" Anchor="C,T"/>
 			<!-- 滚动条外移（AnchorSide O,I 挂到滚动面板右缘外侧），不占实例宽度、仍在面板内侧边距内 -->
-			<ScrollBar Style="Slider_Light" Anchor="R,T" AnchorSide="O,I" Offset="-4,0"/>
+			<ScrollBar Style="Slider_Light" Anchor="R,T" AnchorSide="O,I" Offset="3,0"/>
 		</ScrollPanel>
 	</Container>
 
@@ -564,7 +565,7 @@
 			<Container Size="parent-40,parent" Offset="20,0">
 				<Label ID="VersionLabel" Anchor="L,T" Offset="0,8" Style="FontNormal16" SmallCaps="22" SmallCapsType="Every"/>
 				<Label ID="DateLabel" Anchor="R,T" Offset="0,8" Style="FontNormal14" Color="GreatPeopleRow"/>
-				<Label ID="EntryText" Anchor="L,T" Offset="0,38" Style="FontNormal14" Color="GreatPeopleRow" WrapWidth="parent"/>
+				<Label ID="EntryText" Anchor="L,T" Offset="0,38" Style="FontNormal16" Color="GreatPeopleRow" WrapWidth="parent"/>
 			</Container>
 		</Grid>
 	</Instance>
