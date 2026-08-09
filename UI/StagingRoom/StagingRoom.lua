@@ -3651,7 +3651,7 @@ end
 --        DB.Query 是游戏内数据库句柄，前端上下文不适用）。
 -- 读取规则：按 LogDate DESC, Version DESC, rowid ASC 排序（最新公告排最上，最老排最下）；
 --          相同 Version+LogDate 归为一组 —— 同版本一个实例：版本号左上、日期右上、
---          横线下为组内条目文本（按行序自动编号 1..n，无需 Seq 列）；
+--          下方为组内条目文本（按行序自动编号 1..n，无需 Seq 列）；
 --          首组（最新）版本号后追加「（当前版本）」；
 --          TextTag 经 LocalizedText 按当前游戏语言解析（多语言预留，数据表零改动）。
 -- ============================================================================
@@ -3699,7 +3699,7 @@ function BuildChangelog()
 		entryInstance.VersionLabel:SetText(versionText);
 		-- 日期（右上）
 		entryInstance.DateLabel:SetText(versionGroup.LogDate);
-		-- 横线下：组内条目按行序自动编号拼接
+		-- 版本号/日期行下方：组内条目按行序自动编号拼接
 		local entryText : string = "";
 		for seq, text in ipairs(versionGroup.Texts) do
 			if seq > 1 then
@@ -3708,8 +3708,8 @@ function BuildChangelog()
 			entryText = entryText .. tostring(seq) .. ". " .. text;
 		end
 		entryInstance.EntryText:SetText(entryText);
-		-- 行高 = 文本上偏移44 + 文本高 + 底边距12
-		entryInstance.EntryRoot:SetSizeY(entryInstance.EntryText:GetSizeY() + 56);
+		-- 行高 = 文本上偏移38 + 文本高 + 底边距12
+		entryInstance.EntryRoot:SetSizeY(entryInstance.EntryText:GetSizeY() + 50);
 	end
 
 	Controls.ChangelogStack:CalculateSize();

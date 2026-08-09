@@ -557,14 +557,13 @@
 		</AlphaAnim>
 	</Instance>
 
-	<!-- 联机工具箱2.0：更新公告实例（条目3.5；同版本一个实例：版本号左上 + 日期右上 + 横线 + 自动编号文本，行高由 Lua 自适应） -->
+	<!-- 联机工具箱2.0：更新公告实例（条目3.5；同版本一个实例：版本号左上 + 日期右上 + 自动编号文本，行高由 Lua 自适应） -->
 	<Instance Name="ChangelogEntryInstance">
 		<Grid ID="EntryRoot" Size="parent,60" Color="GreatPeopleRowUnOwned" Style="SubContainer2">
 			<Container Size="parent-40,parent" Offset="20,0">
 				<Label ID="VersionLabel" Anchor="L,T" Offset="0,8" Style="FontNormal16" SmallCaps="22" SmallCapsType="Every"/>
 				<Label ID="DateLabel" Anchor="R,T" Offset="0,8" Style="FontNormal14" Color="GreatPeopleRow"/>
-				<Line ID="DividerLine" Start="0,36" End="parent,36" Width="2" Color="55,95,126,255"/>
-				<Label ID="EntryText" Anchor="L,T" Offset="0,44" Style="FontNormal14" Color="GreatPeopleRow" WrapWidth="parent"/>
+				<Label ID="EntryText" Anchor="L,T" Offset="0,38" Style="FontNormal14" Color="GreatPeopleRow" WrapWidth="parent"/>
 			</Container>
 		</Grid>
 	</Instance>

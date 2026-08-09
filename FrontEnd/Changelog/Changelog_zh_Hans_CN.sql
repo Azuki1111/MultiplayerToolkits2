@@ -26,4 +26,10 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_CHANGELOG_2_0_1_7', 'zh_Hans_CN', '测试条目：第七条'),
 ('LOC_MPT_CHANGELOG_2_0_1_8', 'zh_Hans_CN', '测试条目：超长文本压力测试——联机工具箱2.0前端整合了联机工具箱与MPH的前端功能，包括准备房间增强、快捷AI槽位开关、随机平衡分队、房主权限提升、模组版本一致性校验与更新公告等功能；本条目专门用于检验面板在极端长文本下的自动换行表现、行高自适应是否正确计算，以及堆叠多条长文本后滚动区域的总高度是否随之正确增长'),
 ('LOC_MPT_CHANGELOG_2_0_1_9', 'zh_Hans_CN', '测试条目：第九条'),
-('LOC_MPT_CHANGELOG_2_0_1_10', 'zh_Hans_CN', '测试条目：第十条（最后一条，滚动到底部时应能看到本行完整内容）');
+('LOC_MPT_CHANGELOG_2_0_1_10', 'zh_Hans_CN', '测试条目：第十条（最后一条，滚动到底部时应能看到本行完整内容）'),
+-- 测试文本（2.0.2，验证多版本堆叠与排序，正式发布前移除）
+('LOC_MPT_CHANGELOG_2_0_2_1', 'zh_Hans_CN', '测试条目：新版本首条'),
+('LOC_MPT_CHANGELOG_2_0_2_2', 'zh_Hans_CN', '测试条目：较短文本'),
+('LOC_MPT_CHANGELOG_2_0_2_3', 'zh_Hans_CN', '测试条目：长文本——验证去除横线后的条目排版在长文本自动换行时是否依然清晰，行高是否随文本正确增长'),
+('LOC_MPT_CHANGELOG_2_0_2_4', 'zh_Hans_CN', '测试条目：第四条'),
+('LOC_MPT_CHANGELOG_2_0_2_5', 'zh_Hans_CN', '测试条目：第五条（新版本最后一条）');

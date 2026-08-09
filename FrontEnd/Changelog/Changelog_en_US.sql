@@ -26,4 +26,10 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_CHANGELOG_2_0_1_7', 'en_US', 'Test entry: seventh'),
 ('LOC_MPT_CHANGELOG_2_0_1_8', 'en_US', 'Test entry: extra-long stress text — Multiplayer Toolkits 2.0 FrontEnd combines the frontend features of Team PVP Tools and MPH, including staging room enhancements, quick AI slot toggles, balanced random teams, host permission upgrades, mod version checks and update notes; this entry exists to verify wrapping under extreme text length, correct row-height growth, and correct total scroll height with many long entries stacked'),
 ('LOC_MPT_CHANGELOG_2_0_1_9', 'en_US', 'Test entry: ninth'),
-('LOC_MPT_CHANGELOG_2_0_1_10', 'en_US', 'Test entry: tenth (the last one — it should be fully visible after scrolling to the bottom)');
+('LOC_MPT_CHANGELOG_2_0_1_10', 'en_US', 'Test entry: tenth (the last one — it should be fully visible after scrolling to the bottom)'),
+-- 测试文本（2.0.2，验证多版本堆叠与排序，正式发布前移除）
+('LOC_MPT_CHANGELOG_2_0_2_1', 'en_US', 'Test entry: first of the new version'),
+('LOC_MPT_CHANGELOG_2_0_2_2', 'en_US', 'Test entry: short text'),
+('LOC_MPT_CHANGELOG_2_0_2_3', 'en_US', 'Test entry: long text — verifies the entry layout still reads cleanly with wrapping after removing the divider line, and the row height grows correctly'),
+('LOC_MPT_CHANGELOG_2_0_2_4', 'en_US', 'Test entry: fourth'),
+('LOC_MPT_CHANGELOG_2_0_2_5', 'en_US', 'Test entry: fifth (last of the new version)');
