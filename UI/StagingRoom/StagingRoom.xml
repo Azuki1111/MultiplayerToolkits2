@@ -260,7 +260,8 @@
 		<Grid Anchor="C,T" Offset="0,44" Size="parent-6,8" Style="Divider3Grid"/>
 		<ScrollPanel ID="ChangelogScrollPanel" Anchor="C,T" Offset="0,56" Size="parent-40,parent-76" Vertical="1" AutoScrollBar="1">
 			<Stack ID="ChangelogStack" StackGrowth="Down" Padding="4" Anchor="C,T"/>
-			<ScrollBar Style="Slider_Blue" Anchor="R,T" Offset="-4,0"/>
+			<!-- 滚动条外移（AnchorSide O,I 挂到滚动面板右缘外侧），不占实例宽度、仍在面板内侧边距内 -->
+			<ScrollBar Style="Slider_Light" Anchor="R,T" AnchorSide="O,I" Offset="-4,0"/>
 		</ScrollPanel>
 	</Container>
 

@@ -3651,7 +3651,7 @@ end
 --        DB.Query 是游戏内数据库句柄，前端上下文不适用）。
 -- 读取规则：按 LogDate DESC, Version DESC, rowid ASC 排序（最新公告排最上，最老排最下）；
 --          相同 Version+LogDate 归为一组 —— 同版本一个实例：版本号左上、日期右上、
---          下方为组内条目文本（按行序自动编号 1..n，无需 Seq 列）；
+--          下方为组内条目文本（行首统一 [icon_You] 图标，不编号）；
 --          首组（最新）版本号后追加「（当前版本）」；
 --          TextTag 经 LocalizedText 按当前游戏语言解析（多语言预留，数据表零改动）。
 -- ============================================================================
@@ -3692,20 +3692,20 @@ function BuildChangelog()
 	for groupNumber, versionGroup in ipairs(versionGroups) do
 		local entryInstance = m_changelogEntryIM:GetInstance();
 		-- 版本号（左上），首组为最新版本追加「（当前版本）」
-		local versionText : string = "v" .. versionGroup.Version;
+		local versionText : string = versionGroup.Version;
 		if groupNumber == 1 then
 			versionText = versionText .. " " .. Locale.Lookup("LOC_MPT_FE_CHANGELOG_CURRENT");
 		end
 		entryInstance.VersionLabel:SetText(versionText);
 		-- 日期（右上）
 		entryInstance.DateLabel:SetText(versionGroup.LogDate);
-		-- 版本号/日期行下方：组内条目按行序自动编号拼接
+		-- 版本号/日期行下方：组内条目逐行拼接，行首统一 [icon_You] 图标（不编号）
 		local entryText : string = "";
-		for seq, text in ipairs(versionGroup.Texts) do
-			if seq > 1 then
+		for rowNumber, text in ipairs(versionGroup.Texts) do
+			if rowNumber > 1 then
 				entryText = entryText .. "[NEWLINE]";
 			end
-			entryText = entryText .. tostring(seq) .. ". " .. text;
+			entryText = entryText .. "[icon_You] " .. text;
 		end
 		entryInstance.EntryText:SetText(entryText);
 		-- 行高 = 文本上偏移38 + 文本高 + 底边距12
