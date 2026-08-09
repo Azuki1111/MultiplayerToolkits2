@@ -3645,21 +3645,22 @@ end
 
 -- ============================================================================
 -- 更新公告（条目3.5，参考 GME GreatMultiplayerExpand_Panel 更新日志部分并重写为 SQL 数据驱动）
--- 用法：左下角「更新日志」按钮打开公告面板；点击面板外 / X 按钮 / ESC 关闭。
--- 数据源：前端配置库 MPT_Changelog 表（Version / LogDate / Seq / TextTag，见 FrontEnd/Changelog/Changelog_Data.sql），
+-- 用法：左下角「更新日志」按钮打开公告面板；仅 X 按钮 / 点击面板外 / ESC 关闭。
+-- 数据源：前端配置库 MPT_Changelog 表（Version / LogDate / TextTag，见 FrontEnd/Changelog/Changelog_Data.sql），
 --        读取用 DB.ConfigurationQuery（前端配置库句柄，参照 1.67 TPT_PlayerData 用法；
 --        DB.Query 是游戏内数据库句柄，前端上下文不适用）。
--- 读取规则：按 LogDate DESC, Version DESC, Seq ASC 排序（日期新→旧，版本内序号升序）；
---          相同 Version+LogDate 归为一组出组头；首组（最新）组头追加「（当前版本）」；
+-- 读取规则：按 LogDate DESC, Version DESC, rowid ASC 排序（最新公告排最上，最老排最下）；
+--          相同 Version+LogDate 归为一组 —— 同版本一个实例：版本号左上、日期右上、
+--          横线下为组内条目文本（按行序自动编号 1..n，无需 Seq 列）；
+--          首组（最新）版本号后追加「（当前版本）」；
 --          TextTag 经 LocalizedText 按当前游戏语言解析（多语言预留，数据表零改动）。
 -- ============================================================================
 
 -------------------------------------------------
 -- BuildChangelog
 -- 从 MPT_Changelog 表构建公告列表；数据静态，每次加载只在首次打开面板时构建一次。
--- 行高自适应（GME 式）：行高 = max(默认高44, 文本实际高 + 内边距24)。
+-- 行高自适应（GME 式）：行高 = 头部区56 + 文本实际高（实例默认高 60）。
 -------------------------------------------------
-local m_changelogHeaderIM = InstanceManager:new("ChangelogHeaderInstance", "HeaderRoot", Controls.ChangelogStack);
 local m_changelogEntryIM = InstanceManager:new("ChangelogEntryInstance", "EntryRoot", Controls.ChangelogStack);
 local g_changelogBuilt : boolean = false;
 
@@ -3669,34 +3670,46 @@ function BuildChangelog()
 	end
 	g_changelogBuilt = true;
 
-	m_changelogHeaderIM:ResetInstances();
 	m_changelogEntryIM:ResetInstances();
 
-	local changelogRows = DB.ConfigurationQuery("SELECT Version, LogDate, Seq, TextTag FROM MPT_Changelog ORDER BY LogDate DESC, Version DESC, Seq ASC");
+	local changelogRows = DB.ConfigurationQuery("SELECT Version, LogDate, TextTag FROM MPT_Changelog ORDER BY LogDate DESC, Version DESC, rowid ASC");
 	if changelogRows == nil then
 		return;
 	end
 
-	local lastGroupKey : string = "";
-	local isLatestGroup : boolean = true;
+	-- 按 Version+LogDate 归组（查询已按组连续排序，组序即展示序）
+	local versionGroups : table = {};	-- { { Version=..., LogDate=..., Texts={...} }, ... }
+	local groupIndex : table = {};		-- groupKey -> versionGroups 下标
 	for i, row in ipairs(changelogRows) do
-		-- 版本组头：Version+LogDate 相同的连续行归为一组
 		local groupKey : string = row.LogDate .. "|" .. row.Version;
-		if groupKey ~= lastGroupKey then
-			lastGroupKey = groupKey;
-			local headerInstance = m_changelogHeaderIM:GetInstance();
-			local headerText : string = "v" .. row.Version .. "    " .. row.LogDate;
-			if isLatestGroup then
-				headerText = headerText .. " " .. Locale.Lookup("LOC_MPT_FE_CHANGELOG_CURRENT");
-				isLatestGroup = false;
-			end
-			headerInstance.HeaderText:SetText(headerText);
-			headerInstance.HeaderRoot:SetSizeY(math.max(44, headerInstance.HeaderText:GetSizeY() + 24));
+		if groupIndex[groupKey] == nil then
+			table.insert(versionGroups, { Version = row.Version, LogDate = row.LogDate, Texts = {} });
+			groupIndex[groupKey] = #versionGroups;
 		end
-		-- 单条公告：序号并入文本，行高随文本自适应
+		table.insert(versionGroups[groupIndex[groupKey]].Texts, Locale.Lookup(row.TextTag));
+	end
+
+	for groupNumber, versionGroup in ipairs(versionGroups) do
 		local entryInstance = m_changelogEntryIM:GetInstance();
-		entryInstance.EntryText:SetText(tostring(row.Seq) .. ". " .. Locale.Lookup(row.TextTag));
-		entryInstance.EntryRoot:SetSizeY(math.max(44, entryInstance.EntryText:GetSizeY() + 24));
+		-- 版本号（左上），首组为最新版本追加「（当前版本）」
+		local versionText : string = "v" .. versionGroup.Version;
+		if groupNumber == 1 then
+			versionText = versionText .. " " .. Locale.Lookup("LOC_MPT_FE_CHANGELOG_CURRENT");
+		end
+		entryInstance.VersionLabel:SetText(versionText);
+		-- 日期（右上）
+		entryInstance.DateLabel:SetText(versionGroup.LogDate);
+		-- 横线下：组内条目按行序自动编号拼接
+		local entryText : string = "";
+		for seq, text in ipairs(versionGroup.Texts) do
+			if seq > 1 then
+				entryText = entryText .. "[NEWLINE]";
+			end
+			entryText = entryText .. tostring(seq) .. ". " .. text;
+		end
+		entryInstance.EntryText:SetText(entryText);
+		-- 行高 = 文本上偏移44 + 文本高 + 底边距12
+		entryInstance.EntryRoot:SetSizeY(entryInstance.EntryText:GetSizeY() + 56);
 	end
 
 	Controls.ChangelogStack:CalculateSize();
