@@ -21,7 +21,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 更新必须修改此时间戳：模组版本一致性校验以此为版本指纹 -->
-		<Created>1786102357</Created>
+		<Created>1786291562</Created>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -70,6 +70,13 @@
 			<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 			<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目3.5：更新公告数据表 MPT_Changelog（面板仅前端使用，不进游戏内上下文） -->
+		<UpdateDatabase id="FE_Changelog">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>FrontEnd/Text/FrontEnd_Changelog.sql</File>
+		</UpdateDatabase>
 		<!-- 条目2：灾害强度下限 0 到 -1（完全无灾害），强制后置防覆盖 -->
 		<UpdateDatabase id="FE_Config_DD">
 			<Properties>
@@ -134,6 +141,7 @@
 		<File>Config/Config_Disaster.sql</File>
 		<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 		<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
+		<File>FrontEnd/Text/FrontEnd_Changelog.sql</File>
 		<File>UI/StagingRoom/StagingRoom.lua</File>
 		<File>UI/StagingRoom/StagingRoom.xml</File>
 		<File>UI/AdvancedSetup/AdvancedSetup.lua</File>

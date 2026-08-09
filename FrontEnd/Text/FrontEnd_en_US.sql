@@ -14,4 +14,16 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_FE_AI_SLOTS_NAME', 'en_US', 'AI Slots'),
 ('LOC_MPT_FE_AI_SLOTS_TOOLTIP', 'en_US', 'Left click: close all empty and AI slots[NEWLINE]Right click: open all slots (removes existing AI)'),
 -- 条目3.3：快捷分队按钮（队伍列表头）
-('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'en_US', 'Left click: random balanced teams[NEWLINE]Right click: sequential A-B-A-B teams[NEWLINE]Host only');
+('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'en_US', 'Left click: random balanced teams[NEWLINE]Right click: sequential A-B-A-B teams[NEWLINE]Host only'),
+-- 条目3.5：更新公告界面（按钮/标题/当前版本标记）
+('LOC_MPT_FE_CHANGELOG_NAME', 'en_US', 'Changelog'),
+('LOC_MPT_FE_CHANGELOG_TOOLTIP', 'en_US', 'View Multiplayer Toolkits update notes'),
+('LOC_MPT_FE_CHANGELOG_TITLE', 'en_US', 'Update Notes'),
+('LOC_MPT_FE_CHANGELOG_CURRENT', 'en_US', '(Current)'),
+-- 条目3.5：更新公告内容（2.0.0 / 2026-08-10，对应 MPT_Changelog 表种子数据）
+('LOC_MPT_CHANGELOG_2_0_0_1', 'en_US', 'LAN player name length limit raised from 22 to 45'),
+('LOC_MPT_CHANGELOG_2_0_0_2', 'en_US', 'Room player slots raised to 20, with a new button to open/close all AI slots'),
+('LOC_MPT_CHANGELOG_2_0_0_3', 'en_US', 'Quick team assignment: left click for random balanced teams, right click for sequential A-B-A-B teams'),
+('LOC_MPT_CHANGELOG_2_0_0_4', 'en_US', 'The host can now edit the team and leader of other players'),
+('LOC_MPT_CHANGELOG_2_0_0_5', 'en_US', 'Single player games can remove all AI and start with only 1 player'),
+('LOC_MPT_CHANGELOG_2_0_0_6', 'en_US', 'Added this update notes panel, driven by a database table with multi-language support');

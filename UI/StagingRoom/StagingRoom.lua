@@ -199,6 +199,14 @@ end
 --	Input Handler
 -- ===========================================================================
 function KeyUpHandler( key:number )
+	-- ============================================================================
+	-- 联机工具箱2.0：更新公告面板打开时 ESC 优先关闭面板（条目3.5；原版 ESC 为退出房间确认，需拦截）
+	-- ============================================================================
+	if not Controls.ChangelogPanel:IsHidden() then
+		CloseChangelogPanel();
+		return true;
+	end
+	-- ============================================================================
 	if key == Keys.VK_ESCAPE then
 		Close();
 		return true;
@@ -3635,6 +3643,87 @@ function UpdateCustomButtonsState()
 	Controls.RandomTeamButton:SetHide(hideButtons);
 end
 
+-- ============================================================================
+-- 更新公告（条目3.5，参考 GME GreatMultiplayerExpand_Panel 更新日志部分并重写为 SQL 数据驱动）
+-- 用法：左下角「更新日志」按钮打开公告面板；点击面板外 / X 按钮 / ESC 关闭。
+-- 数据源：前端配置库 MPT_Changelog 表（Version / LogDate / Seq / TextTag，见 FrontEnd/Text/FrontEnd_Changelog.sql），
+--        读取用 DB.ConfigurationQuery（前端配置库句柄，参照 1.67 TPT_PlayerData 用法；
+--        DB.Query 是游戏内数据库句柄，前端上下文不适用）。
+-- 读取规则：按 LogDate DESC, Version DESC, Seq ASC 排序（日期新→旧，版本内序号升序）；
+--          相同 Version+LogDate 归为一组出组头；首组（最新）组头追加「（当前版本）」；
+--          TextTag 经 LocalizedText 按当前游戏语言解析（多语言预留，数据表零改动）。
+-- ============================================================================
+
+-------------------------------------------------
+-- BuildChangelog
+-- 从 MPT_Changelog 表构建公告列表；数据静态，每次加载只在首次打开面板时构建一次。
+-- 行高自适应：行高 = max(默认高28, 文本实际高 + 内边距12)（参考 GME 的行高处理）。
+-------------------------------------------------
+local m_changelogHeaderIM = InstanceManager:new("ChangelogHeaderInstance", "HeaderRoot", Controls.ChangelogStack);
+local m_changelogEntryIM = InstanceManager:new("ChangelogEntryInstance", "EntryRoot", Controls.ChangelogStack);
+local g_changelogBuilt : boolean = false;
+
+function BuildChangelog()
+	if g_changelogBuilt then
+		return;
+	end
+	g_changelogBuilt = true;
+
+	m_changelogHeaderIM:ResetInstances();
+	m_changelogEntryIM:ResetInstances();
+
+	local changelogRows = DB.ConfigurationQuery("SELECT Version, LogDate, Seq, TextTag FROM MPT_Changelog ORDER BY LogDate DESC, Version DESC, Seq ASC");
+	if changelogRows == nil then
+		return;
+	end
+
+	local lastGroupKey : string = "";
+	local isLatestGroup : boolean = true;
+	for i, row in ipairs(changelogRows) do
+		-- 版本组头：Version+LogDate 相同的连续行归为一组
+		local groupKey : string = row.LogDate .. "|" .. row.Version;
+		if groupKey ~= lastGroupKey then
+			lastGroupKey = groupKey;
+			local headerInstance = m_changelogHeaderIM:GetInstance();
+			local headerText : string = "v" .. row.Version .. "    " .. row.LogDate;
+			if isLatestGroup then
+				headerText = headerText .. " " .. Locale.Lookup("LOC_MPT_FE_CHANGELOG_CURRENT");
+				isLatestGroup = false;
+			end
+			headerInstance.HeaderText:SetText(headerText);
+		end
+		-- 单条公告：序号 + 文本，行高随文本自适应
+		local entryInstance = m_changelogEntryIM:GetInstance();
+		entryInstance.SeqLabel:SetText(tostring(row.Seq) .. ".");
+		entryInstance.EntryText:SetText(Locale.Lookup(row.TextTag));
+		local rowHeight : number = math.max(28, entryInstance.EntryText:GetSizeY() + 12);
+		entryInstance.EntryRoot:SetSizeY(rowHeight);
+	end
+
+	Controls.ChangelogStack:CalculateSize();
+	Controls.ChangelogScrollPanel:CalculateSize();
+end
+
+-------------------------------------------------
+-- OpenChangelogPanel / CloseChangelogPanel
+-- 打开 / 关闭更新公告面板（含全屏点击拦截层）；ESC 拦截见 KeyUpHandler。
+-------------------------------------------------
+function OpenChangelogPanel()
+	BuildChangelog();
+	Controls.ChangelogModalBlocker:SetHide(false);
+	Controls.ChangelogPanel:SetHide(false);
+	UI.PlaySound("UI_Screen_Open");
+end
+
+function CloseChangelogPanel()
+	if Controls.ChangelogPanel:IsHidden() then
+		return;
+	end
+	Controls.ChangelogPanel:SetHide(true);
+	Controls.ChangelogModalBlocker:SetHide(true);
+	UI.PlaySound("UI_Screen_Close");
+end
+
 -- ===========================================================================
 --	Initialize screen
 -- ===========================================================================
@@ -3672,6 +3761,13 @@ function Initialize()
 	Controls.RandomTeamButton:RegisterCallback( Mouse.eLClick, OnRandomTeamButtonL );
 	Controls.RandomTeamButton:RegisterCallback( Mouse.eRClick, OnRandomTeamButtonR );
 	Controls.RandomTeamButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	-- ============================================================================
+	-- 联机工具箱2.0：注册「更新公告」按钮与面板关闭回调（条目3.5）
+	-- ----------------------------------------------------------------------------
+	Controls.ChangelogButton:RegisterCallback( Mouse.eLClick, OpenChangelogPanel );
+	Controls.ChangelogButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.ChangelogCloseButton:RegisterCallback( Mouse.eLClick, CloseChangelogPanel );
+	Controls.ChangelogModalBlocker:RegisterCallback( Mouse.eLClick, CloseChangelogPanel );
 
 	Controls.InviteButton:SetToolTipString(GetInviteTT());
 
