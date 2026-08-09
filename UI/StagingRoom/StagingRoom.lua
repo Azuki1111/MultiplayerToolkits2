@@ -3708,8 +3708,8 @@ function BuildChangelog()
 			entryText = entryText .. "[icon_You] " .. text;
 		end
 		entryInstance.EntryText:SetText(entryText);
-		-- 行高 = 文本上偏移38 + 文本高 + 底边距12
-		entryInstance.EntryRoot:SetSizeY(entryInstance.EntryText:GetSizeY() + 50);
+		-- 行高 = 文本上偏移38 + 文本高 + 底边距32（实例内部文本下方留白一行）
+		entryInstance.EntryRoot:SetSizeY(entryInstance.EntryText:GetSizeY() + 70);
 	end
 
 	Controls.ChangelogStack:CalculateSize();
