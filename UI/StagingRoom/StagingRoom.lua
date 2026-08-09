@@ -3646,7 +3646,7 @@ end
 -- ============================================================================
 -- 更新公告（条目3.5，参考 GME GreatMultiplayerExpand_Panel 更新日志部分并重写为 SQL 数据驱动）
 -- 用法：左下角「更新日志」按钮打开公告面板；点击面板外 / X 按钮 / ESC 关闭。
--- 数据源：前端配置库 MPT_Changelog 表（Version / LogDate / Seq / TextTag，见 FrontEnd/Text/FrontEnd_Changelog.sql），
+-- 数据源：前端配置库 MPT_Changelog 表（Version / LogDate / Seq / TextTag，见 FrontEnd/Changelog/Changelog_Data.sql），
 --        读取用 DB.ConfigurationQuery（前端配置库句柄，参照 1.67 TPT_PlayerData 用法；
 --        DB.Query 是游戏内数据库句柄，前端上下文不适用）。
 -- 读取规则：按 LogDate DESC, Version DESC, Seq ASC 排序（日期新→旧，版本内序号升序）；
