@@ -236,13 +236,23 @@
 	<!-- Hotseat bottom deco -->
 	<Image ID="HotseatDeco" Anchor="C,B" Size="963,45" Offset="0,55" Texture="Controls_BorderDeco" StretchMode="Tile" Color="255,255,255,20"/>
 
-	<!-- 联机工具箱2.0：左下角按钮组（条目3.5 更新公告按钮；条目3.6 广告轮播预留位置） -->
+	<!-- 联机工具箱2.0：左下角按钮组（条目3.5 更新公告按钮 + 条目3.6 广告轮播） -->
 	<!-- 根级控件 Anchor L,B 对屏幕坐标（参考 Poker PokerOpenButton / BSR BGStack），而非 MainWindow 内 -->
 	<Stack ID="BottomLeftButtonStack" Anchor="L,B" StackGrowth="Up" Padding="8" Offset="0,0">
 		<Button ID="ChangelogButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_FE_CHANGELOG_TOOLTIP">
 			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_HAMBURGER_MENU"/>
 			<Label Anchor="L,C" String="LOC_MPT_FE_CHANGELOG_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
 		</Button>
+		<!-- 条目3.6：广告轮播（仿原版主菜单 ChallengeContainer，数据驱动 MPT_Ads 表；StackGrowth Up 使本控件位于公告按钮正上方） -->
+		<Container ID="AdCarouselContainer" Anchor="L,B" Size="400,300" Hidden="1">
+			<ScrollPanel ID="AdScroll" Anchor="C,C" Size="400,300" Horizontal="1" AutoScollbar="0" ClampSize="V" DisableMouseWheelScroll="1">
+				<Stack ID="AdStack" Anchor="L,T" StackGrowth="Right" StackPadding="0" ClampSize="V"/>
+			</ScrollPanel>
+			<Button ID="AdLeftButton" Texture="Controls_DancerCarouselLeftArrow" Offset="0,0" Anchor="L,C" Size="37,79" StateOffsetIncrement="0,79"/>
+			<Button ID="AdRightButton" Texture="Controls_DancerCarouselRightArrow" Offset="0,0" Anchor="R,C" Size="37,79" StateOffsetIncrement="0,79"/>
+			<Stack ID="AdIndicatorStack" Anchor="C,B" Offset="0,5" StackGrowth="Right"/>
+			<Image ID="AdFrame" Anchor="C,C" Size="433,328" Offset="0,0" Texture="CIV_ProjectDancer_CarouselImages_Frame"/>
+		</Container>
 	</Stack>
 
 	<!-- 联机工具箱2.0：更新公告面板（条目3.5，数据驱动 MPT_Changelog 表；仅 X 按钮 / 点击面板外 / ESC 关闭） -->
@@ -558,7 +568,7 @@
 		</AlphaAnim>
 	</Instance>
 
-	<!-- 联机工具箱2.0：更新公告实例（条目3.5；同版本一个实例：版本号左上 + 日期右上 + 自动编号文本，行高由 Lua 自适应） -->
+	<!-- 联机工具箱2.0：更新公告实例（条目3.5；同版本一个实例：版本号左上 + 日期右上 + 行首 [icon_You] 图标的条目文本，行高由 Lua 自适应） -->
 	<Instance Name="ChangelogEntryInstance">
 		<Grid ID="EntryRoot" Size="parent,60" Color="GreatPeopleRowUnOwned" Style="SubContainer2">
 			<Container Size="parent-40,parent" Offset="20,0">
@@ -567,6 +577,18 @@
 				<Label ID="EntryText" Anchor="L,T" Offset="0,38" Style="FontNormal16" Color="GreatPeopleRow" WrapWidth="parent"/>
 			</Container>
 		</Grid>
+	</Instance>
+
+	<!-- 联机工具箱2.0：广告轮播实例（条目3.6，仿原版主菜单 CarouselEntry / CarouselEntryIndicator；条目贴图由 Lua SetTexture 按 MPT_Ads 表设置） -->
+	<Instance Name="AdEntryInstance">
+		<Container Size="400,300" ID="AdEntryRoot">
+			<Button ID="AdEntryButton" Size="parent,parent" Offset="0,0" Anchor="C,C" Hidden="0" NoStateChange="1"/>
+		</Container>
+	</Instance>
+	<Instance Name="AdIndicatorInstance">
+		<Container Size="15,14" ID="AdIndicatorRoot">
+			<Image ID="AdIndicatorImage" Size="parent,parent" Texture="Controls_DancerCarouselIndicators" TextureOffset="0,0"/>
+		</Container>
 	</Instance>
 
 </ContextDefaults>

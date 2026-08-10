@@ -21,7 +21,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 更新必须修改此时间戳：模组版本一致性校验以此为版本指纹 -->
-		<Created>1786292546</Created>
+		<Created>1786338280</Created>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -85,6 +85,28 @@
 			<File>FrontEnd/Changelog/Changelog_zh_Hans_CN.sql</File>
 			<File>FrontEnd/Changelog/Changelog_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目3.6：广告轮播数据表 MPT_Ads（轮播仅前端使用，不进游戏内上下文） -->
+		<UpdateDatabase id="FE_Ads">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>FrontEnd/Ads/Ads_Data.sql</File>
+		</UpdateDatabase>
+		<!-- 条目3.6：广告轮播专属文本（仅前端注册，与通用文本分离） -->
+		<UpdateText id="FE_Ads_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>FrontEnd/Ads/Ads_zh_Hans_CN.sql</File>
+			<File>FrontEnd/Ads/Ads_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目3.6：广告贴图导入 VFS（供轮播 SetTexture 按文件名解析） -->
+		<ImportFiles id="FE_Import_Ads">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>FrontEnd/Ads/QiaoEr_FFA.png</File>
+		</ImportFiles>
 		<!-- 条目2：灾害强度下限 0 到 -1（完全无灾害），强制后置防覆盖 -->
 		<UpdateDatabase id="FE_Config_DD">
 			<Properties>
@@ -152,6 +174,10 @@
 		<File>FrontEnd/Changelog/Changelog_Data.sql</File>
 		<File>FrontEnd/Changelog/Changelog_zh_Hans_CN.sql</File>
 		<File>FrontEnd/Changelog/Changelog_en_US.sql</File>
+		<File>FrontEnd/Ads/Ads_Data.sql</File>
+		<File>FrontEnd/Ads/Ads_zh_Hans_CN.sql</File>
+		<File>FrontEnd/Ads/Ads_en_US.sql</File>
+		<File>FrontEnd/Ads/QiaoEr_FFA.png</File>
 		<File>UI/StagingRoom/StagingRoom.lua</File>
 		<File>UI/StagingRoom/StagingRoom.xml</File>
 		<File>UI/AdvancedSetup/AdvancedSetup.lua</File>

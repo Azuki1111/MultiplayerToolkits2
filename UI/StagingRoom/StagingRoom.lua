@@ -3736,6 +3736,195 @@ function CloseChangelogPanel()
 	UI.PlaySound("UI_Screen_Close");
 end
 
+-- ============================================================================
+-- 广告轮播（条目3.6，移植原版主菜单 ChallengeCarousel 并重命名/裁剪）
+-- 用法：广告条目由 MPT_Ads 表驱动（FrontEnd/Ads/Ads_Data.sql），按 rowid 顺序展示、
+--       按本机日期过滤 StartDate/EndDate；自动轮播 + 左右箭头手动翻页 + 底部指示点。
+-- 移植说明：首尾各复制一条实例实现无缝循环滚动（原版 CarouselEntry 机制）；
+--          点击条目在 Url 非空时经 Steam.ActivateGameOverlayToUrl 打开网页
+--          （BSR / 原版 Mods.lua 同款用法），Url 为空则点击无动作。
+-- ============================================================================
+
+-- 单条广告展示时长（毫秒）与翻页补间时长（毫秒）
+local AD_DISPLAY_DURATION_MS : number = 5000;
+local AD_ANIM_DURATION_MS : number = 400;
+
+local m_adEntryIM = InstanceManager:new("AdEntryInstance", "AdEntryRoot", Controls.AdStack);
+local m_adIndicatorIM = InstanceManager:new("AdIndicatorInstance", "AdIndicatorRoot", Controls.AdIndicatorStack);
+local g_adEntries : table = {};			-- 过滤后的广告行 { {TextureName=..., ToolTipTag=..., Url=...}, ... }
+local m_adCurrentEntry : number = 1;	-- 当前条目下标（1..#g_adEntries；首尾复制实例不计入）
+local m_adSlideTimerMS : number = 0;	-- 当前条目已展示时长
+local m_adAnim : table = { active = false, time = 0, startValue = 0, destinationValue = 0, destinationIndex = 0 };	-- 翻页补间状态
+
+-------------------------------------------------
+-- AdGetOffsetValue
+-- 计算第 index 个滚动实例（含首尾复制）对应的滚动值（原版 CarouselGetOffsetValue 移植）。
+-------------------------------------------------
+function AdGetOffsetValue( index )
+	local entryWidth : number = Controls.AdStack:GetChildren()[1]:GetSizeX();
+	return (entryWidth * index) / (Controls.AdStack:GetSizeX() - entryWidth);
+end
+
+-------------------------------------------------
+-- AdSetSelectedEntry
+-- 设置当前条目并刷新指示点高亮（原版 CarouselSetSelectedEntry 裁剪：去除 Challenges 上报）。
+-------------------------------------------------
+function AdSetSelectedEntry( index )
+	m_adCurrentEntry = index;
+	m_adIndicatorIM:ResetInstances();
+	for i = 1, #g_adEntries do
+		local indicatorInstance = m_adIndicatorIM:GetInstance();
+		if i == m_adCurrentEntry then
+			indicatorInstance.AdIndicatorImage:SetTextureOffsetVal(0, 14);
+		else
+			indicatorInstance.AdIndicatorImage:SetTextureOffsetVal(0, 0);
+		end
+	end
+end
+
+-------------------------------------------------
+-- AdScrollToEntry
+-- 启动到第 index 个滚动实例的补间滚动（滚动期间禁用箭头，原版 CarouselScrollToEntry 移植）。
+-------------------------------------------------
+function AdScrollToEntry( index )
+	if index == m_adCurrentEntry then
+		return;
+	end
+	m_adAnim.active = true;
+	m_adAnim.time = 0;
+	m_adAnim.startValue = Controls.AdScroll:GetScrollValue();
+	m_adAnim.destinationValue = AdGetOffsetValue(index);
+	m_adAnim.destinationIndex = index;
+	Controls.AdLeftButton:SetEnabled(false);
+	Controls.AdRightButton:SetEnabled(false);
+end
+
+-------------------------------------------------
+-- AdFinishedScrolling
+-- 补间结束收尾：滚到首尾复制实例时无感跳回对应真实条目（无缝循环），恢复箭头（原版移植）。
+-------------------------------------------------
+function AdFinishedScrolling( index )
+	if index == (#g_adEntries + 1) then
+		index = 1;
+	elseif index == 0 then
+		index = #g_adEntries;
+	end
+	Controls.AdScroll:SetScrollValue(AdGetOffsetValue(index));
+	AdSetSelectedEntry(index);
+	m_adSlideTimerMS = 0;
+	m_adAnim.active = false;
+	m_adAnim.time = 0;
+	Controls.AdLeftButton:SetEnabled(true);
+	Controls.AdRightButton:SetEnabled(true);
+end
+
+-------------------------------------------------
+-- OnAdLeftClick / OnAdRightClick
+-- 左右箭头回调：向相邻条目翻页（滚过边界时借首尾复制实例过渡，由 AdFinishedScrolling 跳回）。
+-------------------------------------------------
+function OnAdLeftClick()
+	AdScrollToEntry(m_adCurrentEntry - 1);
+end
+
+function OnAdRightClick()
+	AdScrollToEntry(m_adCurrentEntry + 1);
+end
+
+-------------------------------------------------
+-- OnAdEntryClick
+-- 广告条目点击回调（参数为 SetVoid1 写入的条目下标）：Url 非空时经 Steam Overlay 打开网页。
+-------------------------------------------------
+function OnAdEntryClick( entryIndex )
+	local adEntry = g_adEntries[entryIndex + 1];
+	if adEntry ~= nil and adEntry.Url ~= "" then
+		UI.PlaySound("Play_UI_Click");
+		Steam.ActivateGameOverlayToUrl(adEntry.Url);
+	end
+end
+
+-------------------------------------------------
+-- BuildAdCarousel
+-- 从 MPT_Ads 表构建广告轮播；数据静态，加载时构建一次（原版 UpdateChallengeCarousel 移植）。
+-- 日期过滤：本机当天与 StartDate/EndDate（YYYY-MM-DD）字符串比较，起止当日均展示；
+--          无可展示条目时隐藏整个轮播容器。
+-------------------------------------------------
+function BuildAdCarousel()
+	local adRows = DB.ConfigurationQuery("SELECT TextureName, StartDate, EndDate, ToolTipTag, Url FROM MPT_Ads ORDER BY rowid ASC");
+	g_adEntries = {};
+	if adRows ~= nil then
+		local today : string = os.date("%Y-%m-%d");
+		for i, row in ipairs(adRows) do
+			if (row.StartDate == "" or today >= row.StartDate) and (row.EndDate == "" or today <= row.EndDate) then
+				table.insert(g_adEntries, { TextureName = row.TextureName, ToolTipTag = row.ToolTipTag, Url = row.Url });
+			end
+		end
+	end
+
+	m_adEntryIM:ResetInstances();
+
+	local entryCount : number = #g_adEntries;
+	if entryCount == 0 then
+		Controls.AdCarouselContainer:SetHide(true);
+		return;
+	end
+
+	-- 首尾各复制一条实例，滚过边界时视觉连续（跳回逻辑见 AdFinishedScrolling）
+	for i = 0, entryCount + 1 do
+		local entryIndex : number = i - 1;
+		if entryIndex == -1 then
+			entryIndex = entryCount - 1;
+		elseif entryIndex == entryCount then
+			entryIndex = 0;
+		end
+
+		local adEntry = g_adEntries[entryIndex + 1];
+		local entryInstance = m_adEntryIM:GetInstance();
+		entryInstance.AdEntryButton:SetTexture(adEntry.TextureName);
+		if adEntry.ToolTipTag ~= "" then
+			entryInstance.AdEntryButton:SetToolTipString(Locale.Lookup(adEntry.ToolTipTag));
+		end
+		entryInstance.AdEntryButton:SetVoid1(entryIndex);
+		entryInstance.AdEntryButton:RegisterCallback( Mouse.eLClick, OnAdEntryClick );
+		entryInstance.AdEntryButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	end
+
+	-- 单条广告无需翻页：隐藏箭头与指示点
+	local multiEntry : boolean = (entryCount > 1);
+	Controls.AdLeftButton:SetHide(not multiEntry);
+	Controls.AdRightButton:SetHide(not multiEntry);
+	Controls.AdIndicatorStack:SetHide(not multiEntry);
+
+	Controls.AdStack:CalculateSize();
+	Controls.AdScroll:CalculateSize();
+
+	AdSetSelectedEntry(1);
+	Controls.AdCarouselContainer:SetHide(false);
+	Controls.AdScroll:SetScrollValue(AdGetOffsetValue(1));
+end
+
+-------------------------------------------------
+-- OnAdUpdate
+-- 帧回调（ContextPtr:SetUpdate）：驱动翻页补间与自动轮播计时（原版 OnUpdate 轮播段移植）。
+-------------------------------------------------
+function OnAdUpdate( fDeltaTime )
+	if m_adAnim.active then
+		local newTime : number = m_adAnim.time + fDeltaTime * 1000;
+		if newTime >= AD_ANIM_DURATION_MS then
+			Controls.AdScroll:SetScrollValue(m_adAnim.destinationValue);
+			AdFinishedScrolling(m_adAnim.destinationIndex);
+		else
+			Controls.AdScroll:SetScrollValue(m_adAnim.startValue + (m_adAnim.destinationValue - m_adAnim.startValue) * (newTime / AD_ANIM_DURATION_MS));
+			m_adAnim.time = newTime;
+		end
+	elseif #g_adEntries > 1 then
+		-- 手动翻页后计时同样清零（AdFinishedScrolling 重置），避免紧接着自动翻页
+		m_adSlideTimerMS = m_adSlideTimerMS + fDeltaTime * 1000;
+		if m_adSlideTimerMS >= AD_DISPLAY_DURATION_MS then
+			AdScrollToEntry(m_adCurrentEntry + 1);
+		end
+	end
+end
+
 -- ===========================================================================
 --	Initialize screen
 -- ===========================================================================
@@ -3780,6 +3969,15 @@ function Initialize()
 	Controls.ChangelogButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	Controls.ChangelogCloseButton:RegisterCallback( Mouse.eLClick, CloseChangelogPanel );
 	Controls.ChangelogModalBlocker:RegisterCallback( Mouse.eLClick, CloseChangelogPanel );
+	-- ============================================================================
+	-- 联机工具箱2.0：注册广告轮播箭头回调与帧更新，并构建轮播（条目3.6）
+	-- ----------------------------------------------------------------------------
+	Controls.AdLeftButton:RegisterCallback( Mouse.eLClick, OnAdLeftClick );
+	Controls.AdLeftButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.AdRightButton:RegisterCallback( Mouse.eLClick, OnAdRightClick );
+	Controls.AdRightButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	ContextPtr:SetUpdate( OnAdUpdate );
+	BuildAdCarousel();
 
 	Controls.InviteButton:SetToolTipString(GetInviteTT());
 
