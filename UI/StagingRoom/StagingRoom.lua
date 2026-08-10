@@ -503,7 +503,9 @@ end
 -------------------------------------------------
 function OnMultiplayerPingTimesChanged()
 	for playerID, playerEntry in pairs( g_PlayerEntries ) do
-		UpdateNetConnectionIcon(playerID, playerEntry.ConnectionStatus, playerEntry.StatusLabel);
+		-- 联机工具箱2.0 条目3.7：第三参数原传 StatusLabel（原版函数忽略该参数），现改传 PingLabel 以常驻显示 ping 数值
+		-- 原代码：UpdateNetConnectionIcon(playerID, playerEntry.ConnectionStatus, playerEntry.StatusLabel);
+		UpdateNetConnectionIcon(playerID, playerEntry.ConnectionStatus, playerEntry.PingLabel);
 		UpdateNetConnectionLabel(playerID, playerEntry.StatusLabel);
 	end
 end
