@@ -372,8 +372,8 @@
 					<Label ID="ConnectionStatus" Anchor="L,T" Offset="4,3" String="[ICON_OnlinePip]" Style="FontNormal22"/>
 					<Label ID="PlayerName" Anchor="C,T" Offset="0,7" Style="WhiteSemiBold14" String="PlayerName" TruncateWidth="210"/>
 					<Label ID="PlayerStatus" Anchor="L,B" Offset="10,7" Style="WhiteSemiBold12" String="PlayerStatus"/>
-					<!-- 联机工具箱2.0 条目3.7：常驻 ping 数值，玩家名框右下角（与左下状态文字同行对称），由 NetConnectionIconLogic 按绿黄红分档着色 -->
-					<Label ID="PingLabel" Anchor="R,B" Offset="10,7" Style="WhiteSemiBold12" Hidden="1"/>
+					<!-- 联机工具箱2.0 条目3.7：常驻 ping 数值，玩家名框右下角（与左下状态文字同行对称，右缘留 30px 避开下拉箭头），由 NetConnectionIconLogic 按绿黄红分档着色 -->
+					<Label ID="PingLabel" Anchor="R,B" Offset="30,7" Style="WhiteSemiBold12" Hidden="1"/>
 				</PullDown>
 
 				<!-- This shows up for Hotseat and non-human players for online games -->

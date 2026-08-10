@@ -34,10 +34,12 @@ local millisecondsStr = Locale.Lookup( "LOC_TIME_MILLISECONDS" );
 local PING_GREAT	= 100; -- [Milliseconds] Player's ping is considered to be great (green) if under this number.
 local PING_OK		= 200; -- [Milliseconds] Player's ping is considered to be ok (yellow) if under this number.
 
--- 联机工具箱2.0 新增：常驻 ping 数值的档位颜色（0xAARRGGBB，与连接灯同色系）
-local PING_COLOR_GREAT	= 0xFF50C850; -- 绿
-local PING_COLOR_OK		= 0xFFE8C840; -- 黄
-local PING_COLOR_BAD	= 0xFFF05050; -- 红
+-- 联机工具箱2.0 新增：常驻 ping 数值的档位颜色文本标签（与连接灯同色系）
+-- 注意：SetColor 数值颜色对 Label 文本无效（实测显示黑色），改用引擎文本颜色标签
+-- 格式参考联机工具箱1.67 Update/PlayerData.sql 的 [color:R,G,B] 内联颜色用法，此处用带 Alpha 的四分量形式
+local PING_COLOR_GREAT	= "[color:80,200,80,255]"; -- 绿
+local PING_COLOR_OK		= "[color:232,200,64,255]"; -- 黄
+local PING_COLOR_BAD	= "[color:240,80,80,255]"; -- 红
 
 ----------------------------------------------------------------
 -- UpdateNetConnectionIcon
@@ -68,14 +70,14 @@ function UpdateNetConnectionIcon(playerID :number, connectIcon, pingLabel)
 			if(playerID ~= Network.GetLocalPlayerID()
 				and Network.IsPlayerConnected(playerID)
 				and iPingTime > 1) then
-				pingLabel:SetText(tostring(iPingTime) .. "ms");
+				-- 颜色以文本标签形式加在数值前（SetColor 对 Label 无效，见文件头常量注释）
+				local colorTag :string = PING_COLOR_BAD;
 				if(iPingTime < PING_GREAT) then
-					pingLabel:SetColor(PING_COLOR_GREAT);
+					colorTag = PING_COLOR_GREAT;
 				elseif(iPingTime < PING_OK) then
-					pingLabel:SetColor(PING_COLOR_OK);
-				else
-					pingLabel:SetColor(PING_COLOR_BAD);
+					colorTag = PING_COLOR_OK;
 				end
+				pingLabel:SetText(colorTag .. tostring(iPingTime) .. "ms");
 				pingLabel:SetHide(false);
 			else
 				pingLabel:SetHide(true);
