@@ -3879,7 +3879,8 @@ function BuildAdCarousel()
 
 		local adEntry = g_adEntries[entryIndex + 1];
 		local entryInstance = m_adEntryIM:GetInstance();
-		entryInstance.AdEntryButton:SetTexture(adEntry.TextureName);
+		-- 贴图设在 Image 子控件上：Button 无基础 Texture 时不创建贴图槽，直接 SetTexture 静默无效
+		entryInstance.AdEntryImage:SetTexture(adEntry.TextureName);
 		if adEntry.ToolTipTag ~= "" then
 			entryInstance.AdEntryButton:SetToolTipString(Locale.Lookup(adEntry.ToolTipTag));
 		end

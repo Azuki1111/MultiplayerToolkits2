@@ -579,10 +579,13 @@
 		</Grid>
 	</Instance>
 
-	<!-- 联机工具箱2.0：广告轮播实例（条目3.6，仿原版主菜单 CarouselEntry / CarouselEntryIndicator；条目贴图由 Lua SetTexture 按 MPT_Ads 表设置） -->
+	<!-- 联机工具箱2.0：广告轮播实例（条目3.6，仿原版主菜单 CarouselEntry / CarouselEntryIndicator；贴图由 Lua 按 MPT_Ads 表设置到 Image 子控件上） -->
 	<Instance Name="AdEntryInstance">
 		<Container Size="400,300" ID="AdEntryRoot">
-			<Button ID="AdEntryButton" Size="parent,parent" Offset="0,0" Anchor="C,C" Hidden="0" NoStateChange="1"/>
+			<Button ID="AdEntryButton" Size="parent,parent" Offset="0,0" Anchor="C,C" Hidden="0" NoStateChange="1">
+				<!-- 贴图载体（乔尔 InfoFrame / BSR AD 同款结构：Button 内嵌 Image；占位贴图保证贴图槽存在，Lua 再替换） -->
+				<Image ID="AdEntryImage" Size="parent,parent" Anchor="C,C" Texture="Controls_HowtoPlayButton"/>
+			</Button>
 		</Container>
 	</Instance>
 	<Instance Name="AdIndicatorInstance">

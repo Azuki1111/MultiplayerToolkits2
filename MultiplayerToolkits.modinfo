@@ -21,7 +21,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 更新必须修改此时间戳：模组版本一致性校验以此为版本指纹 -->
-		<Created>1786339544</Created>
+		<Created>1786368404</Created>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -106,7 +106,7 @@
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
 			<File>FrontEnd/Ads/QiaoEr_FFA.dds</File>
-			<File>FrontEnd/Ads/QiaoEr_FFA2_.dds</File>
+			<File>FrontEnd/Ads/QiaoEr_FFA2.dds</File>
 		</ImportFiles>
 		<!-- 条目2：灾害强度下限 0 到 -1（完全无灾害），强制后置防覆盖 -->
 		<UpdateDatabase id="FE_Config_DD">
@@ -179,7 +179,7 @@
 		<File>FrontEnd/Ads/Ads_zh_Hans_CN.sql</File>
 		<File>FrontEnd/Ads/Ads_en_US.sql</File>
 		<File>FrontEnd/Ads/QiaoEr_FFA.dds</File>
-		<File>FrontEnd/Ads/QiaoEr_FFA2_.dds</File>
+		<File>FrontEnd/Ads/QiaoEr_FFA2.dds</File>
 		<File>UI/StagingRoom/StagingRoom.lua</File>
 		<File>UI/StagingRoom/StagingRoom.xml</File>
 		<File>UI/AdvancedSetup/AdvancedSetup.lua</File>

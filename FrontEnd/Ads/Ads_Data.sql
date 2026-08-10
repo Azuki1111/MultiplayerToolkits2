@@ -21,4 +21,4 @@ CREATE TABLE IF NOT EXISTS MPT_Ads (
 INSERT OR REPLACE INTO MPT_Ads (TextureName, StartDate, EndDate, ToolTipTag, Url) VALUES
 -- 乔尔 FFA 大乱斗（两条轮换展示，Url 暂空 = 点击无动作，可按需补充）
 ('QiaoEr_FFA.dds', '2026-08-09', '', 'LOC_MPT_AD_QIAOER_FFA_TT', ''),
-('QiaoEr_FFA2_.dds', '2026-08-09', '', 'LOC_MPT_AD_QIAOER_FFA_TT', '');
+('QiaoEr_FFA2.dds', '2026-08-09', '', 'LOC_MPT_AD_QIAOER_FFA_TT', '');
