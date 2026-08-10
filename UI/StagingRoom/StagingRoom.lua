@@ -2580,6 +2580,11 @@ function OnShow()
 			end
 		end
 	end
+
+	-- ============================================================================
+	-- 【临时调试】联机工具箱2.0 条目4.1 Phase 0：SetValue 长度上限与mod列表顺序实测（测完删除）
+	MPT_DebugValueLengthTest();
+	-- ----------------------------------------------------------------------------
 end
 
 
@@ -3926,6 +3931,123 @@ function OnAdUpdate( fDeltaTime )
 			AdScrollToEntry(m_adCurrentEntry + 1);
 		end
 	end
+end
+
+-- ============================================================================
+-- 【临时调试】条目4.1 Phase 0：PlayerConfig SetValue 长度上限与 GetEnabledMods 双端顺序实测
+-- 用法：双客户端进入联机房间（非热座/PBC）后自动执行一次；之后查看 Logs/Lua.log：
+--   MPT_LEN_LOCAL  = 本机写入后立即回读（验证本机写读无损）
+--   MPT_LEN_REMOTE = 延迟 3s/10s 转储所有真人槽位各测试键（验证网络同步后是否截断及截断点）
+--   MPT_MODLIST    = 本机 GetEnabledMods() 有序列表（双端对比验证顺序一致，下标编码前提）
+-- 结论确认后删除：本函数区全部内容、OnShow 中的调用（MPT_LEN_* 键随退房自动失效）。
+-- ============================================================================
+local MPT_LEN_TEST_SIZES : table = {100, 500, 1000, 1500, 2000, 2500, 4000};	-- 阶梯测试长度（字符）
+local MPT_DEBUG_DUMP_TIMES : table = {3, 10};								-- 延迟转储时间点（秒），等远端数据同步
+local m_mptDebugHasRun : boolean = false;	-- OnShow 可能多次触发，只测一次
+local m_mptDebugStartTime : number = 0;		-- 测试起始时刻（os.clock）
+local m_mptDebugDumpPhase : number = 1;		-- 当前转储阶段下标
+
+-------------------------------------------------
+-- MPT_DebugBuildString
+-- 构造指定长度的测试串：主体 'A' + 尾部标记 "_END<len>"，用于检测截断点。
+-------------------------------------------------
+function MPT_DebugBuildString( len : number )
+	local tail : string = "_END" .. tostring(len);
+	return string.rep("A", len - #tail) .. tail;
+end
+
+-------------------------------------------------
+-- MPT_DebugDumpRemoteValues
+-- 转储所有真人槽位的 MPT_LEN_* 测试键（本机+远端）。
+-- 每键打印：阶段标记 槽位 玩家名 标称长度 实际长度/MISSING 尾部8字符。
+-------------------------------------------------
+function MPT_DebugDumpRemoteValues( tag : string )
+	local playerIDs : table = GameConfiguration.GetMultiplayerPlayerIDs();
+	for _, playerID in ipairs(playerIDs) do
+		local pPlayerConfig = PlayerConfigurations[playerID];
+		if pPlayerConfig ~= nil and pPlayerConfig:IsHuman() then
+			local playerName : string = tostring(pPlayerConfig:GetPlayerName());
+			for _, len in ipairs(MPT_LEN_TEST_SIZES) do
+				local value = pPlayerConfig:GetValue("MPT_LEN_" .. len);
+				if value ~= nil then
+					print("MPT_LEN_REMOTE", tag, playerID, playerName, len, string.len(value), string.sub(value, -8));
+				else
+					print("MPT_LEN_REMOTE", tag, playerID, playerName, len, "MISSING");
+				end
+			end
+		end
+	end
+end
+
+-------------------------------------------------
+-- MPT_DebugDelayedDump（Events.SystemUpdateUI 回调）
+-- 测试开始后 3s / 10s 各转储一次远端值，完成后自行退订。
+-------------------------------------------------
+function MPT_DebugDelayedDump()
+	if m_mptDebugDumpPhase > #MPT_DEBUG_DUMP_TIMES then
+		Events.SystemUpdateUI.Remove(MPT_DebugDelayedDump);
+		return;
+	end
+	if os.clock() - m_mptDebugStartTime < MPT_DEBUG_DUMP_TIMES[m_mptDebugDumpPhase] then
+		return;
+	end
+	MPT_DebugDumpRemoteValues("T" .. tostring(MPT_DEBUG_DUMP_TIMES[m_mptDebugDumpPhase]) .. "s");
+	m_mptDebugDumpPhase = m_mptDebugDumpPhase + 1;
+end
+
+-------------------------------------------------
+-- MPT_DebugValueLengthTest（OnShow 调用，只跑一次）
+-- 阶梯长度写入 MPT_LEN_* 键（每长度独立键 + 单次广播，避免循环广播被合并只剩末值），
+-- 本机立即回读打日志；打印 GetEnabledMods 有序列表；订阅延迟转储读取远端同步结果。
+-------------------------------------------------
+function MPT_DebugValueLengthTest()
+	if m_mptDebugHasRun then
+		return;
+	end
+	if GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud() then
+		return;	-- 仅标准联机房间有同步意义
+	end
+	local localPlayerID : number = Network.GetLocalPlayerID();
+	if localPlayerID == nil or localPlayerID < 0 then
+		return;
+	end
+	local pLocalConfig = PlayerConfigurations[localPlayerID];
+	if pLocalConfig == nil then
+		return;
+	end
+	m_mptDebugHasRun = true;
+	print("MPT_DEBUG_BEGIN", os.date("%c"), "localPlayerID=", localPlayerID);
+
+	-- 阶梯长度写入并广播
+	for _, len in ipairs(MPT_LEN_TEST_SIZES) do
+		pLocalConfig:SetValue("MPT_LEN_" .. len, MPT_DebugBuildString(len));
+	end
+	Network.BroadcastPlayerInfo(localPlayerID);
+
+	-- 本机立即回读
+	for _, len in ipairs(MPT_LEN_TEST_SIZES) do
+		local value = pLocalConfig:GetValue("MPT_LEN_" .. len);
+		if value ~= nil then
+			print("MPT_LEN_LOCAL", len, string.len(value), string.sub(value, -8));
+		else
+			print("MPT_LEN_LOCAL", len, "MISSING");
+		end
+	end
+
+	-- 启用 mod 有序列表（双端对比验证顺序一致性）
+	local enabledMods = GameConfiguration.GetEnabledMods();
+	if enabledMods ~= nil then
+		for i, curMod in ipairs(enabledMods) do
+			print("MPT_MODLIST", i, tostring(curMod.Id), "Official=", tostring(curMod.Official));
+		end
+	else
+		print("MPT_MODLIST", "GetEnabledMods() returned nil");
+	end
+
+	-- 延迟转储远端同步结果
+	m_mptDebugStartTime = os.clock();
+	m_mptDebugDumpPhase = 1;
+	Events.SystemUpdateUI.Add(MPT_DebugDelayedDump);
 end
 
 -- ===========================================================================
