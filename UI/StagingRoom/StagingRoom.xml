@@ -243,8 +243,8 @@
 			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_HAMBURGER_MENU"/>
 			<Label Anchor="L,C" String="LOC_MPT_FE_CHANGELOG_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
 		</Button>
-		<!-- 条目3.6：广告轮播（仿原版主菜单 ChallengeContainer，数据驱动 MPT_Ads 表；StackGrowth Up 使本控件位于公告按钮正上方） -->
-		<Container ID="AdCarouselContainer" Anchor="L,B" Size="400,300" Hidden="1">
+		<!-- 条目3.6：广告轮播（仿原版主菜单 ChallengeContainer，数据驱动 MPT_Ads 表；StackGrowth Up 使本控件位于公告按钮正上方；右偏 24 避免外框贴住屏幕左缘） -->
+		<Container ID="AdCarouselContainer" Anchor="L,B" Size="400,300" Offset="24,0" Hidden="1">
 			<ScrollPanel ID="AdScroll" Anchor="C,C" Size="400,300" Horizontal="1" AutoScollbar="0" ClampSize="V" DisableMouseWheelScroll="1">
 				<Stack ID="AdStack" Anchor="L,T" StackGrowth="Right" StackPadding="0" ClampSize="V"/>
 			</ScrollPanel>
