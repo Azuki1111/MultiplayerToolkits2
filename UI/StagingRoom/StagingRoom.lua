@@ -3942,9 +3942,9 @@ end
 -- 结论确认后删除：本函数区全部内容、OnShow 中的调用（MPT_LEN_* 键随退房自动失效）。
 -- ============================================================================
 local MPT_LEN_TEST_SIZES : table = {100, 500, 1000, 1500, 2000, 2500, 4000};	-- 阶梯测试长度（字符）
-local MPT_DEBUG_DUMP_TIMES : table = {3, 10};								-- 延迟转储时间点（秒），等远端数据同步
+local MPT_DEBUG_DUMP_TIMES : table = {3, 10};								-- 延迟转储时间点（秒，os.time 墙钟），等远端数据同步
 local m_mptDebugHasRun : boolean = false;	-- OnShow 可能多次触发，只测一次
-local m_mptDebugStartTime : number = 0;		-- 测试起始时刻（os.clock）
+local m_mptDebugStartTime : number = 0;		-- 测试起始时刻（os.time 墙钟；os.clock 是 CPU 时间，前端闲置时不可靠）
 local m_mptDebugDumpPhase : number = 1;		-- 当前转储阶段下标
 
 -------------------------------------------------
@@ -3980,15 +3980,16 @@ function MPT_DebugDumpRemoteValues( tag : string )
 end
 
 -------------------------------------------------
--- MPT_DebugDelayedDump（Events.SystemUpdateUI 回调）
+-- MPT_DebugDelayedDump（Events.GameCoreEventPublishComplete 回调）
 -- 测试开始后 3s / 10s 各转储一次远端值，完成后自行退订。
+-- 注意：SystemUpdateUI 是按需事件（系统请求更新才发，见原版 OnUpdateUI 签名），不能当每帧 tick 用。
 -------------------------------------------------
 function MPT_DebugDelayedDump()
 	if m_mptDebugDumpPhase > #MPT_DEBUG_DUMP_TIMES then
-		Events.SystemUpdateUI.Remove(MPT_DebugDelayedDump);
+		Events.GameCoreEventPublishComplete.Remove(MPT_DebugDelayedDump);
 		return;
 	end
-	if os.clock() - m_mptDebugStartTime < MPT_DEBUG_DUMP_TIMES[m_mptDebugDumpPhase] then
+	if os.time() - m_mptDebugStartTime < MPT_DEBUG_DUMP_TIMES[m_mptDebugDumpPhase] then
 		return;
 	end
 	MPT_DebugDumpRemoteValues("T" .. tostring(MPT_DEBUG_DUMP_TIMES[m_mptDebugDumpPhase]) .. "s");
@@ -4044,10 +4045,10 @@ function MPT_DebugValueLengthTest()
 		print("MPT_MODLIST", "GetEnabledMods() returned nil");
 	end
 
-	-- 延迟转储远端同步结果
-	m_mptDebugStartTime = os.clock();
+	-- 延迟转储远端同步结果（GameCoreEventPublishComplete 每帧事件 + os.time 墙钟）
+	m_mptDebugStartTime = os.time();
 	m_mptDebugDumpPhase = 1;
-	Events.SystemUpdateUI.Add(MPT_DebugDelayedDump);
+	Events.GameCoreEventPublishComplete.Add(MPT_DebugDelayedDump);
 end
 
 -- ===========================================================================
