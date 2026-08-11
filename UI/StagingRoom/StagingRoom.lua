@@ -2538,6 +2538,7 @@ function OnShow()
 	if m_sessionID ~= networkSessionID then
 		-- This is a fresh session.
 		m_sessionID = networkSessionID;
+		MPT_ResetModCheckSession();	-- 联机工具箱2.0：新房间重置模组校验生命周期（条目4.1）
 
 		StopCountdown();
 
@@ -4090,12 +4091,32 @@ function MPT_ResetPlayerStatusForNewRev()
 end
 
 -------------------------------------------------
+-- MPT_ResetModCheckSession
+-- 新会话（新房间）重置校验生命周期：rev 归零（触发首次发布）、已知房主复位、
+-- 玩家状态表清空（reconcile 重建）、「放弃验证」与弹窗记录复位。
+-- 调用点：OnShow 检测到 fresh session 时；Lua 状态跨房间存续，不重置则后续房间校验静默失效。
+-------------------------------------------------
+function MPT_ResetModCheckSession()
+	g_mpt_listRev = 0;
+	g_mpt_knownHostID = -1;
+	g_mpt_publishTime = 0;
+	g_mpt_checkSkipped = false;
+	g_mpt_popupShownRev = -1;
+	g_mpt_playerModStatus = {};
+end
+
+-------------------------------------------------
 -- MPT_PublishCheckList（房主）
 -- 勾选集合 → 下标清单 + 本地 Version 指纹，rev 自增后经 PlayerConfig value 广播。
 -- 调用点：勾选变化 / 「重新校验」/ 弹窗「返回重新验证」/ 接管房主 / 首次进房（tick 驱动）。
 -------------------------------------------------
 function MPT_PublishCheckList()
 	if not Network.IsGameHost() then
+		return;
+	end
+	-- 双保险：隐藏窗口期禁止发布（弹窗「返回重新验证」不经过 tick 门控可直达本函数；
+	-- 日志实证房间初始化隐藏期 BroadcastPlayerInfo 会推送半初始化槽位配置，触发本地玩家槽位 0→1→2 漂移、旧槽位残留为 AI）
+	if ContextPtr:IsHidden() then
 		return;
 	end
 	MPT_CacheEnabledMods();
@@ -4264,8 +4285,12 @@ end
 -------------------------------------------------
 -- MPT_IsModCheckFailing
 -- 任一玩家未通过（PENDING/FAILED）即 true；CheckGameAutoStart 钩子据此压倒计时。
+-- 清单尚未发布（rev==0，进房首秒窗口期）时不判失败，避免误压倒计时/误弹窗。
 -------------------------------------------------
 function MPT_IsModCheckFailing()
+	if g_mpt_listRev == 0 then
+		return false;
+	end
 	for _, info in pairs(g_mpt_playerModStatus) do
 		if info.Status ~= MPT_CHECK.OK and info.Status ~= MPT_CHECK.HOST then
 			return true;
@@ -4294,6 +4319,12 @@ function MPT_ModCheckTick()
 	if not MPT_IsCheckActive() then
 		return;
 	end
+	-- 可见性门：只在准备房间实际显示（初始化稳定）时运行校验逻辑。
+	-- 日志实证：房间创建过渡（HostGame/JoiningRoom）中本 context 虽隐藏但 GameCoreEventPublishComplete 仍会触发，
+	-- 此时 BroadcastPlayerInfo 会推送半初始化槽位配置，引发本地玩家槽位 0→1→2 漂移风暴（旧槽位残留 AI）。
+	if ContextPtr:IsHidden() then
+		return;
+	end
 	local now : number = os.time();
 	if now == g_mpt_lastTickTime then
 		return;
@@ -4303,10 +4334,11 @@ function MPT_ModCheckTick()
 	MPT_CacheEnabledMods();
 
 	-- 房主迁移检测：本机成为新房主时接续 rev 重新发布清单
+	-- 阻尼：忽略瞬态无效 hostID（不更新已知值）；重发需确认本机确为房主槽位（防初始化期 ID 抖动误触发）
 	local hostID : number = Network.GetGameHostPlayerID();
-	if hostID ~= g_mpt_knownHostID then
+	if hostID ~= nil and hostID >= 0 and hostID ~= g_mpt_knownHostID then
 		g_mpt_knownHostID = hostID;
-		if Network.IsGameHost() then
+		if Network.IsGameHost() and hostID == Network.GetLocalPlayerID() then
 			MPT_PublishCheckList();
 		end
 	end
