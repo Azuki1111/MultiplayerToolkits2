@@ -243,6 +243,15 @@
 			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_HAMBURGER_MENU"/>
 			<Label Anchor="L,C" String="LOC_MPT_FE_CHANGELOG_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
 		</Button>
+		<!-- 联机工具箱2.0 条目4.1：模组校验按钮（打开左侧滑出校验面板）与重新校验按钮（rev自增强制全员重报），仅房主显示 -->
+		<Button ID="ModCheckButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_MODCHECK_BUTTON_TT" Hidden="1">
+			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_AdditionalContent"/>
+			<Label Anchor="L,C" String="LOC_MPT_MODCHECK_BUTTON_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
+		</Button>
+		<Button ID="ModRecheckButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_MODCHECK_RECHECK_TT" Hidden="1">
+			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_REDO"/>
+			<Label Anchor="L,C" String="LOC_MPT_MODCHECK_RECHECK_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
+		</Button>
 		<!-- 条目3.6：广告轮播（仿原版主菜单 ChallengeContainer，数据驱动 MPT_Ads 表；StackGrowth Up 使本控件位于公告按钮正上方；右偏 24 避免外框贴住屏幕左缘） -->
 		<Container ID="AdCarouselContainer" Anchor="L,B" Size="400,300" Offset="24,0" Hidden="1">
 			<ScrollPanel ID="AdScroll" Anchor="C,C" Size="400,300" Horizontal="1" AutoScollbar="0" ClampSize="V" DisableMouseWheelScroll="1">
@@ -275,8 +284,20 @@
 		</ScrollPanel>
 	</Container>
 
-
-
+	<!-- 联机工具箱2.0 条目4.1：模组校验面板（左侧滑出，结构仿 BSR LeaderStatsSlideAnim；仅房主可开，勾选变化即时广播） -->
+	<SlideAnim ID="ModCheckSlideAnim" Size="auto,parent" Anchor="L,T" Begin="-350,0" End="0,0" Cycle="Once" Speed="1" Function="OutQuint" Hidden="1" ConsumeMouse="1">
+		<Container Size="auto,parent" Offset="-3,54">
+			<Grid Size="310,parent" Offset="0,-40" Texture="Controls_ContainerBlue" SliceStart="0,0" SliceCorner="3,3" SliceSize="9,9" SliceTextureSize="16,16">
+				<ScrollPanel ID="ModCheckScrollPanel" Offset="10,20" Size="parent-20,parent-38" Vertical="1" AutoScrollBar="1">
+					<Stack ID="ModCheckListStack" StackGrowth="Down" Padding="4"/>
+				</ScrollPanel>
+			</Grid>
+			<Grid Size="310,60" Offset="3,-54" Style="HeaderBannerLeft" ConsumeAllMouse="1">
+				<Label Offset="-16,7" Anchor="C,T" Style="FontFlair16" Color0="0,59,77,255" SmallCaps="20" SmallCapsType="FirstOnly" String="LOC_MPT_MODCHECK_PANEL_TITLE" TruncateWidth="230" TruncatedTooltip="1"/>
+				<Button ID="ModCheckCloseButton" Size="32,32" Offset="10,-2" Anchor="R,T" Texture="Controls_CloseButtonAlt"/>
+			</Grid>
+		</Container>
+	</SlideAnim>
 
 	<!-- Children Contexts -->
 	<LuaContext FileName="UI/FrontEnd/Multiplayer/ConfirmKick" ID="ConfirmKick" Hidden="1" />
@@ -361,9 +382,21 @@
 		</Stack>
 	</Instance>
 
+	<!-- 联机工具箱2.0 条目4.1：模组校验清单条目（整行 GridButton 可点切换勾选，仿 CityStatePicker ItemInstance 模式） -->
+	<Instance Name="ModCheckListEntry">
+		<GridButton ID="ModCheckRowRoot" Size="282,32" Texture="Controls_ButtonControl" SliceCorner="10,10" SliceTextureSize="24,24" StateOffsetIncrement="0,24">
+			<CheckBox ID="ModCheckRowCheck" Style="MainMenuCheck" Anchor="L,C" Offset="8,0" IsChecked="1"/>
+			<Label ID="ModCheckRowName" Anchor="L,C" Offset="36,0" Style="FontNormal14" TruncateWidth="150" TruncatedTooltip="1"/>
+			<Label ID="ModCheckRowVersion" Anchor="R,C" Offset="6,0" Style="FontNormal12" Color="133,205,235,255"/>
+		</GridButton>
+	</Instance>
+
 	<!-- Player List Instances -->
 	<Instance Name="PlayerListEntry">
 		<Container ID="Root" Size="1016,50" Offset="12,0">
+
+			<!-- 联机工具箱2.0 条目4.1：mod版本校验失败玩家整行红底（铺满条目、置于所有控件底层、不拦截鼠标） -->
+			<Box ID="ModCheckWarnBox" Color="200,30,30,110" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1" ConsumeMouse="0"/>
 
 			<!-- Player Name -->
 			<Box ID="PlayerNameBox" Color="0,255,0,0" Anchor="L,C" Offset="-12,0" Size="218,50">

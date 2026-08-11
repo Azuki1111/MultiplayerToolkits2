@@ -1256,6 +1256,13 @@ function CheckGameAutoStart()
 	
 		-- Hotseat bypasses the countdown system.
 		if not GameConfiguration.IsHotseat() then
+			-- ============================================================================
+			-- 联机工具箱2.0：mod 版本校验未通过时压住启动倒计时并弹窗（条目4.1，仅网络会话房主；「放弃验证」后放行）
+			if startCountdown and Network.IsNetSessionHost() and not g_mpt_checkSkipped and MPT_IsModCheckFailing() then
+				startCountdown = false;
+				MPT_MaybePopupModCheckWarning();
+			end
+			-- ----------------------------------------------------------------------------
 			if(startCountdown) then
 				-- Everyone has readied up and we can start.
 				StartLaunchCountdown();
@@ -2580,11 +2587,6 @@ function OnShow()
 			end
 		end
 	end
-
-	-- ============================================================================
-	-- 【临时调试】联机工具箱2.0 条目4.1 Phase 0：SetValue 长度上限与mod列表顺序实测（测完删除）
-	MPT_DebugValueLengthTest();
-	-- ----------------------------------------------------------------------------
 end
 
 
@@ -3642,12 +3644,14 @@ end
 
 -------------------------------------------------
 -- UpdateCustomButtonsState
--- 刷新本 mod 自定义按钮（AI槽位 / 快捷分队）可见性：仅房主、非热座、非云端时显示。
+-- 刷新本 mod 自定义按钮（AI槽位 / 快捷分队 / 模组校验 / 重新校验）可见性：仅房主、非热座、非云端时显示。
 -------------------------------------------------
 function UpdateCustomButtonsState()
 	local hideButtons : boolean = not Network.IsGameHost() or GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud();
 	Controls.AISlotsButton:SetHide(hideButtons);
 	Controls.RandomTeamButton:SetHide(hideButtons);
+	Controls.ModCheckButton:SetHide(hideButtons);
+	Controls.ModRecheckButton:SetHide(hideButtons);
 end
 
 -- ============================================================================
@@ -3934,121 +3938,493 @@ function OnAdUpdate( fDeltaTime )
 end
 
 -- ============================================================================
--- 【临时调试】条目4.1 Phase 0：PlayerConfig SetValue 长度上限与 GetEnabledMods 双端顺序实测
--- 用法：双客户端进入联机房间（非热座/PBC）后自动执行一次；之后查看 Logs/Lua.log：
---   MPT_LEN_LOCAL  = 本机写入后立即回读（验证本机写读无损）
---   MPT_LEN_REMOTE = 延迟 3s/10s 转储所有真人槽位各测试键（验证网络同步后是否截断及截断点）
---   MPT_MODLIST    = 本机 GetEnabledMods() 有序列表（双端对比验证顺序一致，下标编码前提）
--- 结论确认后删除：本函数区全部内容、OnShow 中的调用（MPT_LEN_* 键随退房自动失效）。
+-- 多人游戏 mod 版本校验（条目4.1）
+-- 用法：房主点左下角「模组校验」打开滑出面板，勾选需要校验的 mod（默认全选非官方 mod）；
+--      「重新校验」强制全员重新回报。校验未通过时房主启动倒计时被压住并弹窗
+--      （返回重新验证 / 放弃验证），不一致玩家整行红底（各端本地比对，全员可见）。
+-- 数据通道（PlayerConfigurations:SetValue/GetValue + Network.BroadcastPlayerInfo，参考1.67 BSR Poke_Gold）：
+--   MPT_MC_LIST  房主写："<rev>_<idx1>,<idx2>,..."（勾选清单，idx 为 GetEnabledMods 下标；实测4000字符无损，下标编码仅百余字符）
+--   MPT_MC_HOSTV 房主写："<v1>;<v2>;..."（房主各 mod 的 Version 指纹，与清单同序，作为比对基准）
+--   MPT_MC_VERS  非房主写自己："<rev>_<v1>;<v2>;..."（针对清单 rev 的回报；rev 不匹配视为未回报）
+-- 防换槽误报：状态键 = playerID+玩家名，换槽/换人即重置；回报自带 rev，旧清单回报天然失效。
 -- ============================================================================
-local MPT_LEN_TEST_SIZES : table = {100, 500, 1000, 1500, 2000, 2500, 4000};	-- 阶梯测试长度（字符）
-local MPT_DEBUG_DUMP_TIMES : table = {3, 10};								-- 延迟转储时间点（秒，os.time 墙钟），等远端数据同步
-local m_mptDebugHasRun : boolean = false;	-- OnShow 可能多次触发，只测一次
-local m_mptDebugStartTime : number = 0;		-- 测试起始时刻（os.time 墙钟；os.clock 是 CPU 时间，前端闲置时不可靠）
-local m_mptDebugDumpPhase : number = 1;		-- 当前转储阶段下标
+local MPT_CHECK = { PENDING = 0, OK = 1, FAILED = 2, HOST = 99 };	-- 校验状态命名常量（替代 MPH 魔法数字）
+local MPT_MC_LIST_KEY : string = "MPT_MC_LIST";
+local MPT_MC_HOSTV_KEY : string = "MPT_MC_HOSTV";
+local MPT_MC_VERS_KEY : string = "MPT_MC_VERS";
+local MPT_REPORT_TIMEOUT : number = 10;	-- 清单生效后等待回报的超时（秒，os.time 墙钟），超时判「未回报」
+local g_mpt_playerModStatus : table = {};	-- [playerID] = { Status, Name, Mismatch, NoReport }，按 playerID 做键
+local g_mpt_enabledMods : table = {};		-- GetEnabledMods() 缓存（有序；实测按 mod Id 升序确定性排列）
+local g_mpt_nonOfficialIdx : table = {};	-- 非官方 mod 的下标列表
+local g_mpt_checkedIdx : table = {};		-- 房主勾选集合 [idx]=true（默认全选）
+local g_mpt_listRev : number = 0;			-- 本机已知的最新清单 rev（房主=已发布值，客户端=读到的值）
+local g_mpt_publishTime : number = 0;		-- 当前清单生效时刻（os.time，超时判定用）
+local g_mpt_knownHostID : number = -1;		-- 已知房主槽位（检测房主迁移）
+local g_mpt_checkSkipped : boolean = false;	-- 房主已选择「放弃验证」（增员时自动复位）
+local g_mpt_popupShownRev : number = -1;	-- 已弹过窗的清单 rev（同一 rev 只弹一次）
+local g_mpt_lastTickTime : number = 0;		-- tick 节流（os.time 秒级）
+
+local m_modCheckListIM = InstanceManager:new("ModCheckListEntry", "ModCheckRowRoot", Controls.ModCheckListStack);
 
 -------------------------------------------------
--- MPT_DebugBuildString
--- 构造指定长度的测试串：主体 'A' + 尾部标记 "_END<len>"，用于检测截断点。
+-- MPT_SplitString
+-- 按单个分隔符拆分字符串为数组（"+ "模式丢弃空段；本模块数据中无空段，空串返回空表）。
 -------------------------------------------------
-function MPT_DebugBuildString( len : number )
-	local tail : string = "_END" .. tostring(len);
-	return string.rep("A", len - #tail) .. tail;
+function MPT_SplitString( text : string, delimiter : string )
+	local result : table = {};
+	if text == nil or text == "" then
+		return result;
+	end
+	for piece in string.gmatch(text, "([^" .. delimiter .. "]+)") do
+		table.insert(result, piece);
+	end
+	return result;
 end
 
 -------------------------------------------------
--- MPT_DebugDumpRemoteValues
--- 转储所有真人槽位的 MPT_LEN_* 测试键（本机+远端）。
--- 每键打印：阶段标记 槽位 玩家名 标称长度 实际长度/MISSING 尾部8字符。
+-- MPT_GetLocalModVersion
+-- 读取本机已安装 mod 的 modinfo <Properties><Version>（同 MPH GetLocalModVersion :551）；
+-- 未安装或未填 Version 均返回 "?"（双方同为 "?" 视为一致）。
 -------------------------------------------------
-function MPT_DebugDumpRemoteValues( tag : string )
-	local playerIDs : table = GameConfiguration.GetMultiplayerPlayerIDs();
-	for _, playerID in ipairs(playerIDs) do
-		local pPlayerConfig = PlayerConfigurations[playerID];
-		if pPlayerConfig ~= nil and pPlayerConfig:IsHuman() then
-			local playerName : string = tostring(pPlayerConfig:GetPlayerName());
-			for _, len in ipairs(MPT_LEN_TEST_SIZES) do
-				local value = pPlayerConfig:GetValue("MPT_LEN_" .. len);
-				if value ~= nil then
-					print("MPT_LEN_REMOTE", tag, playerID, playerName, len, string.len(value), string.sub(value, -8));
-				else
-					print("MPT_LEN_REMOTE", tag, playerID, playerName, len, "MISSING");
-				end
+function MPT_GetLocalModVersion( modId )
+	if modId == nil then
+		return "?";
+	end
+	local mods = Modding.GetInstalledMods();
+	if mods == nil then
+		return "?";
+	end
+	for _, mod in ipairs(mods) do
+		if mod.Id == modId then
+			local version = Modding.GetModProperty(mod.Handle, "Version");
+			return version ~= nil and tostring(version) or "?";
+		end
+	end
+	return "?";
+end
+
+-------------------------------------------------
+-- MPT_GetModTitle
+-- 取启用 mod 的显示名（Title 为 LOC 标签时本地化，否则原样）。
+-------------------------------------------------
+function MPT_GetModTitle( modIndex : number )
+	local curMod = g_mpt_enabledMods[modIndex];
+	if curMod == nil then
+		return "mod#" .. tostring(modIndex);
+	end
+	local title : string = tostring(curMod.Title);
+	if string.sub(title, 1, 4) == "LOC_" then
+		return Locale.Lookup(title);
+	end
+	return title;
+end
+
+-------------------------------------------------
+-- MPT_CacheEnabledMods
+-- 刷新 GetEnabledMods() 缓存与非官方下标列表；新出现的非官方 mod 默认勾选。
+-- 调用点：tick 每秒一次（覆盖游戏配置变化）、面板构建前、发布前。
+-------------------------------------------------
+function MPT_CacheEnabledMods()
+	g_mpt_enabledMods = GameConfiguration.GetEnabledMods() or {};
+	g_mpt_nonOfficialIdx = {};
+	for i, curMod in ipairs(g_mpt_enabledMods) do
+		if not curMod.Official then
+			table.insert(g_mpt_nonOfficialIdx, i);
+			if g_mpt_checkedIdx[i] == nil then
+				g_mpt_checkedIdx[i] = true;	-- 默认全选（用户既定）
 			end
 		end
 	end
 end
 
 -------------------------------------------------
--- MPT_DebugDelayedDump（Events.GameCoreEventPublishComplete 回调）
--- 测试开始后 3s / 10s 各转储一次远端值，完成后自行退订。
--- 注意：SystemUpdateUI 是按需事件（系统请求更新才发，见原版 OnUpdateUI 签名），不能当每帧 tick 用。
+-- MPT_GetHostCheckList
+-- 读房主槽位的清单 value；返回 rev, idxArray（房主未发布时返回 nil）。
 -------------------------------------------------
-function MPT_DebugDelayedDump()
-	if m_mptDebugDumpPhase > #MPT_DEBUG_DUMP_TIMES then
-		Events.GameCoreEventPublishComplete.Remove(MPT_DebugDelayedDump);
-		return;
+function MPT_GetHostCheckList()
+	local hostID : number = Network.GetGameHostPlayerID();
+	local pHostConfig = PlayerConfigurations[hostID];
+	if pHostConfig == nil then
+		return nil;
 	end
-	if os.time() - m_mptDebugStartTime < MPT_DEBUG_DUMP_TIMES[m_mptDebugDumpPhase] then
-		return;
+	local listStr = pHostConfig:GetValue(MPT_MC_LIST_KEY);
+	if listStr == nil or listStr == "" then
+		return nil;
 	end
-	MPT_DebugDumpRemoteValues("T" .. tostring(MPT_DEBUG_DUMP_TIMES[m_mptDebugDumpPhase]) .. "s");
-	m_mptDebugDumpPhase = m_mptDebugDumpPhase + 1;
+	local splitAt = string.find(listStr, "_");
+	if splitAt == nil then
+		return nil;
+	end
+	local rev = tonumber(string.sub(listStr, 1, splitAt - 1));
+	local idxArray = MPT_SplitString(string.sub(listStr, splitAt + 1), ",");
+	return rev, idxArray;
 end
 
 -------------------------------------------------
--- MPT_DebugValueLengthTest（OnShow 调用，只跑一次）
--- 阶梯长度写入 MPT_LEN_* 键（每长度独立键 + 单次广播，避免循环广播被合并只剩末值），
--- 本机立即回读打日志；打印 GetEnabledMods 有序列表；订阅延迟转储读取远端同步结果。
+-- MPT_UpdateRowWarning
+-- 按状态显隐玩家行整行红底（ModCheckWarnBox）；forceHide 用于玩家退出时强制还原。
 -------------------------------------------------
-function MPT_DebugValueLengthTest()
-	if m_mptDebugHasRun then
+function MPT_UpdateRowWarning( playerID : number, forceHide : boolean )
+	local playerEntry = g_PlayerEntries[playerID];
+	if playerEntry == nil then
 		return;
 	end
-	if GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud() then
-		return;	-- 仅标准联机房间有同步意义
+	local info = g_mpt_playerModStatus[playerID];
+	local show : boolean = (forceHide ~= true) and info ~= nil and info.Status == MPT_CHECK.FAILED;
+	playerEntry.ModCheckWarnBox:SetHide(not show);
+end
+
+-------------------------------------------------
+-- MPT_ResetPlayerStatusForNewRev
+-- 新清单生效：非房主玩家全部回 PENDING 等新一轮回报，红行同步刷新。
+-------------------------------------------------
+function MPT_ResetPlayerStatusForNewRev()
+	for playerID, info in pairs(g_mpt_playerModStatus) do
+		if info.Status ~= MPT_CHECK.HOST then
+			info.Status = MPT_CHECK.PENDING;
+			info.Mismatch = {};
+			info.NoReport = false;
+			MPT_UpdateRowWarning(playerID);
+		end
+	end
+end
+
+-------------------------------------------------
+-- MPT_PublishCheckList（房主）
+-- 勾选集合 → 下标清单 + 本地 Version 指纹，rev 自增后经 PlayerConfig value 广播。
+-- 调用点：勾选变化 / 「重新校验」/ 弹窗「返回重新验证」/ 接管房主 / 首次进房（tick 驱动）。
+-------------------------------------------------
+function MPT_PublishCheckList()
+	if not Network.IsGameHost() then
+		return;
+	end
+	MPT_CacheEnabledMods();
+	local idxList : table = {};
+	local verList : table = {};
+	for _, idx in ipairs(g_mpt_nonOfficialIdx) do
+		if g_mpt_checkedIdx[idx] then
+			table.insert(idxList, tostring(idx));
+			table.insert(verList, MPT_GetLocalModVersion(g_mpt_enabledMods[idx].Id));
+		end
+	end
+	g_mpt_listRev = g_mpt_listRev + 1;
+	local hostID : number = Network.GetLocalPlayerID();
+	local pConfig = PlayerConfigurations[hostID];
+	pConfig:SetValue(MPT_MC_LIST_KEY, tostring(g_mpt_listRev) .. "_" .. table.concat(idxList, ","));
+	pConfig:SetValue(MPT_MC_HOSTV_KEY, table.concat(verList, ";"));
+	Network.BroadcastPlayerInfo(hostID);
+	g_mpt_publishTime = os.time();
+	MPT_ResetPlayerStatusForNewRev();
+	print("MPT_PublishCheckList rev=", g_mpt_listRev, "mods=", #idxList);
+end
+
+-------------------------------------------------
+-- MPT_ReportVersions（非房主）
+-- 按房主清单顺序计算本机 Version 指纹，带上清单 rev 回报（广播）。
+-------------------------------------------------
+function MPT_ReportVersions()
+	if Network.IsGameHost() then
+		return;	-- 房主指纹走 HOSTV，无需回报
+	end
+	local rev, idxArray = MPT_GetHostCheckList();
+	if rev == nil then
+		return;
+	end
+	local verList : table = {};
+	for _, idxStr in ipairs(idxArray) do
+		local idx = tonumber(idxStr);
+		local modId = nil;
+		if idx ~= nil and g_mpt_enabledMods[idx] ~= nil then
+			modId = g_mpt_enabledMods[idx].Id;
+		end
+		table.insert(verList, MPT_GetLocalModVersion(modId));
 	end
 	local localPlayerID : number = Network.GetLocalPlayerID();
-	if localPlayerID == nil or localPlayerID < 0 then
-		return;
-	end
-	local pLocalConfig = PlayerConfigurations[localPlayerID];
-	if pLocalConfig == nil then
-		return;
-	end
-	m_mptDebugHasRun = true;
-	print("MPT_DEBUG_BEGIN", os.date("%c"), "localPlayerID=", localPlayerID);
-
-	-- 阶梯长度写入并广播
-	for _, len in ipairs(MPT_LEN_TEST_SIZES) do
-		pLocalConfig:SetValue("MPT_LEN_" .. len, MPT_DebugBuildString(len));
-	end
+	local pConfig = PlayerConfigurations[localPlayerID];
+	pConfig:SetValue(MPT_MC_VERS_KEY, tostring(rev) .. "_" .. table.concat(verList, ";"));
 	Network.BroadcastPlayerInfo(localPlayerID);
+end
 
-	-- 本机立即回读
-	for _, len in ipairs(MPT_LEN_TEST_SIZES) do
-		local value = pLocalConfig:GetValue("MPT_LEN_" .. len);
-		if value ~= nil then
-			print("MPT_LEN_LOCAL", len, string.len(value), string.sub(value, -8));
-		else
-			print("MPT_LEN_LOCAL", len, "MISSING");
+-------------------------------------------------
+-- MPT_ReconcilePlayers
+-- 对账玩家状态表（加入/退出/换槽重新计算）：
+--   键 = playerID+玩家名，换槽/换人即重置（防读取旧占槽者残留 value 误报，用户指定）；
+--   退出删除；增员复位「放弃验证」；房主自身恒为 HOST。
+-------------------------------------------------
+function MPT_ReconcilePlayers()
+	local seen : table = {};
+	local added : boolean = false;
+	local playerIDs : table = GameConfiguration.GetMultiplayerPlayerIDs();
+	for _, playerID in ipairs(playerIDs) do
+		local pConfig = PlayerConfigurations[playerID];
+		if pConfig ~= nil and pConfig:IsHuman() and Network.IsPlayerConnected(playerID) then
+			seen[playerID] = true;
+			local name : string = tostring(pConfig:GetPlayerName());
+			local info = g_mpt_playerModStatus[playerID];
+			if info == nil then
+				g_mpt_playerModStatus[playerID] = { Status = MPT_CHECK.PENDING, Name = name, Mismatch = {}, NoReport = false };
+				added = true;
+			elseif info.Name ~= name then
+				info.Status = MPT_CHECK.PENDING;
+				info.Name = name;
+				info.Mismatch = {};
+				info.NoReport = false;
+			end
+		end
+	end
+	for playerID in pairs(g_mpt_playerModStatus) do
+		if not seen[playerID] then
+			MPT_UpdateRowWarning(playerID, true);
+			g_mpt_playerModStatus[playerID] = nil;
+		end
+	end
+	local hostID : number = Network.GetGameHostPlayerID();
+	-- 房主迁移后原房主仍在房：清掉其残留 HOST 标记，重新纳入校验（否则永远跳过比对）
+	for playerID, info in pairs(g_mpt_playerModStatus) do
+		if info.Status == MPT_CHECK.HOST and playerID ~= hostID then
+			info.Status = MPT_CHECK.PENDING;
+		end
+	end
+	if hostID ~= nil and hostID >= 0 and g_mpt_playerModStatus[hostID] ~= nil then
+		g_mpt_playerModStatus[hostID].Status = MPT_CHECK.HOST;
+	end
+	if added then
+		g_mpt_checkSkipped = false;	-- 新玩家未经验证，不继承「放弃验证」
+	end
+end
+
+-------------------------------------------------
+-- MPT_EvaluateAll
+-- 各端对称的纯本地比对：读房主 HOSTV + 各玩家 VERS（rev 需匹配当前清单）→
+-- 状态表与红行；超时未回报判 FAILED（没装本 mod 的玩家必然落入此类）。
+-------------------------------------------------
+function MPT_EvaluateAll()
+	local rev, idxArray = MPT_GetHostCheckList();
+	if rev == nil or rev ~= g_mpt_listRev then
+		return;	-- 清单未发布或本机尚未跟踪到最新 rev
+	end
+	if #idxArray == 0 then
+		-- 空清单 = 无需校验，全部视为通过
+		for playerID, info in pairs(g_mpt_playerModStatus) do
+			if info.Status ~= MPT_CHECK.HOST then
+				info.Status = MPT_CHECK.OK;
+				info.Mismatch = {};
+				info.NoReport = false;
+				MPT_UpdateRowWarning(playerID);
+			end
+		end
+		return;
+	end
+	local hostID : number = Network.GetGameHostPlayerID();
+	local hostVersStr = PlayerConfigurations[hostID]:GetValue(MPT_MC_HOSTV_KEY);
+	local hostVers : table = MPT_SplitString(hostVersStr or "", ";");
+	local now : number = os.time();
+	for playerID, info in pairs(g_mpt_playerModStatus) do
+		if info.Status ~= MPT_CHECK.HOST then
+			local reported : boolean = false;
+			local mismatch : table = {};
+			local pConfig = PlayerConfigurations[playerID];
+			local versStr = pConfig ~= nil and pConfig:GetValue(MPT_MC_VERS_KEY) or nil;
+			if versStr ~= nil then
+				local splitAt = string.find(versStr, "_");
+				if splitAt ~= nil and tonumber(string.sub(versStr, 1, splitAt - 1)) == rev then
+					reported = true;
+					local vers : table = MPT_SplitString(string.sub(versStr, splitAt + 1), ";");
+					for i, idxStr in ipairs(idxArray) do
+						local hostVer : string = tostring(hostVers[i] or "?");
+						local playerVer : string = tostring(vers[i] or "?");
+						if hostVer ~= playerVer then
+							table.insert(mismatch, { Idx = tonumber(idxStr), HostVer = hostVer, PlayerVer = playerVer });
+						end
+					end
+				end
+			end
+			if not reported then
+				if now - g_mpt_publishTime >= MPT_REPORT_TIMEOUT then
+					info.Status = MPT_CHECK.FAILED;
+					info.NoReport = true;
+					info.Mismatch = {};
+				else
+					info.Status = MPT_CHECK.PENDING;
+				end
+			elseif #mismatch > 0 then
+				info.Status = MPT_CHECK.FAILED;
+				info.NoReport = false;
+				info.Mismatch = mismatch;
+			else
+				info.Status = MPT_CHECK.OK;
+				info.NoReport = false;
+				info.Mismatch = {};
+			end
+			MPT_UpdateRowWarning(playerID);
+		end
+	end
+end
+
+-------------------------------------------------
+-- MPT_IsModCheckFailing
+-- 任一玩家未通过（PENDING/FAILED）即 true；CheckGameAutoStart 钩子据此压倒计时。
+-------------------------------------------------
+function MPT_IsModCheckFailing()
+	for _, info in pairs(g_mpt_playerModStatus) do
+		if info.Status ~= MPT_CHECK.OK and info.Status ~= MPT_CHECK.HOST then
+			return true;
+		end
+	end
+	return false;
+end
+
+-------------------------------------------------
+-- MPT_IsCheckActive
+-- 功能总开关：热座/PBC 不启用（value 通道在 PBC 行为未验证），退房后停止。
+-------------------------------------------------
+function MPT_IsCheckActive()
+	if GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud() then
+		return false;
+	end
+	return Network.IsInSession();
+end
+
+-------------------------------------------------
+-- MPT_ModCheckTick（Events.GameCoreEventPublishComplete，Initialize 注册）
+-- 1s 节流驱动全部校验逻辑：房主首发/迁移重发清单 → 客户端 rev 跟踪与回报 →
+-- reconcile（加入/退出/换槽）→ 本地比对 → 红行。统一兜底，不依赖单次事件。
+-------------------------------------------------
+function MPT_ModCheckTick()
+	if not MPT_IsCheckActive() then
+		return;
+	end
+	local now : number = os.time();
+	if now == g_mpt_lastTickTime then
+		return;
+	end
+	g_mpt_lastTickTime = now;
+
+	MPT_CacheEnabledMods();
+
+	-- 房主迁移检测：本机成为新房主时接续 rev 重新发布清单
+	local hostID : number = Network.GetGameHostPlayerID();
+	if hostID ~= g_mpt_knownHostID then
+		g_mpt_knownHostID = hostID;
+		if Network.IsGameHost() then
+			MPT_PublishCheckList();
 		end
 	end
 
-	-- 启用 mod 有序列表（双端对比验证顺序一致性）
-	local enabledMods = GameConfiguration.GetEnabledMods();
-	if enabledMods ~= nil then
-		for i, curMod in ipairs(enabledMods) do
-			print("MPT_MODLIST", i, tostring(curMod.Id), "Official=", tostring(curMod.Official));
-		end
-	else
-		print("MPT_MODLIST", "GetEnabledMods() returned nil");
+	-- 房主首次进房发布
+	if Network.IsGameHost() and g_mpt_listRev == 0 then
+		MPT_PublishCheckList();
 	end
 
-	-- 延迟转储远端同步结果（GameCoreEventPublishComplete 每帧事件 + os.time 墙钟）
-	m_mptDebugStartTime = os.time();
-	m_mptDebugDumpPhase = 1;
-	Events.GameCoreEventPublishComplete.Add(MPT_DebugDelayedDump);
+	-- 跟踪清单 rev：变化 → 重报 + 状态重置（房主读到自己发布的同 rev 不会进入）
+	local rev = MPT_GetHostCheckList();
+	if rev ~= nil and rev ~= g_mpt_listRev then
+		g_mpt_listRev = rev;
+		g_mpt_publishTime = now;
+		MPT_ReportVersions();
+		MPT_ResetPlayerStatusForNewRev();
+	end
+
+	MPT_ReconcilePlayers();
+	MPT_EvaluateAll();
+end
+
+-------------------------------------------------
+-- MPT_BuildFailureDetails
+-- 弹窗明细：逐未通过玩家列出原因（未回报/逐 mod 版本不一致/等待中）。
+-------------------------------------------------
+function MPT_BuildFailureDetails()
+	local details : table = {};
+	for playerID, info in pairs(g_mpt_playerModStatus) do
+		if info.Status == MPT_CHECK.FAILED then
+			if info.NoReport then
+				table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_NOREPORT", info.Name));
+			else
+				for _, m in ipairs(info.Mismatch) do
+					table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_MISMATCH", info.Name, MPT_GetModTitle(m.Idx), m.HostVer, m.PlayerVer));
+				end
+			end
+		elseif info.Status == MPT_CHECK.PENDING then
+			table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_PENDING", info.Name));
+		end
+	end
+	return table.concat(details, "[NEWLINE]");
+end
+
+-------------------------------------------------
+-- MPT_MaybePopupModCheckWarning
+-- 校验未通过时给房主弹窗（同一 rev 只弹一次，防 CheckGameAutoStart 反复触发）：
+-- 按钮①「返回重新验证」→ rev 自增强制全员重报；按钮②「放弃验证」→ 放行本次启动。
+-------------------------------------------------
+function MPT_MaybePopupModCheckWarning()
+	if g_mpt_popupShownRev == g_mpt_listRev then
+		return;
+	end
+	g_mpt_popupShownRev = g_mpt_listRev;
+	m_kPopupDialog:Close();
+	m_kPopupDialog:AddTitle(Locale.ToUpper(Locale.Lookup("LOC_MPT_MODCHECK_POPUP_TITLE")));
+	m_kPopupDialog:AddText(Locale.Lookup("LOC_MPT_MODCHECK_POPUP_TEXT") .. "[NEWLINE]" .. MPT_BuildFailureDetails());
+	m_kPopupDialog:AddButton(Locale.Lookup("LOC_MPT_MODCHECK_POPUP_RECHECK"), MPT_OnPopupRecheck);
+	m_kPopupDialog:AddButton(Locale.Lookup("LOC_MPT_MODCHECK_POPUP_SKIP"), MPT_OnPopupSkip);
+	m_kPopupDialog:Open();
+end
+
+function MPT_OnPopupRecheck()
+	MPT_PublishCheckList();
+end
+
+function MPT_OnPopupSkip()
+	g_mpt_checkSkipped = true;
+	CheckGameAutoStart();	-- 重新评估启动（本次放行）
+end
+
+-------------------------------------------------
+-- MPT_BuildModCheckPanel / MPT_OnModCheckToggle
+-- 重建面板复选清单（全部非官方 mod：CheckBox + 名称 + 本机 Version）；勾选变化即时广播。
+-------------------------------------------------
+function MPT_BuildModCheckPanel()
+	MPT_CacheEnabledMods();
+	m_modCheckListIM:ResetInstances();
+	for _, idx in ipairs(g_mpt_nonOfficialIdx) do
+		local row = m_modCheckListIM:GetInstance();
+		row.ModCheckRowName:SetText(MPT_GetModTitle(idx));
+		row.ModCheckRowVersion:SetText(MPT_GetLocalModVersion(g_mpt_enabledMods[idx].Id));
+		row.ModCheckRowCheck:SetCheck(g_mpt_checkedIdx[idx] == true);
+		row.ModCheckRowRoot:RegisterCallback(Mouse.eLClick, function()
+			UI.PlaySound("Play_UI_Click");
+			MPT_OnModCheckToggle(idx, row);
+		end);
+	end
+	Controls.ModCheckListStack:CalculateSize();
+	Controls.ModCheckScrollPanel:CalculateSize();
+end
+
+function MPT_OnModCheckToggle( idx : number, row : table )
+	g_mpt_checkedIdx[idx] = not (g_mpt_checkedIdx[idx] == true);
+	row.ModCheckRowCheck:SetCheck(g_mpt_checkedIdx[idx]);
+	MPT_PublishCheckList();
+end
+
+-------------------------------------------------
+-- 面板开合（仿 BSR LeaderStatsSlideAnim：Open=SetToBeginning+Play，Close=加速 Reverse）
+-- 与「重新校验」按钮回调（rev 自增强制全员重报）。
+-------------------------------------------------
+function MPT_OnModCheckPanelOpen()
+	MPT_BuildModCheckPanel();
+	Controls.ModCheckSlideAnim:SetHide(false);
+	Controls.ModCheckSlideAnim:SetSpeed(1);
+	Controls.ModCheckSlideAnim:SetToBeginning();
+	Controls.ModCheckSlideAnim:Play();
+end
+
+function MPT_OnModCheckPanelClose()
+	Controls.ModCheckSlideAnim:SetSpeed(3);
+	Controls.ModCheckSlideAnim:Reverse();
+end
+
+function MPT_OnRecheckButton()
+	UI.PlaySound("Play_UI_Click");
+	MPT_PublishCheckList();
 end
 
 -- ===========================================================================
@@ -4104,6 +4480,15 @@ function Initialize()
 	Controls.AdRightButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	ContextPtr:SetUpdate( OnAdUpdate );
 	BuildAdCarousel();
+	-- ============================================================================
+	-- 联机工具箱2.0：注册「模组校验」「重新校验」按钮、校验面板关闭回调与校验 tick（条目4.1）
+	-- ----------------------------------------------------------------------------
+	Controls.ModCheckButton:RegisterCallback( Mouse.eLClick, MPT_OnModCheckPanelOpen );
+	Controls.ModCheckButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.ModRecheckButton:RegisterCallback( Mouse.eLClick, MPT_OnRecheckButton );
+	Controls.ModRecheckButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.ModCheckCloseButton:RegisterCallback( Mouse.eLClick, MPT_OnModCheckPanelClose );
+	Events.GameCoreEventPublishComplete.Add( MPT_ModCheckTick );
 
 	Controls.InviteButton:SetToolTipString(GetInviteTT());
 
