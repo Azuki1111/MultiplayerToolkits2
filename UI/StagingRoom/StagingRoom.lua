@@ -692,7 +692,8 @@ end
 
 function OnModStatusUpdated(playerID: number, modState : number, bytesDownloaded : number, bytesTotal : number,
 							modsRemaining : number, modsRequired : number)
-	
+
+	g_mpt_installedVerCache = nil;	-- 联机工具箱2.0：mod 下载/启用状态变化，版本缓存失效重建（条目4.1）
 	if(modState == 1) then -- MOD_STATE_DOWNLOADING
 		local modStatusString = downloadPendingStr;
 		modStatusString = modStatusString .. "[NEWLINE][Icon_AdditionalContent]" .. tostring(modsRemaining) .. "/" .. tostring(modsRequired);
@@ -3961,9 +3962,10 @@ local g_mpt_checkedIdx : table = {};		-- 房主勾选集合 [idx]=true（默认�
 local g_mpt_listRev : number = 0;			-- 本机已知的最新清单 rev（房主=已发布值，客户端=读到的值）
 local g_mpt_publishTime : number = 0;		-- 当前清单生效时刻（os.time，超时判定用）
 local g_mpt_knownHostID : number = -1;		-- 已知房主槽位（检测房主迁移）
-local g_mpt_checkSkipped : boolean = false;	-- 房主已选择「放弃验证」（增员时自动复位）
+g_mpt_checkSkipped = false;	-- 房主已选择「放弃验证」（增员时自动复位）。不用 local：CheckGameAutoStart（本文件 :1261 前部）引用本变量，Lua local 词法作用域不覆盖声明点之前的函数
 local g_mpt_popupShownRev : number = -1;	-- 已弹过窗的清单 rev（同一 rev 只弹一次）
 local g_mpt_lastTickTime : number = 0;		-- tick 节流（os.time 秒级）
+g_mpt_installedVerCache = nil;	-- 已安装 mod 版本缓存 [modId]=version字符串（nil=未构建；失效点：ModStatusUpdated / 新会话）。不用 local：OnModStatusUpdated（本文件 :693 前部）引用本变量，local 词法作用域不覆盖声明点之前的函数
 
 local m_modCheckListIM = InstanceManager:new("ModCheckListEntry", "ModCheckRowRoot", Controls.ModCheckListStack);
 
@@ -3983,25 +3985,37 @@ function MPT_SplitString( text : string, delimiter : string )
 end
 
 -------------------------------------------------
+-- MPT_RebuildInstalledVerCache
+-- 一次 Modding.GetInstalledMods() 全量枚举，构建 [modId]=version 映射（Version 缺失存 "?"）。
+-- 背景：GetInstalledMods 枚举开销随安装 mod 数增长，旧实现每次发布按勾选数调用 7+ 次全量枚举，
+--      导致切换槽位/勾选复选框时明显卡顿；改为懒构建一次、之后纯表查找。
+-- 失效点：Events.ModStatusUpdated（mod 下载/启用状态变化）、MPT_ResetModCheckSession（新会话保险）。
+-------------------------------------------------
+function MPT_RebuildInstalledVerCache()
+	g_mpt_installedVerCache = {};
+	local mods = Modding.GetInstalledMods();
+	if mods == nil then
+		return;
+	end
+	for _, mod in ipairs(mods) do
+		local version = Modding.GetModProperty(mod.Handle, "Version");
+		g_mpt_installedVerCache[mod.Id] = version ~= nil and tostring(version) or "?";
+	end
+end
+
+-------------------------------------------------
 -- MPT_GetLocalModVersion
 -- 读取本机已安装 mod 的 modinfo <Properties><Version>（同 MPH GetLocalModVersion :551）；
--- 未安装或未填 Version 均返回 "?"（双方同为 "?" 视为一致）。
+-- 未安装或未填 Version 均返回 "?"（双方同为 "?" 视为一致）。走 g_mpt_installedVerCache 缓存。
 -------------------------------------------------
 function MPT_GetLocalModVersion( modId )
 	if modId == nil then
 		return "?";
 	end
-	local mods = Modding.GetInstalledMods();
-	if mods == nil then
-		return "?";
+	if g_mpt_installedVerCache == nil then
+		MPT_RebuildInstalledVerCache();
 	end
-	for _, mod in ipairs(mods) do
-		if mod.Id == modId then
-			local version = Modding.GetModProperty(mod.Handle, "Version");
-			return version ~= nil and tostring(version) or "?";
-		end
-	end
-	return "?";
+	return g_mpt_installedVerCache[modId] or "?";
 end
 
 -------------------------------------------------
@@ -4103,6 +4117,7 @@ function MPT_ResetModCheckSession()
 	g_mpt_checkSkipped = false;
 	g_mpt_popupShownRev = -1;
 	g_mpt_playerModStatus = {};
+	g_mpt_installedVerCache = nil;	-- 版本缓存一并失效（新会话保险，下次用到时一次枚举重建）
 end
 
 -------------------------------------------------
