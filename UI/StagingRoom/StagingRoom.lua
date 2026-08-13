@@ -3646,13 +3646,12 @@ end
 
 -------------------------------------------------
 -- UpdateCustomButtonsState
--- 刷新本 mod 自定义按钮（AI槽位 / 快捷分队 / 模组校验 / 重新校验）可见性：仅房主、非热座、非云端时显示。
+-- 刷新本 mod 自定义按钮（AI槽位 / 快捷分队 / 重新校验）可见性：仅房主、非热座、非云端时显示。
 -------------------------------------------------
 function UpdateCustomButtonsState()
 	local hideButtons : boolean = not Network.IsGameHost() or GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud();
 	Controls.AISlotsButton:SetHide(hideButtons);
 	Controls.RandomTeamButton:SetHide(hideButtons);
-	Controls.ModCheckButton:SetHide(hideButtons);
 	Controls.ModRecheckButton:SetHide(hideButtons);
 end
 
@@ -3941,11 +3940,12 @@ end
 
 -- ============================================================================
 -- 多人游戏 mod 版本校验（条目4.1）
--- 用法：房主点左下角「模组校验」打开滑出面板，勾选需要校验的 mod（默认全选非官方 mod）；
---      「重新校验」强制全员重新回报。校验未通过时房主启动倒计时被压住并弹窗
+-- 校验清单：SQL 注册表 MPT_ModCheck（前端配置库，见 FrontEnd/ModCheck/ModCheck_Data.sql），
+--      各 mod 自行登记 modId（opt-in）；房主广播 注册表∩已启用 的 modId 与版本指纹。
+--      「重新校验」按钮强制全员重新回报。校验未通过时房主启动倒计时被压住并弹窗
 --      （返回重新验证 / 放弃验证），不一致玩家整行红底（各端本地比对，全员可见）。
 -- 数据通道（PlayerConfigurations:SetValue/GetValue + Network.BroadcastPlayerInfo，参考1.67 BSR Poke_Gold）：
---   MPT_MC_LIST  房主写："<rev>_<idx1>,<idx2>,..."（勾选清单，idx 为 GetEnabledMods 下标；实测4000字符无损，下标编码仅百余字符）
+--   MPT_MC_LIST  房主写："<rev>_<modId1>,<modId2>,..."（注册清单，直接发 modId；实测4000字符无损）
 --   MPT_MC_HOSTV 房主写："<v1>;<v2>;..."（房主各 mod 的 Version 指纹，与清单同序，作为比对基准）
 --   MPT_MC_VERS  非房主写自己："<rev>_<v1>;<v2>;..."（针对清单 rev 的回报；rev 不匹配视为未回报）
 -- 防换槽误报：状态键 = playerID+玩家名，换槽/换人即重置；回报自带 rev，旧清单回报天然失效。
@@ -3956,9 +3956,7 @@ local MPT_MC_HOSTV_KEY : string = "MPT_MC_HOSTV";
 local MPT_MC_VERS_KEY : string = "MPT_MC_VERS";
 local MPT_REPORT_TIMEOUT : number = 10;	-- 清单生效后等待回报的超时（秒，os.time 墙钟），超时判「未回报」
 local g_mpt_playerModStatus : table = {};	-- [playerID] = { Status, Name, Mismatch, NoReport }，按 playerID 做键
-local g_mpt_enabledMods : table = {};		-- GetEnabledMods() 缓存（有序；实测按 mod Id 升序确定性排列）
-local g_mpt_nonOfficialIdx : table = {};	-- 非官方 mod 的下标列表
-local g_mpt_checkedIdx : table = {};		-- 房主勾选集合 [idx]=true（默认全选）
+local g_mpt_enabledModMap : table = {};	-- 已启用 mod 映射 [modId]=rawTitle（启用过滤与标题解析用）
 local g_mpt_listRev : number = 0;			-- 本机已知的最新清单 rev（房主=已发布值，客户端=读到的值）
 local g_mpt_publishTime : number = 0;		-- 当前清单生效时刻（os.time，超时判定用）
 local g_mpt_knownHostID : number = -1;		-- 已知房主槽位（检测房主迁移）
@@ -3966,8 +3964,6 @@ g_mpt_checkSkipped = false;	-- 房主已选择「放弃验证」（增员时自�
 local g_mpt_popupShownRev : number = -1;	-- 已弹过窗的清单 rev（同一 rev 只弹一次）
 local g_mpt_lastTickTime : number = 0;		-- tick 节流（os.time 秒级）
 g_mpt_installedVerCache = nil;	-- 已安装 mod 版本缓存 [modId]=version字符串（nil=未构建；失效点：ModStatusUpdated / 新会话）。不用 local：OnModStatusUpdated（本文件 :693 前部）引用本变量，local 词法作用域不覆盖声明点之前的函数
-
-local m_modCheckListIM = InstanceManager:new("ModCheckListEntry", "ModCheckRowRoot", Controls.ModCheckListStack);
 
 -------------------------------------------------
 -- MPT_SplitString
@@ -4020,14 +4016,13 @@ end
 
 -------------------------------------------------
 -- MPT_GetModTitle
--- 取启用 mod 的显示名（Title 为 LOC 标签时本地化，否则原样）。
+-- 取启用 mod 的显示名（Title 为 LOC 标签时本地化，否则原样）；未启用/未知名回退为 modId。
 -------------------------------------------------
-function MPT_GetModTitle( modIndex : number )
-	local curMod = g_mpt_enabledMods[modIndex];
-	if curMod == nil then
-		return "mod#" .. tostring(modIndex);
+function MPT_GetModTitle( modId : string )
+	local title = g_mpt_enabledModMap[modId];
+	if title == nil then
+		return tostring(modId);
 	end
-	local title : string = tostring(curMod.Title);
 	if string.sub(title, 1, 4) == "LOC_" then
 		return Locale.Lookup(title);
 	end
@@ -4036,25 +4031,39 @@ end
 
 -------------------------------------------------
 -- MPT_CacheEnabledMods
--- 刷新 GetEnabledMods() 缓存与非官方下标列表；新出现的非官方 mod 默认勾选。
--- 调用点：tick 每秒一次（覆盖游戏配置变化）、面板构建前、发布前。
+-- 刷新已启用 mod 映射 [modId]=rawTitle；调用点：tick 每秒一次（覆盖游戏配置变化）、发布前。
 -------------------------------------------------
 function MPT_CacheEnabledMods()
-	g_mpt_enabledMods = GameConfiguration.GetEnabledMods() or {};
-	g_mpt_nonOfficialIdx = {};
-	for i, curMod in ipairs(g_mpt_enabledMods) do
-		if not curMod.Official then
-			table.insert(g_mpt_nonOfficialIdx, i);
-			if g_mpt_checkedIdx[i] == nil then
-				g_mpt_checkedIdx[i] = true;	-- 默认全选（用户既定）
-			end
-		end
+	g_mpt_enabledModMap = {};
+	local enabledMods = GameConfiguration.GetEnabledMods() or {};
+	for _, curMod in ipairs(enabledMods) do
+		g_mpt_enabledModMap[curMod.Id] = tostring(curMod.Title);
 	end
 end
 
 -------------------------------------------------
+-- MPT_GetRegisteredCheckList
+-- 校验清单 = SQL 注册表 MPT_ModCheck ∩ 当前已启用 mod（各 mod 自行登记 modId，opt-in）；
+-- 返回 modId 数组（发布/回报/比对共用；每次发布时查询，表小开销可忽略）。
+-------------------------------------------------
+function MPT_GetRegisteredCheckList()
+	local result : table = {};
+	local rows = DB.ConfigurationQuery("SELECT ModId FROM MPT_ModCheck ORDER BY rowid ASC");
+	if rows == nil then
+		return result;
+	end
+	for _, row in ipairs(rows) do
+		local modId = row.ModId;
+		if modId ~= nil and g_mpt_enabledModMap[modId] ~= nil then
+			table.insert(result, modId);
+		end
+	end
+	return result;
+end
+
+-------------------------------------------------
 -- MPT_GetHostCheckList
--- 读房主槽位的清单 value；返回 rev, idxArray（房主未发布时返回 nil）。
+-- 读房主槽位的清单 value；返回 rev, modIdArray（房主未发布时返回 nil）。
 -------------------------------------------------
 function MPT_GetHostCheckList()
 	local hostID : number = Network.GetGameHostPlayerID();
@@ -4122,8 +4131,8 @@ end
 
 -------------------------------------------------
 -- MPT_PublishCheckList（房主）
--- 勾选集合 → 下标清单 + 本地 Version 指纹，rev 自增后经 PlayerConfig value 广播。
--- 调用点：勾选变化 / 「重新校验」/ 弹窗「返回重新验证」/ 接管房主 / 首次进房（tick 驱动）。
+-- 注册清单（MPT_ModCheck ∩ 已启用）→ modId 清单 + 本地 Version 指纹，rev 自增后经 PlayerConfig value 广播。
+-- 调用点：「重新校验」/ 弹窗「返回重新验证」/ 接管房主 / 首次进房（tick 驱动）。
 -------------------------------------------------
 function MPT_PublishCheckList()
 	if not Network.IsGameHost() then
@@ -4135,23 +4144,20 @@ function MPT_PublishCheckList()
 		return;
 	end
 	MPT_CacheEnabledMods();
-	local idxList : table = {};
+	local idList : table = MPT_GetRegisteredCheckList();
 	local verList : table = {};
-	for _, idx in ipairs(g_mpt_nonOfficialIdx) do
-		if g_mpt_checkedIdx[idx] then
-			table.insert(idxList, tostring(idx));
-			table.insert(verList, MPT_GetLocalModVersion(g_mpt_enabledMods[idx].Id));
-		end
+	for _, modId in ipairs(idList) do
+		table.insert(verList, MPT_GetLocalModVersion(modId));
 	end
 	g_mpt_listRev = g_mpt_listRev + 1;
 	local hostID : number = Network.GetLocalPlayerID();
 	local pConfig = PlayerConfigurations[hostID];
-	pConfig:SetValue(MPT_MC_LIST_KEY, tostring(g_mpt_listRev) .. "_" .. table.concat(idxList, ","));
+	pConfig:SetValue(MPT_MC_LIST_KEY, tostring(g_mpt_listRev) .. "_" .. table.concat(idList, ","));
 	pConfig:SetValue(MPT_MC_HOSTV_KEY, table.concat(verList, ";"));
 	Network.BroadcastPlayerInfo(hostID);
 	g_mpt_publishTime = os.time();
 	MPT_ResetPlayerStatusForNewRev();
-	print("MPT_PublishCheckList rev=", g_mpt_listRev, "mods=", #idxList);
+	print("MPT_PublishCheckList rev=", g_mpt_listRev, "mods=", #idList);
 end
 
 -------------------------------------------------
@@ -4162,17 +4168,12 @@ function MPT_ReportVersions()
 	if Network.IsGameHost() then
 		return;	-- 房主指纹走 HOSTV，无需回报
 	end
-	local rev, idxArray = MPT_GetHostCheckList();
+	local rev, modIdArray = MPT_GetHostCheckList();
 	if rev == nil then
 		return;
 	end
 	local verList : table = {};
-	for _, idxStr in ipairs(idxArray) do
-		local idx = tonumber(idxStr);
-		local modId = nil;
-		if idx ~= nil and g_mpt_enabledMods[idx] ~= nil then
-			modId = g_mpt_enabledMods[idx].Id;
-		end
+	for _, modId in ipairs(modIdArray) do
 		table.insert(verList, MPT_GetLocalModVersion(modId));
 	end
 	local localPlayerID : number = Network.GetLocalPlayerID();
@@ -4235,11 +4236,11 @@ end
 -- 状态表与红行；超时未回报判 FAILED（没装本 mod 的玩家必然落入此类）。
 -------------------------------------------------
 function MPT_EvaluateAll()
-	local rev, idxArray = MPT_GetHostCheckList();
+	local rev, modIdArray = MPT_GetHostCheckList();
 	if rev == nil or rev ~= g_mpt_listRev then
 		return;	-- 清单未发布或本机尚未跟踪到最新 rev
 	end
-	if #idxArray == 0 then
+	if #modIdArray == 0 then
 		-- 空清单 = 无需校验，全部视为通过
 		for playerID, info in pairs(g_mpt_playerModStatus) do
 			if info.Status ~= MPT_CHECK.HOST then
@@ -4266,11 +4267,11 @@ function MPT_EvaluateAll()
 				if splitAt ~= nil and tonumber(string.sub(versStr, 1, splitAt - 1)) == rev then
 					reported = true;
 					local vers : table = MPT_SplitString(string.sub(versStr, splitAt + 1), ";");
-					for i, idxStr in ipairs(idxArray) do
+					for i, modId in ipairs(modIdArray) do
 						local hostVer : string = tostring(hostVers[i] or "?");
 						local playerVer : string = tostring(vers[i] or "?");
 						if hostVer ~= playerVer then
-							table.insert(mismatch, { Idx = tonumber(idxStr), HostVer = hostVer, PlayerVer = playerVer });
+							table.insert(mismatch, { ModId = modId, HostVer = hostVer, PlayerVer = playerVer });
 						end
 					end
 				end
@@ -4388,7 +4389,7 @@ function MPT_BuildFailureDetails()
 				table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_NOREPORT", info.Name));
 			else
 				for _, m in ipairs(info.Mismatch) do
-					table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_MISMATCH", info.Name, MPT_GetModTitle(m.Idx), m.HostVer, m.PlayerVer));
+					table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_MISMATCH", info.Name, MPT_GetModTitle(m.ModId), m.HostVer, m.PlayerVer));
 				end
 			end
 		elseif info.Status == MPT_CHECK.PENDING then
@@ -4426,49 +4427,9 @@ function MPT_OnPopupSkip()
 end
 
 -------------------------------------------------
--- MPT_BuildModCheckPanel / MPT_OnModCheckToggle
--- 重建面板复选清单（全部非官方 mod：CheckBox + 名称 + 本机 Version）；勾选变化即时广播。
+-- MPT_OnRecheckButton
+-- 「重新校验」按钮回调（rev 自增强制全员重报；校验清单为 SQL 注册表驱动，无手选面板）。
 -------------------------------------------------
-function MPT_BuildModCheckPanel()
-	MPT_CacheEnabledMods();
-	m_modCheckListIM:ResetInstances();
-	for _, idx in ipairs(g_mpt_nonOfficialIdx) do
-		local row = m_modCheckListIM:GetInstance();
-		row.ModCheckRowName:SetText(MPT_GetModTitle(idx));
-		row.ModCheckRowVersion:SetText(MPT_GetLocalModVersion(g_mpt_enabledMods[idx].Id));
-		row.ModCheckRowCheck:SetCheck(g_mpt_checkedIdx[idx] == true);
-		row.ModCheckRowRoot:RegisterCallback(Mouse.eLClick, function()
-			UI.PlaySound("Play_UI_Click");
-			MPT_OnModCheckToggle(idx, row);
-		end);
-	end
-	Controls.ModCheckListStack:CalculateSize();
-	Controls.ModCheckScrollPanel:CalculateSize();
-end
-
-function MPT_OnModCheckToggle( idx : number, row : table )
-	g_mpt_checkedIdx[idx] = not (g_mpt_checkedIdx[idx] == true);
-	row.ModCheckRowCheck:SetCheck(g_mpt_checkedIdx[idx]);
-	MPT_PublishCheckList();
-end
-
--------------------------------------------------
--- 面板开合（仿 BSR LeaderStatsSlideAnim：Open=SetToBeginning+Play，Close=加速 Reverse）
--- 与「重新校验」按钮回调（rev 自增强制全员重报）。
--------------------------------------------------
-function MPT_OnModCheckPanelOpen()
-	MPT_BuildModCheckPanel();
-	Controls.ModCheckSlideAnim:SetHide(false);
-	Controls.ModCheckSlideAnim:SetSpeed(1);
-	Controls.ModCheckSlideAnim:SetToBeginning();
-	Controls.ModCheckSlideAnim:Play();
-end
-
-function MPT_OnModCheckPanelClose()
-	Controls.ModCheckSlideAnim:SetSpeed(3);
-	Controls.ModCheckSlideAnim:Reverse();
-end
-
 function MPT_OnRecheckButton()
 	UI.PlaySound("Play_UI_Click");
 	MPT_PublishCheckList();
@@ -4528,13 +4489,10 @@ function Initialize()
 	ContextPtr:SetUpdate( OnAdUpdate );
 	BuildAdCarousel();
 	-- ============================================================================
-	-- 联机工具箱2.0：注册「模组校验」「重新校验」按钮、校验面板关闭回调与校验 tick（条目4.1）
+	-- 联机工具箱2.0：注册「重新校验」按钮与校验 tick（条目4.1，清单为 SQL 注册表驱动，无手选面板）
 	-- ----------------------------------------------------------------------------
-	Controls.ModCheckButton:RegisterCallback( Mouse.eLClick, MPT_OnModCheckPanelOpen );
-	Controls.ModCheckButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	Controls.ModRecheckButton:RegisterCallback( Mouse.eLClick, MPT_OnRecheckButton );
 	Controls.ModRecheckButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
-	Controls.ModCheckCloseButton:RegisterCallback( Mouse.eLClick, MPT_OnModCheckPanelClose );
 	Events.GameCoreEventPublishComplete.Add( MPT_ModCheckTick );
 
 	Controls.InviteButton:SetToolTipString(GetInviteTT());
