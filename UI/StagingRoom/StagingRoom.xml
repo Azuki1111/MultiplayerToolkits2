@@ -34,12 +34,12 @@
 					<Box Color="0,0,0,50 " Size="parent,parent-15" Anchor="C,T" />
 					<ScrollPanel ID="PlayersScrollPanel" Anchor="L,T"  Vertical="1" Size="parent,parent-35" Offset="0,20">
 						<Container ID="GridContainer" Size="parent-10,parent" Anchor="C,T">
-							<!-- Vertical Grid Lines, Horizontal lines are generated in Lua -->
-							<Line ID="GridLine_1" Start="218,0" End="218,parent+200" Width="2" Color="20,55,70,255" />
-							<Line ID="GridLine_2" Start="287,0" End="287,parent+200" Width="2" Color="20,55,70,255" />
-							<Line ID="GridLine_3" Start="616,0" End="616,parent+200" Width="2" Color="20,55,70,255" />
-							<Line ID="GridLine_4" Start="760,0" End="760,parent+200" Width="2" Color="20,55,70,255" />
-							<Line ID="GridLine_5" Start="928,0" End="928,parent+200" Width="2" Color="20,55,70,255" />
+							<!-- 联机工具箱2.0：网格线由 Line 改为细 Box（实测 Line 控件在 ScrollPanel 内被错误裁剪——视口顶部约两行高的区域内 Line 一律不渲染，Box 不受影响）。Horizontal lines are generated in Lua -->
+							<Box ID="GridLine_1" Anchor="L,T" Offset="218,0" Size="2,parent" Color="20,55,70,255"/>
+							<Box ID="GridLine_2" Anchor="L,T" Offset="287,0" Size="2,parent" Color="20,55,70,255"/>
+							<Box ID="GridLine_3" Anchor="L,T" Offset="616,0" Size="2,parent" Color="20,55,70,255"/>
+							<Box ID="GridLine_4" Anchor="L,T" Offset="760,0" Size="2,parent" Color="20,55,70,255"/>
+							<Box ID="GridLine_5" Anchor="L,T" Offset="928,0" Size="2,parent" Color="20,55,70,255"/>
 						</Container>
 						<!-- Scroll Controls -->
 						<ScrollBar Style="Slider_Blue" Length="parent" Offset="-3,0" Anchor="R,T" AnchorSide="O,I" />
@@ -521,7 +521,8 @@
 	</Instance>
 
 	<Instance Name="HorizontalGridLine">
-		<Line ID="Control" Start="5,-1" End="1000,-1" Width="2" Color="20,55,70,255" />
+		<!-- 联机工具箱2.0：Line 改细 Box（同 GridContainer 注释：Line 在 ScrollPanel 内被错误裁剪）；Lua 以 SetOffsetY 逐行放置 -->
+		<Box ID="Control" Anchor="L,T" Offset="5,0" Size="1000,2" Color="20,55,70,255"/>
 	</Instance>
 
 	<!-- Dialog Support -->

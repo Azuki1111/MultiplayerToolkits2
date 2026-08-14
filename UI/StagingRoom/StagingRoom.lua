@@ -2428,11 +2428,12 @@ function RealizeGridSize()
 	Controls.PlayerListStack:CalculateSize();
 	Controls.PlayersScrollPanel:CalculateSize();
 
+	-- 联机工具箱2.0：竖线由 Line 改为细 Box 后同步改用 SetSizeY（SetEndY 为 Line API，且实测对 XML parent 表达式无效）
 	local gridLineHeight:number = math.max(Controls.PlayerListStack:GetSizeY(), Controls.PlayersScrollPanel:GetSizeY());
 	for i = 1, NUM_COLUMNS do
-		Controls["GridLine_" .. i]:SetEndY(gridLineHeight);
+		Controls["GridLine_" .. i]:SetSizeY(gridLineHeight);
 	end
-	
+
 	Controls.GridContainer:SetSizeY(gridLineHeight);
 end
 
