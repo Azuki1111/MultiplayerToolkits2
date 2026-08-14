@@ -2534,6 +2534,7 @@ function OnShow()
 	RefreshHostPermissions();	-- 联机工具箱2.0：刷新「AI槽位」按钮可见性（条目3.2）
 	m_shownPBCReadyPopup = false;
 	m_exitReadyWait = false;
+	RestoreAdCarousel();	-- 联机工具箱2.0：重进准备房间恢复广告面板（条目3.6）
 
 	local networkSessionID:number = Network.GetSessionID();
 	if m_sessionID ~= networkSessionID then
@@ -3855,6 +3856,25 @@ function OnAdEntryClick( entryIndex )
 end
 
 -------------------------------------------------
+-- OnAdCloseClick
+-- 关闭按钮回调：隐藏轮播容器（仅本次进入有效，重进准备房间由 RestoreAdCarousel 恢复）。
+-------------------------------------------------
+function OnAdCloseClick()
+	Controls.AdCarouselContainer:SetHide(true);
+	UI.PlaySound("UI_Screen_Close");
+end
+
+-------------------------------------------------
+-- RestoreAdCarousel
+-- 重进准备房间时恢复广告面板（OnShow 调用；无可展示条目时保持隐藏）。
+-------------------------------------------------
+function RestoreAdCarousel()
+	if #g_adEntries > 0 then
+		Controls.AdCarouselContainer:SetHide(false);
+	end
+end
+
+-------------------------------------------------
 -- BuildAdCarousel
 -- 从 MPT_Ads 表构建广告轮播；数据静态，加载时构建一次（原版 UpdateChallengeCarousel 移植）。
 -- 日期过滤：本机当天与 StartDate/EndDate（YYYY-MM-DD）字符串比较，起止当日均展示；
@@ -4486,6 +4506,8 @@ function Initialize()
 	Controls.AdLeftButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	Controls.AdRightButton:RegisterCallback( Mouse.eLClick, OnAdRightClick );
 	Controls.AdRightButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.AdCloseButton:RegisterCallback( Mouse.eLClick, OnAdCloseClick );
+	Controls.AdCloseButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	ContextPtr:SetUpdate( OnAdUpdate );
 	BuildAdCarousel();
 	-- ============================================================================

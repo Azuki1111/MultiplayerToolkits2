@@ -257,6 +257,8 @@
 			<Button ID="AdRightButton" Texture="Controls_DancerCarouselRightArrow" Offset="0,0" Anchor="R,C" Size="37,79" StateOffsetIncrement="0,79"/>
 			<Stack ID="AdIndicatorStack" Anchor="C,B" Offset="0,5" StackGrowth="Right"/>
 			<Image ID="AdFrame" Anchor="C,C" Size="433,328" Offset="0,0" Texture="CIV_ProjectDancer_CarouselImages_Frame"/>
+			<!-- 关闭按钮（仿更新公告 ChangelogCloseButton；锚到 AdFrame 外框视觉右上角，仅本次进入有效，重进房间恢复） -->
+			<Button ID="AdCloseButton" Anchor="R,T" Offset="16,14" Size="44,44" Texture="Controls_CloseLarge"/>
 		</Container>
 	</Stack>
 
