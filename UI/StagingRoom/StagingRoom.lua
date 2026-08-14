@@ -11,6 +11,11 @@ include( "NetConnectionIconLogic" );
 include( "PopupDialog" );
 include( "Civ6Common" );
 include( "TeamSupport" );
+-- ============================================================================
+-- 条目4.3预备：引入序列化工具脚本（Scripts/MPT_Serialize.lua，移植1.67 BSR
+-- serialize 并精简优化），为黑名单等数据持久化功能提供 MPT_Serialize/MPT_Deserialize
+-- ----------------------------------------------------------------------------
+include( "MPT_Serialize" );
 
 
 ----------------------------------------------------------------  
