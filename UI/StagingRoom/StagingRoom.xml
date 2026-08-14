@@ -239,6 +239,7 @@
 	<!-- 联机工具箱2.0：左下角按钮组（条目3.5 更新公告按钮 + 条目3.6 广告轮播） -->
 	<!-- 根级控件 Anchor L,B 对屏幕坐标（参考 Poker PokerOpenButton / BSR BGStack），而非 MainWindow 内 -->
 	<Stack ID="BottomLeftButtonStack" Anchor="L,B" StackGrowth="Up" Padding="8" Offset="0,0">
+		<!-- 更新日志 -->
 		<Button ID="ChangelogButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_FE_CHANGELOG_TOOLTIP">
 			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_HAMBURGER_MENU"/>
 			<Label Anchor="L,C" String="LOC_MPT_FE_CHANGELOG_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
@@ -258,8 +259,13 @@
 			<Stack ID="AdIndicatorStack" Anchor="C,B" Offset="0,5" StackGrowth="Right"/>
 			<Image ID="AdFrame" Anchor="C,C" Size="433,328" Offset="0,0" Texture="CIV_ProjectDancer_CarouselImages_Frame"/>
 			<!-- 关闭按钮（仿更新公告 ChangelogCloseButton；锚到 AdFrame 外框视觉右上角，仅本次进入有效，重进房间恢复） -->
-			<Button ID="AdCloseButton" Anchor="R,T" Offset="16,14" Size="44,44" Texture="Controls_CloseLarge"/>
+			<Button ID="AdCloseButton" Anchor="R,T" Offset="-14,-14" Size="44,44" Texture="Controls_CloseLarge"/>
 		</Container>
+		<!-- 条目3.6：「最新动态」唤起按钮（仿 ChangelogButton；与广告轮播同槽位互斥显隐——轮播隐藏时显示，点击唤回轮播） -->
+		<Button ID="AdShowButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" Hidden="1">
+			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_HAMBURGER_MENU"/>
+			<Label Anchor="L,C" String="LOC_MPT_AD_BUTTON_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
+		</Button>
 	</Stack>
 
 	<!-- 联机工具箱2.0：更新公告面板（条目3.5，数据驱动 MPT_Changelog 表；仅 X 按钮 / 点击面板外 / ESC 关闭） -->

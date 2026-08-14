@@ -3857,11 +3857,22 @@ end
 
 -------------------------------------------------
 -- OnAdCloseClick
--- 关闭按钮回调：隐藏轮播容器（仅本次进入有效，重进准备房间由 RestoreAdCarousel 恢复）。
+-- 关闭按钮回调：隐藏轮播容器并显示「最新动态」唤起按钮（仅本次进入有效，重进准备房间由 RestoreAdCarousel 恢复）。
 -------------------------------------------------
 function OnAdCloseClick()
 	Controls.AdCarouselContainer:SetHide(true);
+	Controls.AdShowButton:SetHide(false);
 	UI.PlaySound("UI_Screen_Close");
+end
+
+-------------------------------------------------
+-- OnAdShowButtonClick
+-- 「最新动态」按钮回调：唤回广告轮播并隐藏自身（与 OnAdCloseClick 互斥显隐）。
+-------------------------------------------------
+function OnAdShowButtonClick()
+	Controls.AdCarouselContainer:SetHide(false);
+	Controls.AdShowButton:SetHide(true);
+	UI.PlaySound("UI_Screen_Open");
 end
 
 -------------------------------------------------
@@ -3871,6 +3882,7 @@ end
 function RestoreAdCarousel()
 	if #g_adEntries > 0 then
 		Controls.AdCarouselContainer:SetHide(false);
+		Controls.AdShowButton:SetHide(true);
 	end
 end
 
@@ -4508,6 +4520,8 @@ function Initialize()
 	Controls.AdRightButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	Controls.AdCloseButton:RegisterCallback( Mouse.eLClick, OnAdCloseClick );
 	Controls.AdCloseButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.AdShowButton:RegisterCallback( Mouse.eLClick, OnAdShowButtonClick );
+	Controls.AdShowButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	ContextPtr:SetUpdate( OnAdUpdate );
 	BuildAdCarousel();
 	-- ============================================================================
