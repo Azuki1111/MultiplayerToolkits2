@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786372951</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>8</Version>
+		<Version>9</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -162,20 +162,25 @@
 			</Properties>
 			<File>Scripts/NetConnectionIconLogic.lua</File>
 		</ImportFiles>
-		<!-- 条目4.3预备：序列化工具脚本（移植1.67 BSR serialize/deserialize 并精简优化为纯数据表单遍递归序列化），供 StagingRoom 等前端上下文 include 复用 -->
+		<!-- 条目4.3预备：序列化+存储两份独立文件【前端注册禁用】——实测定论：前端 include() 本 mod 经
+		ImportFiles 注册的 Lua 文件，在「开一局游戏再退回主菜单」后的新前端 Lua 状态下静默不执行
+		（pcall(include) 返回成功但文件体零执行、无报错——引擎缺陷，单变量实验已排除双环境注册嫌疑）。
+		前端消费已改为内联（StagingRoom.lua 末尾条目4.3预备分区，与两文件同源、改动须双向同步）；
+		两文件仍经 <Files> 打包保留，供未来游戏内消费方启用（启用前先实测游戏内 include 可靠性）。 -->
+		<!--
 		<ImportFiles id="FE_Import_Serialize">
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
 			<File>Storage/MPT_Serialize.lua</File>
 		</ImportFiles>
-		<!-- 条目4.3预备：本地数据读写工具（极简差异化设计：纯序列化+切块，无压缩/缓存/启动预载/索引键；调用方自选文件名与键名，FIFO队列串行读写防并发互顶），供前端上下文 include 复用 -->
 		<ImportFiles id="FE_Import_Storage">
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
 			<File>Storage/MPT_DataStorage.lua</File>
 		</ImportFiles>
+		-->
 		<!-- 条目4.1：模组校验注册表 MPT_ModCheck（各 mod 自我登记 modId 参与版本校验，仅前端配置库） -->
 		<UpdateDatabase id="FE_ModCheck_Data">
 			<Properties>
@@ -201,10 +206,10 @@
 			<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 			<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		</UpdateText>
-		<!-- 条目4.3预备：存储模块双环境注册【暂时禁用】——实测：这两文件经 InGame 注册后，开局退回主菜单再建房，
-		前端新 Lua 状态下 include 会静默不执行（pcall(include) 返回成功与 table，但文件体未运行，API 全缺），
-		疑为引擎对双环境同文件 VFS 条目的处理缺陷。在出现真实游戏内消费方之前保持禁用；恢复时必须重测
-		「建房→开局→退回主菜单→再建房」路径。 -->
+		<!-- 条目4.3预备：存储模块双环境注册【禁用】——曾疑为双环境注册导致前端 include 失效，
+		单变量实验证明禁用后故障依旧：根因是引擎缺陷本身（开局往返后前端新状态 include mod 文件
+		静默不执行），与本注册无关。保持禁用是因为当前无游戏内消费方；未来启用前须先实测
+		「游戏内连续多局」后 include 是否同样失效。 -->
 		<!--
 		<ImportFiles id="IG_Import_Storage">
 			<Properties>

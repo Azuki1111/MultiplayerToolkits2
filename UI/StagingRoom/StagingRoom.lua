@@ -12,18 +12,13 @@ include( "PopupDialog" );
 include( "Civ6Common" );
 include( "TeamSupport" );
 -- ============================================================================
--- 条目4.3预备：引入序列化与本地数据读写工具（Storage/ 文件夹，极简差异化设计）
--- MPT_Serialize：移植1.67 BSR serialize 并精简优化，提供 MPT_Serialize/MPT_Deserialize
--- MPT_DataStorage：极简本地数据读写工具（无压缩/缓存/启动预载），由本文件顶层 include
--- 承载（前端实测无法新建空 Context，必须依附既有界面上下文），注册 MPT_Storage_SaveData/
--- LoadData/DeleteFile 全局 API（异步回调式，详见该文件头用法说明）；模块内有幂等守卫，
--- 重复 include 不会重置状态。
--- ----------------------------------------------------------------------------
--- ============================================================================
--- 【临时调试】条目4.3预备诊断：pcall 包裹 include 校验加载成败（定位第三次进房 API 缺失，验证后移除）
-local okS, errS = pcall(include, "MPT_Serialize");
-local okD, errD = pcall(include, "MPT_DataStorage");
-print("MPT_INCLUDE_CHECK: ser=", okS, tostring(errS), " ds=", okD, tostring(errD), " LoadData=", type(MPT_Storage_LoadData));
+-- 条目4.3预备：序列化与本地数据读写工具【已内联至本文件末尾】（条目4.3预备分区）。
+-- 原设计为顶层 include Storage/ 两份独立文件。实测定论：前端 include() 本 mod 经
+-- ImportFiles 注册的 Lua 文件，在「开一局游戏再退回主菜单」后的新前端 Lua 状态下
+-- 静默不执行（pcall(include) 返回成功与 table，但文件体零执行、无任何报错——引擎缺陷，
+-- 单变量实验已排除双环境注册嫌疑，详见 git 条目4.3预备诊断与 AGENTS.md 踩坑记录）。
+-- ReplaceUIScript 投递的本文件每次前端重建都可靠重执行，故改为内联承载。
+-- Storage/ 独立文件保留给未来游戏内消费方，改动存储/序列化代码必须双向同步。
 -- ----------------------------------------------------------------------------
 
 
@@ -2554,7 +2549,7 @@ function OnShow()
 	-- 【临时调试】条目4.3预备重构冒烟：进房读回 SmokeTest 并写新时间戳（验证后移除）
 	-- 第一遍期望 log：MPT_SMOKE read=nil → save ok=true；第二遍 read=第一时间戳 回环成立
 	if MPT_Storage_LoadData == nil then
-		print("MPT_SMOKE ERROR: LoadData=nil, loaded=", tostring(MPT_Storage_Loaded), " ser=", type(MPT_Serialize));
+		print("MPT_SMOKE ERROR: LoadData=nil, ser=", type(MPT_Serialize), "（内联区未执行：本文件顶层在到达末尾分区前中止）");
 	else
 		MPT_Storage_LoadData("MPT_ModData", "SmokeTest", function(t)
 			print("MPT_SMOKE read=", type(t) == "table" and t.BootTime or "nil");
@@ -4600,3 +4595,345 @@ function Initialize()
 end
 
 Initialize();
+
+
+-- ############################################################################
+-- 条目4.3预备：序列化与本地数据读写（内联副本）
+-- ============================================================================
+-- 【为什么内联而不 include】实测定论：前端 include() 本 mod 经 ImportFiles 注册的
+-- Lua 文件，只在进程首个前端生命周期内真正执行；开一局游戏再退回主菜单后，前端重建的
+-- 新 Lua 状态下 include 静默不执行（pcall(include) 返回成功与 table，但文件体零执行、
+-- 无任何报错——引擎缺陷，单变量实验已排除双环境注册嫌疑，详见 git 条目4.3预备诊断）。
+-- ReplaceUIScript 投递的本文件每次前端重建都可靠重执行，故两模块内联于此。
+-- 【同步义务】本区与 Storage/MPT_Serialize.lua、Storage/MPT_DataStorage.lua 同源，
+--   改动必须双向同步（Storage/ 独立文件保留给未来游戏内消费方）。
+-- 【与独立文件的差异】内联副本无幂等守卫（本文件每状态只执行一次，守卫无意义；
+--   且 chunk 顶层中间的 return 会编译失败，守卫结构本也无法照搬），无 include。
+-- ############################################################################
+
+-- ============================================================================
+-- 条目4.3预备：MPT_Serialize 序列化部分（同源自 Storage/MPT_Serialize.lua）
+-- 移植自联机工具箱1.67 BSR serialize/deserialize（原版出自 metalua，MIT 协议），
+-- 精简重写为纯数据表单遍递归：不支持函数/循环表（报错），共享子表按值展开，
+-- 输出 return {...} 字面量（loadstring 可读 1.67 旧数据）；MPT_Deserialize 损坏返回 nil。
+-- ============================================================================
+print("MPT_DBG: Serialize executing");	-- 【临时调试】
+
+-- Lua 关键字表：字符串键为合法标识符时可省略引号括号输出 k=v，是关键字时回退 ["k"]=v
+local g_mpt_luaKeywords = {
+	["and"]=true, ["break"]=true, ["do"]=true, ["else"]=true, ["elseif"]=true,
+	["end"]=true, ["false"]=true, ["for"]=true, ["function"]=true, ["goto"]=true,
+	["if"]=true, ["in"]=true, ["local"]=true, ["nil"]=true, ["not"]=true,
+	["or"]=true, ["repeat"]=true, ["return"]=true, ["then"]=true, ["true"]=true,
+	["until"]=true, ["while"]=true,
+};
+
+-- ============================================================================
+-- 内部：递归把值 x 转储为 Lua 字面量字符串片段，按序追加进 acc。
+-- nest 为当前递归路径上的表集合（transient，离开该表即移除），用于检测循环引用。
+-- 数组部分（整数键 1..#x）按位置输出，其余键按 [k]=v 或 k=v 输出。
+-- ============================================================================
+local function MPT_DumpValue(x, acc, nest)
+	local t = type(x);
+	if t == "number" then
+		table.insert(acc, tostring(x));		-- 整数精确；浮点约 14 位有效数字
+	elseif t == "boolean" then
+		table.insert(acc, x and "true" or "false");
+	elseif t == "string" then
+		table.insert(acc, string.format("%q", x));
+	elseif t == "table" then
+		if nest[x] then
+			error("MPT_Serialize: 不支持循环引用表");
+		end
+		nest[x] = true;
+		table.insert(acc, "{");
+		local first = true;
+		for i = 1, #x do		-- 数组部分
+			if first then first = false; else table.insert(acc, ","); end
+			MPT_DumpValue(x[i], acc, nest);
+		end
+		for k, v in pairs(x) do		-- 哈希部分（跳过已按位置输出的数组键）
+			if not (type(k) == "number" and k >= 1 and k <= #x and math.floor(k) == k) then
+				if first then first = false; else table.insert(acc, ","); end
+				if type(k) == "string" and string.match(k, "^[%a_][%w_]*$") and not g_mpt_luaKeywords[k] then
+					table.insert(acc, k);	-- 合法标识符键：k=v
+				else
+					table.insert(acc, "[");
+					MPT_DumpValue(k, acc, nest);
+					table.insert(acc, "]");
+				end
+				table.insert(acc, "=");
+				MPT_DumpValue(v, acc, nest);
+			end
+		end
+		nest[x] = nil;
+		table.insert(acc, "}");
+	elseif x == nil then
+		table.insert(acc, "nil");
+	else
+		error("MPT_Serialize: 不支持序列化类型 " .. t);		-- function/userdata/thread
+	end
+end
+
+-- ============================================================================
+-- MPT_Serialize(x)：把纯数据值序列化为可 loadstring 读回的 Lua 源码字符串。
+--   支持 nil/布尔/数字/字符串/表（可嵌套）；函数/userdata/线程报错；循环引用报错。
+--   参数 x：任意纯数据值（通常为表）
+--   返回 string：形如 "return{level=1,name="foo"}"（"return " 后必须留空格，
+--   否则 return5/returntrue 这类纯数字/布尔顶层值会被词法分析成标识符）
+-- ============================================================================
+function MPT_Serialize(x)
+	local acc = {};
+	MPT_DumpValue(x, acc, {});
+	return "return " .. table.concat(acc);
+end
+
+-- ============================================================================
+-- MPT_Deserialize(s)：把 MPT_Serialize 的输出字符串读回为 Lua 值（含 1.67 旧数据）。
+--   参数 s：MPT_Serialize 产出的字符串
+--   返回：还原的 Lua 值；非字符串输入、语法损坏或执行失败时返回 nil（不抛错），
+--   调用方可用 or {} 兜底（与 1.67 Read_tableString 的用法一致）
+-- ============================================================================
+function MPT_Deserialize(s)
+	if type(s) ~= "string" then return nil; end
+	local fn = loadstring(s);
+	if fn == nil then return nil; end
+	local ok, result = pcall(fn);
+	if not ok then return nil; end
+	return result;
+end
+
+print("MPT_DBG: Serialize APIs", type(MPT_Serialize), type(MPT_Deserialize));	-- 【临时调试】
+
+-- ============================================================================
+-- 条目4.3预备：MPT_DataStorage 本地数据读写部分（同源自 Storage/MPT_DataStorage.lua）
+-- 极简本地数据读写工具：无压缩/缓存/启动预载/索引键，调用方自选 .Civ6Cfg 文件名与键名，
+-- 每次 LoadData 都真实读盘；内建 FIFO 作业队列（任时刻一作业在途，防并发查询互顶）。
+-- 原理：GameConfiguration 键值随存档落盘；SaveGame(FileType=GAME_CONFIGURATION) 把当前
+-- GameConfiguration 单独存成配置存档，LoadGame 载入后 GetValue 取回。
+-- 用法（异步，结果经回调返回）：
+--   MPT_Storage_SaveData("MyMod", "Blacklist", t, function(ok) end);   -- 写：序列化→落盘 MyMod.Civ6Cfg
+--   MPT_Storage_LoadData("MyMod", "Blacklist", function(t) end);       -- 读：t=数据表，无存档/键损坏=nil
+--   MPT_Storage_DeleteFile("MyMod", function(found) end);              -- 删：删除 MyMod.Civ6Cfg
+-- 注意：LoadData 会把 GameConfiguration 替换为该文件快照（重置语义，实测），请注意调用时机；
+--   联机准备房间内读档实测不踢人、不影响房间配置；存档恒落 Saves\Single；fileName/key 仅限
+--   字母数字下划线（要拼进 GameConfiguration 键名）。
+-- ============================================================================
+print("MPT_DBG: DataStorage inline executing");	-- 【临时调试】
+
+-- ============================================================================
+-- 常量
+-- ============================================================================
+local STORAGE_KEY_PREFIX : string = "MPT_DS_";		-- GameConfiguration 键前缀（防与其他键碰撞）
+local STORAGE_CHUNK_SIZE : number = 128000;			-- 单值切块长度（单值 512000 实测完整读写，取 1/4 留余量）
+
+-- ============================================================================
+-- 作业队列状态（FIFO：任时刻只有一个作业在途，回调按入队顺序到达）
+-- ============================================================================
+local g_storageJobs : table = {};	-- 待执行作业队列
+local g_storageJob  = nil;			-- 在途作业（nil=空闲）
+
+local StorageRunNext, StorageFinishJob;	-- 互递归前向声明
+
+-- ============================================================================
+-- StorageClearKey：清除某键及其全部旧块（多块时键值为块数）。
+-- 覆盖写入前必须先清：上次多块本次单块时，残留的旧块会污染拼接读取。
+-- ============================================================================
+local function StorageClearKey(key : string)
+	local oldValue = GameConfiguration.GetValue(key);
+	if type(oldValue) == "number" then
+		for i = 1, oldValue do
+			GameConfiguration.SetValue(key .. "_" .. i, nil);
+		end
+	end
+	GameConfiguration.SetValue(key, nil);
+end
+
+-- ============================================================================
+-- StorageWriteKey：编码串切块写入（切块防单值长度上限；多块时键存块数）
+-- ============================================================================
+local function StorageWriteKey(key : string, encodedStr : string)
+	StorageClearKey(key);
+	local chunkNum : number = math.ceil(#encodedStr / STORAGE_CHUNK_SIZE);
+	if chunkNum > 1 then
+		GameConfiguration.SetValue(key, chunkNum);
+		for i = 1, chunkNum do
+			GameConfiguration.SetValue(key .. "_" .. i, string.sub(encodedStr, (i - 1) * STORAGE_CHUNK_SIZE + 1, i * STORAGE_CHUNK_SIZE));
+		end
+	else
+		GameConfiguration.SetValue(key, encodedStr);
+	end
+end
+
+-- ============================================================================
+-- StorageReadKey：读取键并拼接反序列化（多块时键值为块数；块缺失视为损坏返回 nil）
+-- ============================================================================
+local function StorageReadKey(key : string)
+	local value = GameConfiguration.GetValue(key);
+	if type(value) == "number" then
+		local chunks : table = {};
+		for i = 1, value do
+			local chunk = GameConfiguration.GetValue(key .. "_" .. i);
+			if type(chunk) ~= "string" then return nil; end
+			chunks[i] = chunk;
+		end
+		value = table.concat(chunks);
+	end
+	if type(value) ~= "string" then return nil; end
+	return MPT_Deserialize(value);
+end
+
+-- ============================================================================
+-- StorageValidateName：fileName/key 仅限字母数字下划线（fileName 做文件名，key 拼进键名）
+-- ============================================================================
+local function StorageValidateName(name)
+	return type(name) == "string" and string.match(name, "^[%w_]+$") ~= nil;
+end
+
+-- ============================================================================
+-- 内部：执行队首作业。save=切块写键后落盘等 SaveComplete；load/delete=先直查文件列表。
+-- ============================================================================
+StorageRunNext = function()
+	if g_storageJob ~= nil then return; end
+	local job = g_storageJobs[1];
+	if job == nil then return; end
+	table.remove(g_storageJobs, 1);
+	g_storageJob = job;
+	if job.kind == "save" then
+		StorageWriteKey(STORAGE_KEY_PREFIX .. job.key, job.encoded);
+		local ok = pcall(function()
+			Network.SaveGame({ Name = job.fileName, Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION });
+		end);
+		if not ok then
+			StorageClearKey(STORAGE_KEY_PREFIX .. job.key);
+			StorageFinishJob(false);
+		end
+	else	-- load / delete 都先直查 Saves\Single 的 GAME_CONFIGURATION 列表（无弹窗）
+		job.queryId = nil;
+		local ok, queryId = pcall(function()
+			return UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, SaveLocationOptions.NORMAL + SaveLocationOptions.LOAD_METADATA, SaveFileTypes.GAME_CONFIGURATION, "");
+		end);
+		if ok and queryId ~= nil then
+			job.queryId = queryId;
+		else
+			StorageFinishJob(job.kind == "delete" and false or nil);
+		end
+	end
+end
+
+-- ============================================================================
+-- 内部：结束在途作业——先推进队列再回调（回调内可安全再次入队；回调异常不炸队列）
+-- ============================================================================
+StorageFinishJob = function(result)
+	local job = g_storageJob;
+	if job == nil then return; end
+	g_storageJob = nil;
+	local callback = job.callback;
+	StorageRunNext();
+	if callback ~= nil then pcall(callback, result); end
+end
+
+-- ============================================================================
+-- 内部：SaveComplete 派发——在途 save 作业落盘完成，清键后收尾
+-- ============================================================================
+Events.SaveComplete.Add(function(eResult, eType, eOptions, eFileType)
+	local job = g_storageJob;
+	if job == nil or job.kind ~= "save" then return; end
+	if eFileType ~= nil and eFileType ~= SaveFileTypes.GAME_CONFIGURATION then return; end
+	StorageClearKey(STORAGE_KEY_PREFIX .. job.key);	-- 落盘后清键，防混入房间配置与真实存档（PKU 同款清理思路）
+	StorageFinishJob(eResult == nil or eResult == 0);
+end);
+print("MPT_DBG: SaveComplete hooked");	-- 【临时调试】
+
+-- ============================================================================
+-- 内部：LoadComplete 派发——在途 load 作业读档完成，读键反序列化后收尾
+-- ============================================================================
+Events.LoadComplete.Add(function(eResult, eType, eOptions, eFileType)
+	local job = g_storageJob;
+	if job == nil or job.kind ~= "load" or job.queryId ~= nil then return; end	-- 仅在 LoadGame 已发出后认领
+	StorageFinishJob(StorageReadKey(STORAGE_KEY_PREFIX .. job.key));
+end);
+print("MPT_DBG: LoadComplete hooked");	-- 【临时调试】
+
+-- ============================================================================
+-- 内部：文件列表派发（LuaEvents.FileListQueryResults，引擎触发）——按自身 requestID 认领；
+-- load 找到则 LoadGame 读档，delete 找到则 DeleteSavedGame，未找到按 nil/false 收尾。
+-- ============================================================================
+LuaEvents.FileListQueryResults.Add(function(fileList : table, id : number)
+	local job = g_storageJob;
+	if job == nil or job.queryId == nil or id ~= job.queryId then return; end
+	pcall(function() UI.CloseFileListQuery(id); end);
+	job.queryId = nil;
+	local found = nil;
+	for _, file in pairs(fileList or {}) do
+		if file.Name == job.fileName .. ".Civ6Cfg" then
+			found = file;
+			break;
+		end
+	end
+	if job.kind == "load" then
+		if found == nil then StorageFinishJob(nil); return; end
+		local ok = pcall(function() Network.LoadGame(found, 0); end);
+		if not ok then StorageFinishJob(nil); end
+	else	-- delete
+		if found == nil then StorageFinishJob(false); return; end
+		pcall(function() UI.DeleteSavedGame(found); end);
+		StorageFinishJob(true);
+	end
+end);
+print("MPT_DBG: FileListQueryResults hooked");	-- 【临时调试】
+
+-- ============================================================================
+-- 对外：写——data 序列化后切块写入并落盘 fileName.Civ6Cfg（Saves\Single）。
+-- data 为任意纯数据（表/字符串/数字/布尔；函数/循环表序列化报错）；
+-- callback(success:boolean) 可选。
+-- ============================================================================
+function MPT_Storage_SaveData(fileName : string, key : string, data, callback)
+	if not StorageValidateName(fileName) or not StorageValidateName(key) then
+		print("MPT_DS: 非法 fileName/key", tostring(fileName), tostring(key));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	local ok, encoded = pcall(MPT_Serialize, data);
+	if not ok or type(encoded) ~= "string" then
+		print("MPT_DS: 序列化失败", key);
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	table.insert(g_storageJobs, { kind = "save", fileName = fileName, key = key, encoded = encoded, callback = callback });
+	StorageRunNext();
+end
+
+-- ============================================================================
+-- 对外：读——载入 fileName.Civ6Cfg 并读回 key 反序列化后的数据。
+-- callback(data) 必填；文件不存在/键缺失/数据损坏均回调 nil。
+-- 【重置语义警告】会把 GameConfiguration 替换为该文件快照，请注意调用时机（见上文）。
+-- ============================================================================
+function MPT_Storage_LoadData(fileName : string, key : string, callback)
+	if not StorageValidateName(fileName) or not StorageValidateName(key) then
+		print("MPT_DS: 非法 fileName/key", tostring(fileName), tostring(key));
+		if callback ~= nil then pcall(callback, nil); end
+		return;
+	end
+	if type(callback) ~= "function" then
+		print("MPT_DS: LoadData 缺少 callback", key);
+		return;
+	end
+	table.insert(g_storageJobs, { kind = "load", fileName = fileName, key = key, callback = callback });
+	StorageRunNext();
+end
+
+-- ============================================================================
+-- 对外：删——删除 fileName.Civ6Cfg；callback(found:boolean) 可选。
+-- ============================================================================
+function MPT_Storage_DeleteFile(fileName : string, callback)
+	if not StorageValidateName(fileName) then
+		print("MPT_DS: 非法 fileName", tostring(fileName));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	table.insert(g_storageJobs, { kind = "delete", fileName = fileName, callback = callback });
+	StorageRunNext();
+end
+
+print("MPT_DBG: APIs defined", type(MPT_Storage_SaveData), type(MPT_Storage_LoadData), type(MPT_Storage_DeleteFile));	-- 【临时调试】
