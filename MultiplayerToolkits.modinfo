@@ -162,25 +162,6 @@
 			</Properties>
 			<File>Scripts/NetConnectionIconLogic.lua</File>
 		</ImportFiles>
-		<!-- 条目4.3预备：序列化+存储两份独立文件【前端注册禁用】——实测定论：前端 include() 本 mod 经
-		ImportFiles 注册的 Lua 文件，在「开一局游戏再退回主菜单」后的新前端 Lua 状态下静默不执行
-		（pcall(include) 返回成功但文件体零执行、无报错——引擎缺陷，单变量实验已排除双环境注册嫌疑）。
-		前端消费已改为内联（StagingRoom.lua 末尾条目4.3预备分区，与两文件同源、改动须双向同步）；
-		两文件仍经 <Files> 打包保留，供未来游戏内消费方启用（启用前先实测游戏内 include 可靠性）。 -->
-		<!--
-		<ImportFiles id="FE_Import_Serialize">
-			<Properties>
-				<LoadOrder>100010</LoadOrder>
-			</Properties>
-			<File>Storage/MPT_Serialize.lua</File>
-		</ImportFiles>
-		<ImportFiles id="FE_Import_Storage">
-			<Properties>
-				<LoadOrder>100010</LoadOrder>
-			</Properties>
-			<File>Storage/MPT_DataStorage.lua</File>
-		</ImportFiles>
-		-->
 		<!-- 条目4.1：模组校验注册表 MPT_ModCheck（各 mod 自我登记 modId 参与版本校验，仅前端配置库） -->
 		<UpdateDatabase id="FE_ModCheck_Data">
 			<Properties>
@@ -206,19 +187,6 @@
 			<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 			<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		</UpdateText>
-		<!-- 条目4.3预备：存储模块双环境注册【禁用】——曾疑为双环境注册导致前端 include 失效，
-		单变量实验证明禁用后故障依旧：根因是引擎缺陷本身（开局往返后前端新状态 include mod 文件
-		静默不执行），与本注册无关。保持禁用是因为当前无游戏内消费方；未来启用前须先实测
-		「游戏内连续多局」后 include 是否同样失效。 -->
-		<!--
-		<ImportFiles id="IG_Import_Storage">
-			<Properties>
-				<LoadOrder>100010</LoadOrder>
-			</Properties>
-			<File>Storage/MPT_Serialize.lua</File>
-			<File>Storage/MPT_DataStorage.lua</File>
-		</ImportFiles>
-		-->
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
