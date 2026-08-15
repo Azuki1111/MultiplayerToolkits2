@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786372951</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>7</Version>
+		<Version>8</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -201,7 +201,11 @@
 			<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 			<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		</UpdateText>
-		<!-- 条目4.3预备：存储模块双环境注册（序列化+数据读写工具同时导入游戏内上下文，供游戏内 mod include 复用；InGame 读档时机自负，PKU 有先例） -->
+		<!-- 条目4.3预备：存储模块双环境注册【暂时禁用】——实测：这两文件经 InGame 注册后，开局退回主菜单再建房，
+		前端新 Lua 状态下 include 会静默不执行（pcall(include) 返回成功与 table，但文件体未运行，API 全缺），
+		疑为引擎对双环境同文件 VFS 条目的处理缺陷。在出现真实游戏内消费方之前保持禁用；恢复时必须重测
+		「建房→开局→退回主菜单→再建房」路径。 -->
+		<!--
 		<ImportFiles id="IG_Import_Storage">
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
@@ -209,6 +213,7 @@
 			<File>Storage/MPT_Serialize.lua</File>
 			<File>Storage/MPT_DataStorage.lua</File>
 		</ImportFiles>
+		-->
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
