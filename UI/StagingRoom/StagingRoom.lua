@@ -4927,14 +4927,16 @@ end
 -- 进房约 2 秒后启动，每隔 5 秒一轮「读→写」，共 5 轮；日志前缀 MPT_RW 附 host 与轮次。
 -- 判断标准：每轮 read= 应等于上一轮写入的 WrittenAt（首轮为旧值或 nil），save ok=true。
 -- 两个轮次变量为【全局】：OnShow 启动块在本区之前引用，若用 local 会解析成另一全局（踩坑记录同款）。
+-- 滴答由 MultiplayerPingTimesChanged（ping 定时刷新）驱动：单人空房间可能不触发，测试需房间内至少两名玩家。
 -- ============================================================================
 g_mptRwTestRound = 0;							-- 当前轮次（OnShow 启动块重置）
 g_mptRwTestNext = -1;							-- 下一轮触发时刻（os.time 秒，-1=未启动）
 local MPT_RW_TEST_INTERVAL : number = 5;		-- 轮间隔（秒）
 local MPT_RW_TEST_ROUNDS : number = 5;			-- 总轮数
 
--- 帧更新驱动（os.time 秒级门控，开销可忽略；本文件无既有持续 UpdateHandler，临时新设一个）
-ContextPtr:SetUpdateHandler(function()
+-- 滴答源：房间内 ping 定时刷新事件（房主/客机均触发；os.time 秒级门控，开销可忽略。
+-- 注：Civ6 的 ContextPtr 没有 SetUpdateHandler（那是 Civ5 API，本文件 4937 行曾因此加载报错）
+local function MPT_RwTestTick()
 	if g_mptRwTestNext < 0 or os.time() < g_mptRwTestNext then return; end
 	if g_mptRwTestRound >= MPT_RW_TEST_ROUNDS then
 		g_mptRwTestNext = -1;
@@ -4951,4 +4953,5 @@ ContextPtr:SetUpdateHandler(function()
 			print("MPT_RW round=", round, " save ok=", ok);
 		end);
 	end);
-end);
+end
+Events.MultiplayerPingTimesChanged.Add(MPT_RwTestTick);
