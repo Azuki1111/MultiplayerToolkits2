@@ -2546,22 +2546,6 @@ function OnShow()
 	m_exitReadyWait = false;
 	RestoreAdCarousel();	-- 联机工具箱2.0：重进准备房间恢复广告面板（条目3.6）
 
-	-- ============================================================================
-	-- 【临时调试】条目4.3 冒烟：验证常驻存储模块（实测通过后删除）
-	if MPT_Storage_IsReady ~= nil then
-		if MPT_Storage_IsReady() then
-			local t = MPT_Storage_Get("SmokeTest");
-			print("MPT_SMOKE ready=1 read=", type(t) == "table" and t.BootTime or "nil");
-			MPT_Storage_Set("SmokeTest", { BootTime = os.time(), Note = "冒烟测试中文" });
-			MPT_Storage_Save();
-		else
-			print("MPT_SMOKE ready=0（存储未就绪）");
-		end
-	else
-		print("MPT_SMOKE MPT_Storage_* API 不存在（前端 VM 不共享或存储 Context 未创建）");
-	end
-	-- ----------------------------------------------------------------------------
-
 	local networkSessionID:number = Network.GetSessionID();
 	if m_sessionID ~= networkSessionID then
 		-- This is a fresh session.
