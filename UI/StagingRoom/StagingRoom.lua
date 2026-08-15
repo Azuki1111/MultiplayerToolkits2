@@ -4546,6 +4546,9 @@ function MPT_Phase0_OnFileList(fileList, id)
 	Events.GameCoreEventPublishComplete.Remove(MPT_Phase0_Watchdog);
 	g_mptP0ListFrom = g_mptP0Menu ~= nil and "menu" or "api";
 	print("MPT_P0", "P0-LIST-" .. string.upper(g_mptP0ListFrom), "文件数=", fileList and table.count(fileList) or "nil");
+	for _, file in pairs(fileList or {}) do
+		print("MPT_P0", "FILE", file.Name);	-- 列出全部存档名，定位文件夹枚举范围
+	end
 	local testFile = nil;
 	for _, file in pairs(fileList or {}) do
 		if file.Name == MPT_P0_FILE_NAME .. ".Civ6Cfg" then
@@ -4574,7 +4577,9 @@ function MPT_Phase0_DoSave()
 		GameConfiguration.SetValue("MPT_P0_LEN_" .. tostring(len), string.rep("A", len - #tail) .. tail);
 	end
 	Events.SaveComplete.Add(MPT_Phase0_OnSaveComplete);
-	Network.SaveGame({ Name = MPT_P0_FILE_NAME, Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION });
+	-- 存档落盘文件夹由 Type 决定：联机房间的文件列表菜单只枚举 Saves\Multi，
+	-- 必须按当前房间类型保存，否则写读不在同一文件夹（第二遍实测踩坑）
+	Network.SaveGame({ Name = MPT_P0_FILE_NAME, Type = SaveTypes.NETWORK_MULTIPLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION });
 	print("MPT_P0", "SAVE 请求已发出（第一遍）；请重启游戏后进【联机】准备房间读回");
 end
 

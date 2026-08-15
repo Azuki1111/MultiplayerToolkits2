@@ -9,7 +9,7 @@
 --
 -- 原理：GameConfiguration 键值随存档落盘。Network.SaveGame 指定
 --   FileType = SaveFileTypes.GAME_CONFIGURATION 时，把当前 GameConfiguration 单独存成
---   .Civ6Cfg 配置存档（文档\My Games\Sid Meier's Civilization VI\Saves\Single）；
+--   .Civ6Cfg 配置存档（Saves\Single 或 Saves\Multi，由保存时的 Type 决定）；
 --   读取时 Network.LoadGame 载入该配置存档，再 GameConfiguration.GetValue 取回。
 --
 -- 相对 PKU 原实现的优化/裁剪：
@@ -230,9 +230,13 @@ function MPT_Storage_Save()
 	for _, dataId in ipairs(ids) do
 		g_storageKnownIds[dataId] = true;
 	end
+	-- 存档落盘文件夹由 Type 决定（Saves\Single / Saves\Multi），文件列表菜单按当前
+	-- 房间类型枚举：联机准备房间里菜单只列 Saves\Multi，必须按当前房间类型选择，
+	-- 否则写读不在同一文件夹（Phase0 第二遍实测踩坑：Single 存的档联机房间列不出）
+	local saveType = GameConfiguration.IsNetworkMultiplayer() and SaveTypes.NETWORK_MULTIPLAYER or SaveTypes.SINGLE_PLAYER;
 	local gameFile = {
 		Name = STORAGE_FILE_NAME,
-		Type = SaveTypes.SINGLE_PLAYER,
+		Type = saveType,
 		FileType = SaveFileTypes.GAME_CONFIGURATION,
 	};
 	g_storageSaveDirty = true;
