@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目4.3预备：常驻前端空 Context，仅承载同名 MPT_DataStorage.lua 在游戏启动时运行（无可见控件）。
+     modinfo 以 AddUserInterfaces（Context=FrontEnd）注册本文件，Lua 按同名文件对自动加载。 -->
+<Context>
+</Context>
