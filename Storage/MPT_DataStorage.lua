@@ -21,9 +21,11 @@
 --     之前完成，故本模块在游戏启动时（主菜单）自动加载，房间内只读缓存/落盘；
 --   · 文件列表菜单按当前环境枚举存档文件夹：主菜单列 Saves\Single，联机准备房间列
 --     Saves\Multi（实测）→ 读取在主菜单发生，故保存【恒用 SINGLE_PLAYER】，读写同目录；
---   · UI.QuerySaveGameList 曾实测不触发回调被判死路；但 MainMenu.lua:1547-1616 证实其结果
---     经【LuaEvents.FileListQueryResults】回调（疑此前订阅错 Events 通道）→ 正由文件末尾
---     【临时】Phase 2 探针复核，若直查可用则去掉弹窗加载路径；
+--   · UI.QuerySaveGameList 结果经【LuaEvents.FileListQueryResults】回调（MainMenu.lua
+--     :1547-1616 实证，按 requestID 认领、用完 CloseFileListQuery）；第一遍实测：模块随
+--     StagingRoom 顶层在启动时运行✓、弹窗列表流程✓、Path 字段对 GAME_CONFIGURATION
+--     生效（配置档可写任意路径，落在 Saves 根目录）；直查与弹窗查询并发发起 timeout，
+--     正由文件末尾【临时】Phase 2b 串行隔离探针组复核，直查可用则去掉弹窗加载路径；
 --   · 前端 Events.SaveComplete / Events.LoadComplete 均正常触发；
 --   · GameConfiguration 单值 512000 字符完整读写往返（未触顶），切块取 128000 留足余量；
 --   · 房间内每5秒高频写读 + 每20秒完整落盘，24轮×2启动全部可靠（SaveComplete 100%）。
@@ -379,87 +381,189 @@ function MPT_Storage_Init()
 end
 
 -- ============================================================================
--- 【临时调试】条目4.3 Phase 2 探针：QuerySaveGameList 直查 + GAME_CONFIGURATION 带 Path 落盘
--- 背景：MainMenu.lua:1547-1616 证实 UI.QuerySaveGameList 结果经 LuaEvents.FileListQueryResults
---   回调（按 requestID 匹配认领，用完 UI.CloseFileListQuery 释放），纯前端无弹窗可用——
---   此前「死路」结论疑为订阅错 Events 通道。本探针与弹窗流程并行、只打日志不改变加载行为。
---   注意：主加载回调 StorageOnFileList 不校验 id，探针结果会先到达并被它消费（同为
---   Saves\Single 的 GAME_CONFIGURATION 列表，内容等价，属预期）。
--- 判定：Lua.log 中 MPT_DS QUERY 行（ok=直查可用→后续去掉弹窗；timeout=维持弹窗路径）。
+-- 【临时调试】条目4.3 Phase 2b 串行隔离探针组（实测后整个区域删除，含末尾 MPT_Storage_Ready 订阅）
+-- 第一遍结论：①模块随 StagingRoom 顶层启动运行✓；②弹窗列表流程✓；③Path 字段对
+--   GAME_CONFIGURATION 生效（MPT_PathTest.Civ6Cfg 落在 Saves 根目录）；④直查探针 timeout——
+--   但与弹窗查询并发发起，疑似被顶掉或第5参省略 nil 所致（官方 LoadSaveMenu_Shared.lua:1060
+--   恒传 g_CurrentDirectoryPath=""）。
+-- 本探针组挂 LuaEvents.MPT_Storage_Ready，主加载完成、弹窗关闭后才串行逐级跑：
+--   探针A：直查 Saves\Single 的 GAME_CONFIGURATION 列表（5参显式传 ""）→ 判弹窗去留；
+--   探针B：DIRECTORIES 模式直查 Saves 根目录的配置档 → 判任意目录枚举（应见 MPT_PathTest）；
+--   探针C：哨兵键 MPT_PATH_PROBE 写入 → Path 落盘 → 构造表 LoadGame 读回校验 → 重载主存档恢复。
+-- 判定：Lua.log 中 MPT_DS PROBE2 行。
 -- ============================================================================
-local STORAGE_PROBE_TIMEOUT : number = 10;			-- 直查探针超时秒数
-local g_storageProbeId      = nil;					-- 直查请求 ID（非 nil 表示探针在途）
-local g_storageProbeTime    : number = 0;			-- 探针发起时刻
+local STORAGE_PROBE_TIMEOUT : number = 10;			-- 每级探针超时秒数
+local g_probe2Stage     = nil;						-- 在途阶段："A"/"B"/"C_SAVE"/"C_LOAD"（nil=空闲）
+local g_probe2Done      : boolean = false;			-- 探针组已跑过（探针C 收尾会重载主存档再触发 Ready，防重入循环）
+local g_probe2QueryId   = nil;						-- 在途查询 requestID
+local g_probe2Time      : number = 0;				-- 当前阶段发起时刻
+local g_probe2Root      = nil;						-- Saves 根目录（GetSaveLocationPath 推导）
+local g_probe2Sentinel  : string = "";				-- 探针C 哨兵值
 
-local StorageProbeOnFileList, StorageProbeTick;		-- 本区回调互引用前向声明
+local StorageProbe2OnFileList, StorageProbe2Tick;					-- 回调互引用前向声明
+local StorageProbe2OnSaveComplete, StorageProbe2OnLoadComplete;		-- 探针C 事件回调前向声明
+local StorageProbe2StartB, StorageProbe2StartC, StorageProbe2Finish;	-- 阶段函数前向声明
 
 -- ============================================================================
--- 【临时调试】探针回调：认领本探针的查询结果，逐条打文件名后释放查询
+-- 【临时调试】探针A：直查 Saves\Single 的 GAME_CONFIGURATION 列表（5参显式传 ""）
 -- ============================================================================
-StorageProbeOnFileList = function(fileList : table, id : number)
-	if g_storageProbeId == nil or id ~= g_storageProbeId then return; end	-- 只认领本探针的查询
-	LuaEvents.FileListQueryResults.Remove(StorageProbeOnFileList);
-	Events.GameCoreEventPublishComplete.Remove(StorageProbeTick);
+local function StorageProbe2StartA()
+	g_probe2Stage = "A";
+	g_probe2Time = os.time();
+	local okQuery, queryId = pcall(function()
+		return UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, SaveLocationOptions.NORMAL + SaveLocationOptions.LOAD_METADATA, SaveFileTypes.GAME_CONFIGURATION, "");
+	end);
+	if okQuery and queryId ~= nil then
+		g_probe2QueryId = queryId;
+		print("MPT_DS PROBE2 A 直查已发起 requestID=", queryId);
+	else
+		print("MPT_DS PROBE2 A 直查调用失败：", tostring(queryId));
+		StorageProbe2StartB();
+	end
+end
+
+-- ============================================================================
+-- 【临时调试】探针B：DIRECTORIES 模式直查 Saves 根目录的配置档（任意目录枚举试验）
+-- ============================================================================
+StorageProbe2StartB = function()
+	g_probe2Stage = "B";
+	g_probe2Time = os.time();
+	local okQuery, queryId = pcall(function()
+		return UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, SaveLocationOptions.DIRECTORIES, SaveFileTypes.GAME_CONFIGURATION, g_probe2Root);
+	end);
+	if okQuery and queryId ~= nil then
+		g_probe2QueryId = queryId;
+		print("MPT_DS PROBE2 B 任意目录直查已发起 requestID=", queryId, "目录=", g_probe2Root);
+	else
+		print("MPT_DS PROBE2 B 直查调用失败：", tostring(queryId));
+		StorageProbe2StartC();
+	end
+end
+
+-- ============================================================================
+-- 【临时调试】探针C：哨兵键写入 → Path 落盘 Saves 根目录 → 等 SaveComplete
+-- ============================================================================
+StorageProbe2StartC = function()
+	g_probe2Stage = "C_SAVE";
+	g_probe2Time = os.time();
+	g_probe2Sentinel = "PROBE_" .. tostring(os.time());
+	GameConfiguration.SetValue("MPT_PATH_PROBE", g_probe2Sentinel);
+	pcall(function()
+		Network.SaveGame({ Name = "MPT_PathTest", Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION, Path = g_probe2Root .. "/MPT_PathTest" });
+	end);
+	print("MPT_DS PROBE2 C 哨兵落盘请求=", g_probe2Sentinel, "目标=", g_probe2Root .. "/MPT_PathTest");
+end
+
+-- ============================================================================
+-- 【临时调试】探针组收尾：退订全部事件，重载主存档恢复缓存（探针C 的 LoadGame 重置过配置）
+-- ============================================================================
+StorageProbe2Finish = function()
+	if g_probe2Stage == nil then return; end
+	g_probe2Stage = nil;
+	g_probe2QueryId = nil;
+	Events.GameCoreEventPublishComplete.Remove(StorageProbe2Tick);
+	LuaEvents.FileListQueryResults.Remove(StorageProbe2OnFileList);
+	Events.SaveComplete.Remove(StorageProbe2OnSaveComplete);
+	Events.LoadComplete.Remove(StorageProbe2OnLoadComplete);
+	print("MPT_DS PROBE2 探针组结束，重载主存档恢复缓存");
+	g_storageReady = false;
+	g_storageLoading = false;
+	g_storageReloadNum = 0;
+	MPT_Storage_Init();
+end
+
+-- ============================================================================
+-- 【临时调试】查询结果派发：按 requestID 认领，打文件名后串行推进下一阶段
+-- ============================================================================
+StorageProbe2OnFileList = function(fileList : table, id : number)
+	if g_probe2QueryId == nil or id ~= g_probe2QueryId then return; end
+	local stage = g_probe2Stage;
+	if stage ~= "A" and stage ~= "B" then return; end
 	local count : number = 0;
 	for _, file in pairs(fileList or {}) do
 		count = count + 1;
-		print("MPT_DS QUERY FILE", file.Name, "LastModified=", tostring(file.LastModified));
+		print("MPT_DS PROBE2 " .. stage .. " FILE", tostring(file.Name));
 	end
-	print("MPT_DS QUERY ok requestID=", id, "文件数=", count);
-	pcall(function() UI.CloseFileListQuery(g_storageProbeId); end);
-	g_storageProbeId = nil;
+	print("MPT_DS PROBE2 " .. stage .. " ok requestID=", id, "文件数=", count);
+	pcall(function() UI.CloseFileListQuery(g_probe2QueryId); end);
+	g_probe2QueryId = nil;
+	if stage == "A" then StorageProbe2StartB(); else StorageProbe2StartC(); end
 end
 
 -- ============================================================================
--- 【临时调试】探针看门狗：超时无回调则判直查不可用，退订并释放查询
+-- 【临时调试】探针C SaveComplete：落盘完成后构造表 LoadGame 读回
 -- ============================================================================
-StorageProbeTick = function()
-	if g_storageProbeId == nil then
-		Events.GameCoreEventPublishComplete.Remove(StorageProbeTick);
+StorageProbe2OnSaveComplete = function(eResult, eType, eOptions, eFileType)
+	if g_probe2Stage ~= "C_SAVE" then return; end
+	g_probe2Stage = "C_LOAD";
+	g_probe2Time = os.time();
+	print("MPT_DS PROBE2 C 落盘完成 eResult=", eResult, "，构造表读回");
+	pcall(function()
+		Network.LoadGame({ Name = "MPT_PathTest", Path = g_probe2Root .. "/MPT_PathTest", Location = SaveLocations.LOCAL_STORAGE, Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION }, 0);
+	end);
+end
+
+-- ============================================================================
+-- 【临时调试】探针C LoadComplete：校验哨兵键判定任意路径读内容是否成立
+-- ============================================================================
+StorageProbe2OnLoadComplete = function(eResult, eType, eOptions, eFileType)
+	if g_probe2Stage ~= "C_LOAD" then return; end
+	local v = GameConfiguration.GetValue("MPT_PATH_PROBE");
+	print("MPT_DS PROBE2 C 读回校验：", v == g_probe2Sentinel and "哨兵一致（任意路径读内容成立）" or ("哨兵不符=" .. tostring(v)), "eResult=", eResult);
+	StorageProbe2Finish();
+end
+
+-- ============================================================================
+-- 【临时调试】看门狗：每级 10 秒超时，查询级关闭查询后推进，C 级直接收尾恢复
+-- ============================================================================
+StorageProbe2Tick = function()
+	if g_probe2Stage == nil then
+		Events.GameCoreEventPublishComplete.Remove(StorageProbe2Tick);
 		return;
 	end
-	if os.time() - g_storageProbeTime < STORAGE_PROBE_TIMEOUT then return; end
-	Events.GameCoreEventPublishComplete.Remove(StorageProbeTick);
-	LuaEvents.FileListQueryResults.Remove(StorageProbeOnFileList);
-	pcall(function() UI.CloseFileListQuery(g_storageProbeId); end);
-	g_storageProbeId = nil;
-	print("MPT_DS QUERY timeout（" .. STORAGE_PROBE_TIMEOUT .. " 秒无回调），维持弹窗加载路径");
+	if os.time() - g_probe2Time < STORAGE_PROBE_TIMEOUT then return; end
+	local stage = g_probe2Stage;
+	print("MPT_DS PROBE2 " .. stage .. " timeout（" .. STORAGE_PROBE_TIMEOUT .. " 秒无回调）");
+	if stage == "A" then
+		pcall(function() UI.CloseFileListQuery(g_probe2QueryId); end);
+		g_probe2QueryId = nil;
+		StorageProbe2StartB();
+	elseif stage == "B" then
+		pcall(function() UI.CloseFileListQuery(g_probe2QueryId); end);
+		g_probe2QueryId = nil;
+		StorageProbe2StartC();
+	else
+		StorageProbe2Finish();
+	end
 end
 
 -- ============================================================================
--- 【临时调试】探针发起：直查 Saves\Single 的 GAME_CONFIGURATION 列表；
--- 附带验证 GAME_CONFIGURATION 带 Path 字段是否被引擎接受（官方仅 WORLDBUILDER_MAP 用 Path，
--- SaveGameMenu.lua:58-61）：目标写 Saves 根目录 MPT_PathTest，生效则落在该处，否则在 Saves\Single。
+-- 【临时调试】探针组入口：主加载完成（MPT_Storage_Ready）后才开始，与弹窗完全隔离
 -- ============================================================================
-local function StorageProbeStart()
-	if g_storageProbeId ~= nil then return; end
+local function StorageProbe2Start()
+	if g_probe2Done then return; end		-- 每次启动只跑一遍（收尾重载主存档会再触发 Ready）
+	g_probe2Done = true;
+	if g_probe2Stage ~= nil then return; end
 	local okPath, savePath = pcall(function()
 		return UI.GetSaveLocationPath(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, SaveLocationOptions.NO_OPTIONS, false);
 	end);
-	print("MPT_DS QUERY 存档目录=", okPath and tostring(savePath) or "获取失败");
-	LuaEvents.FileListQueryResults.Add(StorageProbeOnFileList);
-	g_storageProbeTime = os.time();
-	Events.GameCoreEventPublishComplete.Add(StorageProbeTick);
-	local okQuery, queryId = pcall(function()
-		return UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, SaveLocationOptions.NORMAL + SaveLocationOptions.LOAD_METADATA, SaveFileTypes.GAME_CONFIGURATION);
-	end);
-	if okQuery and queryId ~= nil then
-		g_storageProbeId = queryId;
-		print("MPT_DS QUERY 直查已发起 requestID=", queryId);
-	else
-		print("MPT_DS QUERY 直查调用失败：", tostring(queryId));
+	print("MPT_DS PROBE2 存档目录=", okPath and tostring(savePath) or "获取失败");
+	if not (okPath and type(savePath) == "string") then
+		print("MPT_DS PROBE2 无法取得存档目录，探针组跳过");
+		return;
 	end
-	if okPath and type(savePath) == "string" then
-		local savesRoot = string.match(savePath, "^(.*)[/\\][^/\\]+$");
-		if savesRoot ~= nil then
-			local testPath : string = savesRoot .. "/MPT_PathTest";
-			pcall(function()
-				Network.SaveGame({ Name = "MPT_PathTest", Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION, Path = testPath });
-			end);
-			print("MPT_DS QUERY Path探针已请求，目标=", testPath, "（用后删除该测试文件）");
-		end
+	g_probe2Root = string.match(savePath, "^(.*)[/\\][^/\\]+$");	-- 去掉末尾 Single 得 Saves 根目录
+	if g_probe2Root == nil then
+		print("MPT_DS PROBE2 存档目录解析失败，探针组跳过");
+		return;
 	end
+	LuaEvents.FileListQueryResults.Add(StorageProbe2OnFileList);
+	Events.SaveComplete.Add(StorageProbe2OnSaveComplete);
+	Events.LoadComplete.Add(StorageProbe2OnLoadComplete);
+	Events.GameCoreEventPublishComplete.Add(StorageProbe2Tick);
+	StorageProbe2StartA();
 end
+LuaEvents.MPT_Storage_Ready.Add(StorageProbe2Start);
 
 -- ============================================================================
 -- 启动引导：本文件随 StagingRoom 上下文在前端启动时执行。轮询等待主菜单 LoadGameMenu 控件
@@ -480,7 +584,6 @@ local function StorageBootTick()
 	g_storageBooted = true;
 	Events.GameCoreEventPublishComplete.Remove(StorageBootTick);
 	print("MPT_DS: 主菜单就绪，开始加载本地数据存档");
-	StorageProbeStart();	-- 【临时调试】Phase 2 探针（与弹窗流程并行，冒烟后删除）
 	MPT_Storage_Init();
 end
 g_storageBootTime = os.time();
