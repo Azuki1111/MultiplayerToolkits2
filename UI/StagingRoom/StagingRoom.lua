@@ -3981,6 +3981,148 @@ function OnAdUpdate( fDeltaTime )
 end
 
 -- ============================================================================
+-- 网络连接显示优化（条目3.7：常驻 ping 数值 + 吸收联机工具箱1.67 BNL 黑灯修复）
+-- 简单覆盖：本分区重定义全局 UpdateNetConnectionIcon，覆盖第10行
+--      include("NetConnectionIconLogic") 建立的原版同名函数（原同名覆盖文件
+--      Scripts/NetConnectionIconLogic.lua 已移除，include 现解析回原版共享脚本；
+--      本分区在 include 之后执行，运行时调用一律命中本版本）。
+--      UpdateNetConnectionLabel 未修改，继续由 include 的原版文件提供。
+--      下列字符串/档位常量为文件内 local 副本（原文件中为 file-local，跨文件不可共享）。
+-- 修改内容（与已移除的覆盖文件一致）：
+-- 1. UpdateNetConnectionIcon 增加可选第三参数 pingLabel，在房间槽位
+--    就绪状态文本后常驻显示 ping 数值，颜色跟随绿黄红三档；
+--    pingLabel 传 nil 时行为与原版完全一致（双参调用不受影响）
+-- 2. 吸收联机工具箱1.67 BNL 黑灯修复：ping<=1 且非本机玩家时显示离线灯，
+--    原版此时会错误显示绿灯
+-- ============================================================================
+-- Connection Icon Strings
+local PlayerConnectedStr = Locale.Lookup( "LOC_MP_PLAYER_CONNECTED" );
+local PlayerConnectingStr = Locale.Lookup( "LOC_MP_PLAYER_CONNECTING" );
+local PlayerNotConnectedStr = Locale.Lookup( "LOC_MP_PLAYER_NOTCONNECTED" );
+local PlayerNotModReadyStr = Locale.Lookup( "LOC_MP_PLAYER_NOT_MOD_READY" );
+local PlayerResyncingStr = Locale.Lookup( "LOC_MP_PLAYER_RESYNCING" );
+
+-- Connection Label Strings.
+local PlayerConnectedSummaryStr = Locale.Lookup( "LOC_MP_PLAYER_CONNECTED_SUMMARY" );
+local PlayerConnectingSummaryStr = Locale.Lookup( "LOC_MP_PLAYER_CONNECTING_SUMMARY" );
+local PlayerNotConnectedSummaryStr = Locale.Lookup( "LOC_MP_PLAYER_NOTCONNECTED_SUMMARY" );
+local PlayerNotModReadySummaryStr = Locale.Lookup( "LOC_MP_PLAYER_NOT_MOD_READY_SUMMARY" );
+local PlayerResyncingSummaryStr = Locale.Lookup( "LOC_MP_PLAYER_RESYNCING_SUMMARY" );
+
+-- Ping Time Strings
+local secondsStr = Locale.Lookup( "LOC_TIME_SECONDS" );
+local millisecondsStr = Locale.Lookup( "LOC_TIME_MILLISECONDS" );
+
+local PING_GREAT	= 100; -- [Milliseconds] Player's ping is considered to be great (green) if under this number.
+local PING_OK		= 200; -- [Milliseconds] Player's ping is considered to be ok (yellow) if under this number.
+
+-- 联机工具箱2.0 新增：常驻 ping 数值的档位颜色文本标签（与连接灯同色系）
+-- 注意：SetColor 数值颜色对 Label 文本无效（实测显示黑色），改用引擎文本颜色标签
+-- 格式参考联机工具箱1.67 Update/PlayerData.sql 的 [color:R,G,B] 内联颜色用法，此处用带 Alpha 的四分量形式
+local PING_COLOR_GREAT	= "[color:80,200,80,255]"; -- 绿
+local PING_COLOR_OK		= "[color:232,200,64,255]"; -- 黄
+local PING_COLOR_BAD	= "[color:240,80,80,255]"; -- 红
+
+----------------------------------------------------------------
+-- UpdateNetConnectionIcon
+-- Remember to call UpdateNetConnectionIcon when...
+-- * Creating a new icon.
+-- * For all icons on a MultiplayerPingTimesChanged event.
+----------------------------------------------------------------
+-- 联机工具箱2.0：新增可选第三参数 pingLabel（常驻 ping 数值标签）
+function UpdateNetConnectionIcon(playerID :number, connectIcon, pingLabel)
+	-- Update network connection status
+	local pPlayerConfig = PlayerConfigurations[playerID];
+	local slotStatus = pPlayerConfig:GetSlotStatus();
+	if(slotStatus == SlotStatus.SS_TAKEN or slotStatus == SlotStatus.SS_OBSERVER) then
+		-- build ping string
+		local iPingTime = Network.GetPingTime( playerID );
+		local pingStr = "";
+		if(playerID ~= Network.GetLocalPlayerID()) then
+			if (iPingTime < 1000) then
+				pingStr = " " .. tostring(iPingTime) .. millisecondsStr;
+			else
+				pingStr = " " .. tostring(iPingTime/1000) .. secondsStr;
+			end
+		end
+
+		-- 联机工具箱2.0 新增：常驻 ping 数值标签
+		-- 仅已连接的非本机玩家且 ping>1 时显示（ping<=1 视为断线，配合黑灯修复）
+		if(pingLabel ~= nil) then
+			if(playerID ~= Network.GetLocalPlayerID()
+				and Network.IsPlayerConnected(playerID)
+				and iPingTime > 1) then
+				-- 颜色以文本标签形式加在数值前（SetColor 对 Label 无效，见上方常量注释）
+				local colorTag :string = PING_COLOR_BAD;
+				if(iPingTime < PING_GREAT) then
+					colorTag = PING_COLOR_GREAT;
+				elseif(iPingTime < PING_OK) then
+					colorTag = PING_COLOR_OK;
+				end
+				pingLabel:SetText(colorTag .. tostring(iPingTime) .. "ms");
+				pingLabel:SetHide(false);
+			else
+				pingLabel:SetHide(true);
+			end
+		end
+
+		connectIcon:SetHide(false);
+		if(Network.IsPlayerHotJoining(playerID)) then
+			-- Player is hot joining.
+			connectIcon:SetString("[ICON_HotjoiningPip]");
+			connectIcon:SetToolTipString( PlayerConnectingStr ..  pingStr);
+		elseif(Network.IsPlayerConnected(playerID)) then
+			if(not pPlayerConfig:GetModReady()) then
+				-- Player is not mod ready yet
+				connectIcon:SetString("[ICON_NotModReadyPip]");
+				connectIcon:SetToolTipString( PlayerNotModReadyStr .. pingStr );
+			elseif(Network.IsPlayerResyncing(playerID)) then
+				connectIcon:SetString("[ICON_ResyncingPip]");
+				connectIcon:SetToolTipString( PlayerResyncingStr .. pingStr );
+			else
+				-- fully connected
+				-- icon changes based on ping time and pause state.
+				if(pPlayerConfig:GetWantsPause()) then
+					-- 联机工具箱2.0 吸收1.67 BNL修复：ping<=1 且非本机视为断线，显示黑灯
+					if(iPingTime <= 1 and playerID ~= Network.GetLocalPlayerID()) then
+						connectIcon:SetString("[ICON_OfflinePip]");
+					elseif(iPingTime < PING_GREAT) then -- green
+						connectIcon:SetString("[ICON_PausedGreenPingPip]");
+					elseif(iPingTime < PING_OK) then -- yellow
+						connectIcon:SetString("[ICON_PausedYellowPingPig]");
+					else -- red
+						connectIcon:SetString("[ICON_PausedRedPingPig]");
+					end
+				else
+					-- 联机工具箱2.0 吸收1.67 BNL修复：ping<=1 且非本机视为断线，显示黑灯
+					if(iPingTime <= 1 and playerID ~= Network.GetLocalPlayerID()) then
+						connectIcon:SetString("[ICON_OfflinePip]");
+					elseif(iPingTime < PING_GREAT) then -- green
+						connectIcon:SetString("[ICON_OnlineGreenPingPip]");
+					elseif(iPingTime < PING_OK) then -- yellow
+						connectIcon:SetString("[ICON_OnlineYellowPingPig]");
+					else -- red
+						connectIcon:SetString("[ICON_OnlineRedPingPig]");
+					end
+				end	
+
+				connectIcon:SetToolTipString( PlayerConnectedStr .. pingStr );
+			end
+		else
+			-- Not connected
+			connectIcon:SetString("[ICON_OfflinePip]");
+			connectIcon:SetToolTipString( PlayerNotConnectedStr );		
+		end		
+  else
+		connectIcon:SetHide(true);
+		-- 联机工具箱2.0 新增：空槽位时同步隐藏 ping 数值标签
+		if(pingLabel ~= nil) then
+			pingLabel:SetHide(true);
+		end
+  end
+end
+
+-- ============================================================================
 -- 多人游戏 mod 版本校验（条目4.1）
 -- 校验清单：SQL 注册表 MPT_ModCheck（前端配置库，见 FrontEnd/ModCheck/ModCheck_Data.sql），
 --      各 mod 自行登记 modId（opt-in）；房主广播 注册表∩已启用 的 modId 与版本指纹。
