@@ -12,9 +12,9 @@
 --   .Civ6Cfg 配置存档；读取时 Network.LoadGame 载入该配置存档，再 GameConfiguration.GetValue
 --   取回。存档文件夹由保存时的 Type 决定（Saves\Single / Saves\Multi）。
 --
--- 本模块由 Storage/MPT_DataStorage.xml 空 Context 承载（AddUserInterfaces Context=FrontEnd），
--- 游戏启动到主菜单时自动运行；前端各 UI 上下文共享同一 Lua VM，消费方直接调用本文件
--- 注册的全局 API（MPT_Storage_*），无需 include（重复 include 会重置模块状态，禁止）。
+-- 本模块由 UI/StagingRoom/StagingRoom.lua 顶层 include 承载（前端实测无法用 AddUserInterfaces
+-- 新建空 Context——Lua 不执行，前端功能必须依附既有界面上下文）；前端 Context 脚本在启动时
+-- 即执行，故本模块随游戏启动自动运行，注册 MPT_Storage_* 全局 API 供同上下文直接调用。
 --
 -- 关键实测结论（Phase0/Phase1，详见 git 历史与 AGENTS.md 踩坑记录）：
 --   · LoadGame 是【重置语义】：不在存档里的键会被清掉（哨兵键实测）→ 加载必须在进房间
@@ -44,7 +44,7 @@
 --   MPT_DS_<dataId>        单块：编码串（字符串）；多块：块数（数字）
 --   MPT_DS_<dataId>_<i>    第 i 块（每块 STORAGE_CHUNK_SIZE 字符）
 --
--- 用法（任意前端上下文直接调用，启动时自动加载，无需 include）：
+-- 用法（同上下文直接调用，模块随启动自动加载）：
 --   LuaEvents.MPT_Storage_Ready.Add(fn);         -- 可选：加载完成（或全新无存档）后触发
 --   if MPT_Storage_IsReady() then ... end        -- 加载完成（或无存档全新启动）后为 true
 --   MPT_Storage_Set("Blacklist", t);             -- 写缓存（dataId 仅限字母数字下划线）
@@ -52,6 +52,10 @@
 --   local t = MPT_Storage_Get("Blacklist");      -- 读缓存（无数据返回 nil）
 --   MPT_Storage_Delete("Blacklist");             -- 删除（下次 Save 时清键）
 -- ============================================================================
+
+-- 幂等守卫：重复 include（本文件可能被多个上下文引入）直接返回，不重置模块状态
+if MPT_Storage_Loaded then return; end
+MPT_Storage_Loaded = true;
 
 include("MPT_Serialize");
 include("MPT_LibDeflate");
@@ -458,7 +462,7 @@ local function StorageProbeStart()
 end
 
 -- ============================================================================
--- 启动引导：本文件随空 Context 在前端启动时运行。轮询等待主菜单 LoadGameMenu 控件
+-- 启动引导：本文件随 StagingRoom 上下文在前端启动时执行。轮询等待主菜单 LoadGameMenu 控件
 -- 出现后自动执行一次加载（此时尚无房间，LoadGame 重置 GameConfiguration 无副作用）；
 -- 超时放弃，本次启动存储不可用（MPT_Storage_IsReady()=false，Save 拒绝执行防覆盖磁盘）。
 -- ============================================================================

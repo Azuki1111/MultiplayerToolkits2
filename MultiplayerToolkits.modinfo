@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786372951</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>5</Version>
+		<Version>6</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -177,14 +177,6 @@
 			<File>Storage/MPT_LibDeflate.lua</File>
 			<File>Storage/MPT_DataStorage.lua</File>
 		</ImportFiles>
-		<!-- 条目4.3预备：常驻前端空Context，游戏启动时自动加载本地数据存档（MPT_ModData.Civ6Cfg）进缓存，供各前端上下文全局调用 MPT_Storage_* -->
-		<AddUserInterfaces id="FE_UI_DataStorage">
-			<Properties>
-				<LoadOrder>1000</LoadOrder>
-				<Context>FrontEnd</Context>
-			</Properties>
-			<File>Storage/MPT_DataStorage.xml</File>
-		</AddUserInterfaces>
 		<!-- 条目4.1：模组校验注册表 MPT_ModCheck（各 mod 自我登记 modId 参与版本校验，仅前端配置库） -->
 		<UpdateDatabase id="FE_ModCheck_Data">
 			<Properties>
@@ -236,6 +228,5 @@
 		<File>Storage/MPT_Serialize.lua</File>
 		<File>Storage/MPT_LibDeflate.lua</File>
 		<File>Storage/MPT_DataStorage.lua</File>
-		<File>Storage/MPT_DataStorage.xml</File>
 	</Files>
 </Mod>

@@ -12,12 +12,14 @@ include( "PopupDialog" );
 include( "Civ6Common" );
 include( "TeamSupport" );
 -- ============================================================================
--- 条目4.3预备：引入序列化工具脚本（Storage/ 文件夹）
+-- 条目4.3预备：引入序列化与本地数据存储模块（Storage/ 文件夹）
 -- MPT_Serialize：移植1.67 BSR serialize 并精简优化，提供 MPT_Serialize/MPT_Deserialize
--- 注意：MPT_DataStorage 由独立常驻空 Context（Storage/MPT_DataStorage.xml）在启动时运行，
--- 注册 MPT_Storage_* 全局 API 供各前端上下文直接调用；此处【不要】include（重复执行会重置模块状态）。
+-- MPT_DataStorage：Civ6Cfg 配置存档存储管线，由本文件顶层 include 承载（前端实测无法
+-- 新建空 Context，必须依附既有界面上下文），随前端启动自动加载并注册 MPT_Storage_*
+-- 全局 API；模块内有幂等守卫，重复 include 不会重置状态。
 -- ----------------------------------------------------------------------------
 include( "MPT_Serialize" );
+include( "MPT_DataStorage" );
 
 
 ----------------------------------------------------------------  
