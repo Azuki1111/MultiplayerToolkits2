@@ -4,6 +4,7 @@
 	<Include File="PopupDialog" />
 
 	<AlphaAnim ID="CountdownTimerAnim" Size="1,1" AlphaStart="0" AlphaEnd="0" />	<!-- Animations always tick, even when hidden; use to update countdown timer -->
+	<AlphaAnim ID="MPT_RwTestAnim" Size="1,1" AlphaStart="0" AlphaEnd="0" />	<!-- 【临时调试】条目4.3预备测试滴答源（验证后移除）：常 tick 不可见动画，驱动 5 秒轮次读写 -->
 	
 	<Box ID="MainGrid" Style="ShellBGBox">
 		

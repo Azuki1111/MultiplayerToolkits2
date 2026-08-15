@@ -4927,15 +4927,15 @@ end
 -- 进房约 2 秒后启动，每隔 5 秒一轮「读→写」，共 5 轮；日志前缀 MPT_RW 附 host 与轮次。
 -- 判断标准：每轮 read= 应等于上一轮写入的 WrittenAt（首轮为旧值或 nil），save ok=true。
 -- 两个轮次变量为【全局】：OnShow 启动块在本区之前引用，若用 local 会解析成另一全局（踩坑记录同款）。
--- 滴答由 MultiplayerPingTimesChanged（ping 定时刷新）驱动：单人空房间可能不触发，测试需房间内至少两名玩家。
+-- 滴答由专属 AlphaAnim 帧回调驱动（Civ6 原生计时机制，与原版 CountdownTimerAnim 同款：动画隐藏也持续 tick；
+-- ping 事件实测在客机房间不触发，ContextPtr 亦无 SetUpdateHandler——Civ5 API，均不可用）。
 -- ============================================================================
 g_mptRwTestRound = 0;							-- 当前轮次（OnShow 启动块重置）
 g_mptRwTestNext = -1;							-- 下一轮触发时刻（os.time 秒，-1=未启动）
 local MPT_RW_TEST_INTERVAL : number = 5;		-- 轮间隔（秒）
 local MPT_RW_TEST_ROUNDS : number = 5;			-- 总轮数
 
--- 滴答源：房间内 ping 定时刷新事件（房主/客机均触发；os.time 秒级门控，开销可忽略。
--- 注：Civ6 的 ContextPtr 没有 SetUpdateHandler（那是 Civ5 API，本文件 4937 行曾因此加载报错）
+-- 滴答：专属 AlphaAnim（StagingRoom.xml: MPT_RwTestAnim）每帧回调，os.time 秒级门控
 local function MPT_RwTestTick()
 	if g_mptRwTestNext < 0 or os.time() < g_mptRwTestNext then return; end
 	if g_mptRwTestRound >= MPT_RW_TEST_ROUNDS then
@@ -4954,4 +4954,4 @@ local function MPT_RwTestTick()
 		end);
 	end);
 end
-Events.MultiplayerPingTimesChanged.Add(MPT_RwTestTick);
+Controls.MPT_RwTestAnim:RegisterAnimCallback(MPT_RwTestTick);
