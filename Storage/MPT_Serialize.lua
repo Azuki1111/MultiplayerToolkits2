@@ -26,6 +26,8 @@
 --   local t = MPT_Deserialize(s) or {};						-- 还原；损坏数据返回 nil
 -- ============================================================================
 
+print("MPT_DBG: Serialize executing");	-- 【临时调试】
+
 -- Lua 关键字表：字符串键为合法标识符时可省略引号括号输出 k=v，是关键字时回退 ["k"]=v
 local g_mpt_luaKeywords = {
 	["and"]=true, ["break"]=true, ["do"]=true, ["else"]=true, ["elseif"]=true,
@@ -109,3 +111,5 @@ function MPT_Deserialize(s)
 	if not ok then return nil; end
 	return result;
 end
+
+print("MPT_DBG: Serialize APIs", type(MPT_Serialize), type(MPT_Deserialize));	-- 【临时调试】

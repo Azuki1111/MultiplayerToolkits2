@@ -19,8 +19,12 @@ include( "TeamSupport" );
 -- LoadData/DeleteFile 全局 API（异步回调式，详见该文件头用法说明）；模块内有幂等守卫，
 -- 重复 include 不会重置状态。
 -- ----------------------------------------------------------------------------
-include( "MPT_Serialize" );
-include( "MPT_DataStorage" );
+-- ============================================================================
+-- 【临时调试】条目4.3预备诊断：pcall 包裹 include 校验加载成败（定位第三次进房 API 缺失，验证后移除）
+local okS, errS = pcall(include, "MPT_Serialize");
+local okD, errD = pcall(include, "MPT_DataStorage");
+print("MPT_INCLUDE_CHECK: ser=", okS, tostring(errS), " ds=", okD, tostring(errD), " LoadData=", type(MPT_Storage_LoadData));
+-- ----------------------------------------------------------------------------
 
 
 ----------------------------------------------------------------  
@@ -2549,12 +2553,16 @@ function OnShow()
 	-- ============================================================================
 	-- 【临时调试】条目4.3预备重构冒烟：进房读回 SmokeTest 并写新时间戳（验证后移除）
 	-- 第一遍期望 log：MPT_SMOKE read=nil → save ok=true；第二遍 read=第一时间戳 回环成立
-	MPT_Storage_LoadData("MPT_ModData", "SmokeTest", function(t)
-		print("MPT_SMOKE read=", type(t) == "table" and t.BootTime or "nil");
-		MPT_Storage_SaveData("MPT_ModData", "SmokeTest", { BootTime = os.time(), Note = "冒烟测试中文" }, function(ok)
-			print("MPT_SMOKE save ok=", ok);
+	if MPT_Storage_LoadData == nil then
+		print("MPT_SMOKE ERROR: LoadData=nil, loaded=", tostring(MPT_Storage_Loaded), " ser=", type(MPT_Serialize));
+	else
+		MPT_Storage_LoadData("MPT_ModData", "SmokeTest", function(t)
+			print("MPT_SMOKE read=", type(t) == "table" and t.BootTime or "nil");
+			MPT_Storage_SaveData("MPT_ModData", "SmokeTest", { BootTime = os.time(), Note = "冒烟测试中文" }, function(ok)
+				print("MPT_SMOKE save ok=", ok);
+			end);
 		end);
-	end);
+	end
 	-- ----------------------------------------------------------------------------
 
 	local networkSessionID:number = Network.GetSessionID();
