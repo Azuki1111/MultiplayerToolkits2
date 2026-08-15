@@ -1,141 +1,59 @@
 -- ============================================================================
 -- MPT_DataStorage.lua
--- 联机工具箱 2.0 前端：本地数据持久化存储模块（条目4.3预备）
+-- 联机工具箱 2.0：极简本地数据读写工具（条目4.3预备）
 --
--- 基于 PKU「文明6 Mod本地数据框架」（工坊 3417070280，作者皮皮凯）的存储管线优化重写：
---   原实现 Common/UI/Additions/ModLocalDataManager.lua（SaveConfig/LoadConfigComplete）
---   + Common/UniversalLuaScript/PK_LibDeflate.lua（序列化压缩封装）
---   指南 https://github.com/X-PPK/CIV6-PKUIModDataGuide（gitee 有同名镜像）
+-- 定位：纯读写工具，与 PKU「文明6 Mod本地数据框架」（工坊 3417070280）差异化——
+--   无压缩、无缓存、无启动预载、无索引键、无注册表/版本迁移/联机同步/配置UI。
+--   调用方自选 .Civ6Cfg 文件名与键名，每次 LoadData 都真实读盘。
 --
 -- 原理：GameConfiguration 键值随存档落盘。Network.SaveGame 指定
 --   FileType = SaveFileTypes.GAME_CONFIGURATION 时，把当前 GameConfiguration 单独存成
 --   .Civ6Cfg 配置存档；读取时 Network.LoadGame 载入该配置存档，再 GameConfiguration.GetValue
---   取回。存档文件夹由保存时的 Type 决定（Saves\Single / Saves\Multi）。
+--   取回。数据经 MPT_Serialize 序列化为纯可打印 ASCII（%q 转义），超长按块拆分。
 --
--- 本模块由 UI/StagingRoom/StagingRoom.lua 顶层 include 承载（前端实测无法用 AddUserInterfaces
--- 新建空 Context——Lua 不执行，前端功能必须依附既有界面上下文）；前端 Context 脚本在启动时
--- 即执行，故本模块随游戏启动自动运行，注册 MPT_Storage_* 全局 API 供同上下文直接调用。
+-- 用法（任意前端/游戏内上下文 include 后直接调用；异步，结果经回调返回）：
+--   MPT_Storage_SaveData("MyMod", "Blacklist", t, function(ok) end);   -- 写：序列化→落盘 MyMod.Civ6Cfg
+--   MPT_Storage_LoadData("MyMod", "Blacklist", function(t) end);       -- 读：t=数据表，无存档/键损坏=nil
+--   MPT_Storage_DeleteFile("MyMod", function(found) end);              -- 删：删除 MyMod.Civ6Cfg
 --
--- 关键实测结论（Phase0/1/2 三轮游戏内实测，详见 git 历史与 AGENTS.md 踩坑记录）：
---   · LoadGame 是【重置语义】：不在存档里的键会被清掉（哨兵键实测）→ 加载必须在进房间
---     之前完成，故本模块在游戏启动时（主菜单）自动加载，房间内只读缓存/落盘；
---   · 文件列表菜单按当前环境枚举存档文件夹：主菜单列 Saves\Single，联机准备房间列
---     Saves\Multi（实测）→ 读取在主菜单发生，故保存【恒用 SINGLE_PLAYER】，读写同目录；
---   · UI.QuerySaveGameList 直查可用（无弹窗）：5 参调用（第5参目录路径恒传 "" 用默认目录，
---     与 LoadSaveMenu_Shared.lua:1060 一致），结果经 LuaEvents.FileListQueryResults 按自身
---     requestID 认领、用完 UI.CloseFileListQuery 释放；并发查询会互相干扰（启动期 MainMenu
---     自己也在查），故必须按 requestID 过滤，且直查不与弹窗查询同时发起；
---   · 任意目录枚举：SaveLocationOptions.DIRECTORIES + directoryPath 对 GAME_CONFIGURATION
---     同样有效（文件与子目录混列）；UI.GetSaveLocationPath 返回存档目录磁盘真实路径；
---   · 任意路径读写配置档：Network.SaveGame 带 Path 字段（官方仅 WORLDBUILDER_MAP 用）对
---     GAME_CONFIGURATION 生效；Network.LoadGame 用构造表 {Name,Path,Location,Type,FileType}
---     可从任意路径读回（哨兵键实测一致）——本模块仍存 Saves\Single 标准目录；
+-- 注意事项（务必读）：
+--   · 【LoadGame 重置语义】LoadData 会把 GameConfiguration 替换为该文件快照，不在文件里的
+--     键被清掉（实测）——请在安全时机调用（主菜单/进房前后）；联机准备房间内读档实测
+--     不踢人、不影响房间配置（房间配置由网络同步持有）；InGame 读档时机自负（PKU 有先例）。
+--   · 存档文件夹恒为 Saves\Single（保存恒用 SaveTypes.SINGLE_PLAYER，读写同目录，实测）。
+--   · 作业串行：模块内建 FIFO 队列，任时刻只有一个读写作业在途（并发查询互顶为实测坑），
+--     回调按入队顺序到达；无看门狗——引擎回调可靠性已三轮实测。
+--   · fileName/key 仅限字母数字下划线（要拼进 GameConfiguration 键名）。
+--
+-- 关键实测结论（条目4.3预备 Phase0/1/2，详见 AGENTS.md 踩坑记录）：
 --   · 前端 Events.SaveComplete / Events.LoadComplete 均正常触发；
---   · GameConfiguration 单值 512000 字符完整读写往返（未触顶），切块取 128000 留足余量；
---   · 房间内每5秒高频写读 + 每20秒完整落盘，24轮×2启动全部可靠（SaveComplete 100%）。
--- 已知副作用（PKU 同款）：启动加载会把 GameConfiguration 替换为上次保存时的快照，
---   即建房/高级设置的初始值呈现上次保存时的房间配置（相当于"记住上次房间设置"）。
---
--- 相对 PKU 原实现的优化/裁剪：
---   1. 仅前端环境（本 mod 是纯前端 mod）：砍掉 InGame 分支、ExposedMembers 跨环境
---      缓存、联机同步、配置 UI 自动生成、ModDataIds 注册表、版本迁移钩子（1746 行框架 → 本文件）；
---   2. 压缩择优：PKU 无条件 Deflate 压缩 + EncodeForPrint（编码 +33% 体积），短数据反而
---      膨胀；本模块压缩后与原串比长度谁小存谁，前缀 'C:'=压缩编码 / 'P:'=明文，读端按前缀分流；
---   3. 序列化换用本 mod 的 MPT_Serialize（紧凑输出，压缩前体积更小）；
---   4. 键名统一 MPT_DS_ 前缀 + 索引键记名登记（GameConfiguration 无键枚举 API）；
---   5. 覆盖写入前先清旧块（上次多块本次单块时残留旧块会污染拼接读取）。
---
--- 数据布局（GameConfiguration 键）：
---   MPT_DS__Index          索引：编码后的 dataId 数组（记名制，读取时按名取回）
---   MPT_DS_<dataId>        单块：编码串（字符串）；多块：块数（数字）
---   MPT_DS_<dataId>_<i>    第 i 块（每块 STORAGE_CHUNK_SIZE 字符）
---
--- 用法（同上下文直接调用，模块随启动自动加载）：
---   LuaEvents.MPT_Storage_Ready.Add(fn);         -- 可选：加载完成（或全新无存档）后触发
---   if MPT_Storage_IsReady() then ... end        -- 加载完成（或无存档全新启动）后为 true
---   MPT_Storage_Set("Blacklist", t);             -- 写缓存（dataId 仅限字母数字下划线）
---   MPT_Storage_Save();                          -- 缓存全量落盘 MPT_ModData.Civ6Cfg
---   local t = MPT_Storage_Get("Blacklist");      -- 读缓存（无数据返回 nil）
---   MPT_Storage_Delete("Blacklist");             -- 删除（下次 Save 时清键）
+--   · GameConfiguration 单值 512000 字符完整往返（未触顶），切块 128000 留足余量；
+--   · 房间内 5 秒级高频写读 + 反复落盘可靠（SaveComplete 100% 到达）；
+--   · UI.QuerySaveGameList 直查可用（无弹窗）：结果经 LuaEvents.FileListQueryResults 回调，
+--     必须按自身 requestID 认领（启动期 MainMenu 并发查询会互顶，误收会判断落空）；
+--   · 任意路径读写：SaveGame 带 Path 字段、LoadGame 用构造表可从任意路径读写配置档
+--     （本工具不用该能力，存档恒在 Saves\Single）。
 -- ============================================================================
 
--- 幂等守卫：重复 include（本文件可能被多个上下文引入）直接返回，不重置模块状态
+-- 幂等守卫：重复 include（本文件可能被多个上下文引入）直接返回，互不影响
 if MPT_Storage_Loaded then return; end
 MPT_Storage_Loaded = true;
 
 include("MPT_Serialize");
-include("MPT_LibDeflate");
 
 -- ============================================================================
 -- 常量
 -- ============================================================================
-local STORAGE_FILE_NAME    : string = "MPT_ModData";	-- 配置存档文件名（Saves\Single\MPT_ModData.Civ6Cfg）
-local STORAGE_KEY_PREFIX   : string = "MPT_DS_";		-- GameConfiguration 键前缀
-local STORAGE_INDEX_ID     : string = "_Index";			-- 索引 dataId（登记全部 dataId 清单，保留字不可占用）
-local STORAGE_CHUNK_SIZE   : number = 128000;			-- 单值切块长度（单值 512000 实测完整读写，取 1/4 留余量）
-local STORAGE_MAX_RELOAD   : number = 3;				-- 读取失败最大重试次数
-local STORAGE_PREFIX_PLAIN : string = "P:";				-- 编码串前缀：明文（序列化源码）
-local STORAGE_PREFIX_COMPR : string = "C:";				-- 编码串前缀：Deflate 压缩 + EncodeForPrint
-local STORAGE_BOOT_TIMEOUT : number = 60;				-- 启动引导超时秒数（等不到主菜单控件则本次放弃加载）
+local STORAGE_KEY_PREFIX : string = "MPT_DS_";		-- GameConfiguration 键前缀（防与其他键碰撞）
+local STORAGE_CHUNK_SIZE : number = 128000;			-- 单值切块长度（单值 512000 实测完整读写，取 1/4 留余量）
 
 -- ============================================================================
--- 模块状态（本上下文内缓存；功能条目直接读写缓存，Save 时统一落盘）
+-- 作业队列状态（FIFO：任时刻只有一个作业在途，回调按入队顺序到达）
 -- ============================================================================
-local g_storageCache      : table = {};			-- dataId → 数据表
-local g_storageTombstones : table = {};			-- dataId → true（Delete 标记，Save 时清键）
-local g_storageKnownIds   : table = {};			-- 存档中已知的 dataId（Save 时清理已删除项的旧键）
-local g_storageReady      : boolean = false;	-- Init 加载完成（或无存档全新启动）后为 true
-local g_storageLoading    : boolean = false;	-- Init 进行中去重
-local g_storageReloadNum  : number = 0;			-- 读取失败已重试次数
-local g_storageSaveDirty  : boolean = false;	-- Save 置位，SaveComplete 到达后清键复位
-local g_storageQueryId    = nil;				-- 文件列表直查 requestID（非 nil 表示查询在途）
-local g_storageBootTime   : number = 0;			-- 启动引导注册时刻（os.time 墙钟）
-local g_storageBooted     : boolean = false;	-- 启动引导是否已触发 Init
+local g_storageJobs : table = {};	-- 待执行作业队列
+local g_storageJob  = nil;			-- 在途作业（nil=空闲）
 
--- 前向声明（互递归/回调引用）
-local StorageOnFileList, StorageOnLoadComplete;
-
--- ============================================================================
--- StorageEncode：数据表 → 带前缀编码串
--- 管线：MPT_Serialize 序列化 → Deflate level 9 压缩 → EncodeForPrint 可打印编码；
--- 与原串比长度谁小存谁（Deflate 头部 + Encode 4/3 膨胀使短数据压缩得不偿失）。
--- 参数 t：纯数据表；返回 string：'P:'+明文 或 'C:'+压缩编码串
--- ============================================================================
-local function StorageEncode(t : table)
-	local plainStr : string = MPT_Serialize(t);
-	local ok, encodedStr = pcall(function()
-		local compressedStr = LibDeflate:CompressDeflate(plainStr, {level = 9});
-		if compressedStr == nil then return nil; end
-		return LibDeflate:EncodeForPrint(compressedStr);
-	end);
-	if ok and encodedStr ~= nil and #encodedStr < #plainStr then
-		return STORAGE_PREFIX_COMPR .. encodedStr;
-	end
-	return STORAGE_PREFIX_PLAIN .. plainStr;
-end
-
--- ============================================================================
--- StorageDecode：带前缀编码串 → 数据表（按前缀分流；损坏数据全程守卫返回 nil）
--- 参数 str：StorageEncode 产出的编码串；返回 table 或 nil
--- ============================================================================
-local function StorageDecode(str)
-	if type(str) ~= "string" or #str < 2 then return nil; end
-	local prefix : string = string.sub(str, 1, 2);
-	local body   : string = string.sub(str, 3);
-	if prefix == STORAGE_PREFIX_PLAIN then
-		return MPT_Deserialize(body);
-	elseif prefix == STORAGE_PREFIX_COMPR then
-		local ok, result = pcall(function()
-			local compressedStr = LibDeflate:DecodeForPrint(body);
-			if compressedStr == nil then return nil; end
-			local plainStr = LibDeflate:DecompressDeflate(compressedStr);
-			if plainStr == nil then return nil; end
-			return MPT_Deserialize(plainStr);
-		end);
-		if ok then return result; end
-	end
-	return nil;
-end
+local StorageRunNext, StorageFinishJob;	-- 互递归前向声明
 
 -- ============================================================================
 -- StorageClearKey：清除某键及其全部旧块（多块时键值为块数）。
@@ -168,7 +86,7 @@ local function StorageWriteKey(key : string, encodedStr : string)
 end
 
 -- ============================================================================
--- StorageReadKey：读取键并拼接解码（多块时键值为块数；块缺失视为损坏返回 nil）
+-- StorageReadKey：读取键并拼接反序列化（多块时键值为块数；块缺失视为损坏返回 nil）
 -- ============================================================================
 local function StorageReadKey(key : string)
 	local value = GameConfiguration.GetValue(key);
@@ -182,214 +100,155 @@ local function StorageReadKey(key : string)
 		value = table.concat(chunks);
 	end
 	if type(value) ~= "string" then return nil; end
-	return StorageDecode(value);
+	return MPT_Deserialize(value);
 end
 
 -- ============================================================================
--- StorageValidateDataId：dataId 仅限字母数字下划线（要拼进 GameConfiguration 键名），
--- 且不得占用索引保留字 _Index。
+-- StorageValidateName：fileName/key 仅限字母数字下划线（fileName 做文件名，key 拼进键名）
 -- ============================================================================
-local function StorageValidateDataId(dataId)
-	return type(dataId) == "string" and string.match(dataId, "^[%w_]+$") ~= nil and dataId ~= STORAGE_INDEX_ID;
+local function StorageValidateName(name)
+	return type(name) == "string" and string.match(name, "^[%w_]+$") ~= nil;
 end
 
 -- ============================================================================
--- 对外：读缓存（未加载或无数据返回 nil）
+-- 内部：执行队首作业。save=切块写键后落盘等 SaveComplete；load/delete=先直查文件列表。
 -- ============================================================================
-function MPT_Storage_Get(dataId : string)
-	return g_storageCache[dataId];
-end
-
--- ============================================================================
--- 对外：写缓存（仅内存，MPT_Storage_Save 后落盘）
--- ============================================================================
-function MPT_Storage_Set(dataId : string, t : table)
-	if not StorageValidateDataId(dataId) then
-		print("MPT_DS: 非法 dataId", dataId);
-		return;
-	end
-	g_storageCache[dataId] = t;
-	g_storageTombstones[dataId] = nil;
-end
-
--- ============================================================================
--- 对外：删除缓存并打删除标记（下次 Save 时清键）
--- ============================================================================
-function MPT_Storage_Delete(dataId : string)
-	g_storageCache[dataId] = nil;
-	g_storageTombstones[dataId] = true;
-end
-
--- ============================================================================
--- 对外：是否已完成加载
--- ============================================================================
-function MPT_Storage_IsReady()
-	return g_storageReady;
-end
-
--- ============================================================================
--- 对外：缓存全量落盘到 MPT_ModData.Civ6Cfg（GAME_CONFIGURATION 配置存档）。
--- 先写索引再写各 dataId；tombstone 与存档已知但已删除的 dataId 清键。
--- 恒用 SINGLE_PLAYER：读取发生在主菜单（启动时），主菜单文件列表枚举 Saves\Single；
--- 存档文件夹只由 Type 决定，与调用时所在房间无关（Phase0 实测）。
--- ============================================================================
-function MPT_Storage_Save()
-	if not g_storageReady then
-		print("MPT_DS: 尚未完成加载，忽略保存（防止空缓存覆盖磁盘数据）");
-		return;
-	end
-	local ids : table = {};
-	for dataId in pairs(g_storageCache) do
-		table.insert(ids, dataId);
-	end
-	StorageWriteKey(STORAGE_KEY_PREFIX .. STORAGE_INDEX_ID, StorageEncode(ids));
-	for _, dataId in ipairs(ids) do
-		StorageWriteKey(STORAGE_KEY_PREFIX .. dataId, StorageEncode(g_storageCache[dataId]));
-	end
-	for dataId in pairs(g_storageTombstones) do
-		StorageClearKey(STORAGE_KEY_PREFIX .. dataId);
-	end
-	for dataId in pairs(g_storageKnownIds) do
-		if g_storageCache[dataId] == nil then
-			StorageClearKey(STORAGE_KEY_PREFIX .. dataId);
+StorageRunNext = function()
+	if g_storageJob ~= nil then return; end
+	local job = g_storageJobs[1];
+	if job == nil then return; end
+	table.remove(g_storageJobs, 1);
+	g_storageJob = job;
+	if job.kind == "save" then
+		StorageWriteKey(STORAGE_KEY_PREFIX .. job.key, job.encoded);
+		local ok = pcall(function()
+			Network.SaveGame({ Name = job.fileName, Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION });
+		end);
+		if not ok then
+			StorageClearKey(STORAGE_KEY_PREFIX .. job.key);
+			StorageFinishJob(false);
+		end
+	else	-- load / delete 都先直查 Saves\Single 的 GAME_CONFIGURATION 列表（无弹窗）
+		job.queryId = nil;
+		local ok, queryId = pcall(function()
+			return UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, SaveLocationOptions.NORMAL + SaveLocationOptions.LOAD_METADATA, SaveFileTypes.GAME_CONFIGURATION, "");
+		end);
+		if ok and queryId ~= nil then
+			job.queryId = queryId;
+		else
+			StorageFinishJob(job.kind == "delete" and false or nil);
 		end
 	end
-	g_storageTombstones = {};
-	g_storageKnownIds = {};
-	for _, dataId in ipairs(ids) do
-		g_storageKnownIds[dataId] = true;
-	end
-	local gameFile = {
-		Name = STORAGE_FILE_NAME,
-		Type = SaveTypes.SINGLE_PLAYER,
-		FileType = SaveFileTypes.GAME_CONFIGURATION,
-	};
-	g_storageSaveDirty = true;
-	Network.SaveGame(gameFile);
-	print("MPT_DS: 已请求保存 " .. STORAGE_FILE_NAME .. ".Civ6Cfg（" .. #ids .. " 项）");
 end
 
 -- ============================================================================
--- 内部：SaveComplete 回调——落盘完成后清掉 GameConfiguration 里的 MPT_DS_ 键，
--- 防止键值混入准备房间配置与真实游戏存档（PKU InGame 同款清理思路）。
+-- 内部：结束在途作业——先推进队列再回调（回调内可安全再次入队；回调异常不炸队列）
 -- ============================================================================
-local function StorageOnSaveComplete(eResult, eType, eOptions, eFileType)
-	if not g_storageSaveDirty then return; end
+StorageFinishJob = function(result)
+	local job = g_storageJob;
+	if job == nil then return; end
+	g_storageJob = nil;
+	local callback = job.callback;
+	StorageRunNext();
+	if callback ~= nil then pcall(callback, result); end
+end
+
+-- ============================================================================
+-- 内部：SaveComplete 派发——在途 save 作业落盘完成，清键后收尾
+-- ============================================================================
+Events.SaveComplete.Add(function(eResult, eType, eOptions, eFileType)
+	local job = g_storageJob;
+	if job == nil or job.kind ~= "save" then return; end
 	if eFileType ~= nil and eFileType ~= SaveFileTypes.GAME_CONFIGURATION then return; end
-	g_storageSaveDirty = false;
-	StorageClearKey(STORAGE_KEY_PREFIX .. STORAGE_INDEX_ID);
-	for dataId in pairs(g_storageKnownIds) do
-		StorageClearKey(STORAGE_KEY_PREFIX .. dataId);
-	end
-end
-Events.SaveComplete.Add(StorageOnSaveComplete);
+	StorageClearKey(STORAGE_KEY_PREFIX .. job.key);	-- 落盘后清键，防混入房间配置与真实存档（PKU 同款清理思路）
+	StorageFinishJob(eResult == nil or eResult == 0);
+end);
 
 -- ============================================================================
--- 内部：读取完成回调（Events.LoadComplete，Network.LoadGame 后触发）
--- 读索引 → 按名读各 dataId 进缓存；失败重试 STORAGE_MAX_RELOAD 次（PKU ReloadNum 思路）。
+-- 内部：LoadComplete 派发——在途 load 作业读档完成，读键反序列化后收尾
 -- ============================================================================
-StorageOnLoadComplete = function(eResult, eType, eOptions, eFileType)
-	Events.LoadComplete.Remove(StorageOnLoadComplete);	-- 只在主动 LoadGame 前订阅，触发即退订
-	local ids = StorageReadKey(STORAGE_KEY_PREFIX .. STORAGE_INDEX_ID);
-	if type(ids) ~= "table" then
-		if g_storageReloadNum < STORAGE_MAX_RELOAD then
-			g_storageReloadNum = g_storageReloadNum + 1;
-			print("MPT_DS: 读取索引失败，重试第 " .. g_storageReloadNum .. " 次");
-			g_storageLoading = false;
-			MPT_Storage_Init();		-- 重新走完整加载流程
-		else
-			print("MPT_DS: 读取失败超过上限，本次启动放弃加载（磁盘数据未改动）");
-			g_storageLoading = false;
-		end
-		return;
-	end
-	g_storageCache = {};
-	g_storageKnownIds = {};
-	for _, dataId in ipairs(ids) do
-		local t = StorageReadKey(STORAGE_KEY_PREFIX .. dataId);
-		if t ~= nil then
-			g_storageCache[dataId] = t;
-			g_storageKnownIds[dataId] = true;
-		else
-			print("MPT_DS: dataId " .. tostring(dataId) .. " 读取失败，跳过");
-		end
-	end
-	g_storageReady = true;
-	g_storageLoading = false;
-	print("MPT_DS: 加载完成，共 " .. #ids .. " 项");
-	LuaEvents.MPT_Storage_Ready();
-end
+Events.LoadComplete.Add(function(eResult, eType, eOptions, eFileType)
+	local job = g_storageJob;
+	if job == nil or job.kind ~= "load" or job.queryId ~= nil then return; end	-- 仅在 LoadGame 已发出后认领
+	StorageFinishJob(StorageReadKey(STORAGE_KEY_PREFIX .. job.key));
+end);
 
 -- ============================================================================
--- 内部：文件列表回调（LuaEvents.FileListQueryResults，引擎触发）。
--- 按本模块自身 requestID 认领——启动期 MainMenu 自己也在查询（MOST_RECENT_ONLY），不过滤
--- 会误收其 GAME_STATE 结果导致判断落空（实测）；认领后无论结果如何都退订并释放查询。
--- 找到 MPT_ModData.Civ6Cfg 则 LoadGame 载入；未找到按全新数据启动（非失败）。
+-- 内部：文件列表派发（LuaEvents.FileListQueryResults，引擎触发）——按自身 requestID 认领；
+-- load 找到则 LoadGame 读档，delete 找到则 DeleteSavedGame，未找到按 nil/false 收尾。
 -- ============================================================================
-StorageOnFileList = function(fileList : table, id : number)
-	if g_storageQueryId == nil or id ~= g_storageQueryId then return; end
-	LuaEvents.FileListQueryResults.Remove(StorageOnFileList);
-	pcall(function() UI.CloseFileListQuery(g_storageQueryId); end);
-	g_storageQueryId = nil;
-	if not g_storageLoading then return; end
+LuaEvents.FileListQueryResults.Add(function(fileList : table, id : number)
+	local job = g_storageJob;
+	if job == nil or job.queryId == nil or id ~= job.queryId then return; end
+	pcall(function() UI.CloseFileListQuery(id); end);
+	job.queryId = nil;
+	local found = nil;
 	for _, file in pairs(fileList or {}) do
-		if file.Name == STORAGE_FILE_NAME .. ".Civ6Cfg" then
-			Events.LoadComplete.Add(StorageOnLoadComplete, 1);	-- 第二参沿用 PKU 实证写法
-			Network.LoadGame(file, 0);
-			print("MPT_DS: 找到 " .. STORAGE_FILE_NAME .. ".Civ6Cfg，开始载入");
-			return;
+		if file.Name == job.fileName .. ".Civ6Cfg" then
+			found = file;
+			break;
 		end
 	end
-	g_storageReady = true;
-	g_storageLoading = false;
-	print("MPT_DS: 未找到 " .. STORAGE_FILE_NAME .. ".Civ6Cfg，按全新数据启动");
-	LuaEvents.MPT_Storage_Ready();
+	if job.kind == "load" then
+		if found == nil then StorageFinishJob(nil); return; end
+		local ok = pcall(function() Network.LoadGame(found, 0); end);
+		if not ok then StorageFinishJob(nil); end
+	else	-- delete
+		if found == nil then StorageFinishJob(false); return; end
+		pcall(function() UI.DeleteSavedGame(found); end);
+		StorageFinishJob(true);
+	end
+end);
+
+-- ============================================================================
+-- 对外：写——data 序列化后切块写入并落盘 fileName.Civ6Cfg（Saves\Single）。
+-- data 为任意纯数据（表/字符串/数字/布尔；函数/循环表序列化报错）；
+-- callback(success:boolean) 可选。
+-- ============================================================================
+function MPT_Storage_SaveData(fileName : string, key : string, data, callback)
+	if not StorageValidateName(fileName) or not StorageValidateName(key) then
+		print("MPT_DS: 非法 fileName/key", tostring(fileName), tostring(key));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	local ok, encoded = pcall(MPT_Serialize, data);
+	if not ok or type(encoded) ~= "string" then
+		print("MPT_DS: 序列化失败", key);
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	table.insert(g_storageJobs, { kind = "save", fileName = fileName, key = key, encoded = encoded, callback = callback });
+	StorageRunNext();
 end
 
 -- ============================================================================
--- 对外：初始化并异步加载（幂等）。完成或全新启动后触发 LuaEvents.MPT_Storage_Ready。
--- 直查 Saves\Single 的 GAME_CONFIGURATION 列表（无弹窗）。查询在途且无看门狗：
--- 引擎回调可靠性已实测（与 MainMenu 同款用法），若极端情况无回调则本次启动存储
--- 不可用（g_storageLoading 卡 true，Save 拒绝执行防覆盖磁盘），不引入额外复杂度。
+-- 对外：读——载入 fileName.Civ6Cfg 并读回 key 反序列化后的数据。
+-- callback(data) 必填；文件不存在/键缺失/数据损坏均回调 nil。
+-- 【重置语义警告】会把 GameConfiguration 替换为该文件快照，请注意调用时机（见文件头）。
 -- ============================================================================
-function MPT_Storage_Init()
-	if g_storageReady or g_storageLoading then return; end
-	g_storageLoading = true;
-	LuaEvents.FileListQueryResults.Add(StorageOnFileList);
-	local okQuery, queryId = pcall(function()
-		return UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, SaveLocationOptions.NORMAL + SaveLocationOptions.LOAD_METADATA, SaveFileTypes.GAME_CONFIGURATION, "");
-	end);
-	if okQuery and queryId ~= nil then
-		g_storageQueryId = queryId;
-		print("MPT_DS: 文件列表直查已发起 requestID=", queryId);
-	else
-		LuaEvents.FileListQueryResults.Remove(StorageOnFileList);
-		g_storageLoading = false;
-		print("MPT_DS: 文件列表直查调用失败，本次启动放弃加载：", tostring(queryId));
+function MPT_Storage_LoadData(fileName : string, key : string, callback)
+	if not StorageValidateName(fileName) or not StorageValidateName(key) then
+		print("MPT_DS: 非法 fileName/key", tostring(fileName), tostring(key));
+		if callback ~= nil then pcall(callback, nil); end
+		return;
 	end
+	if type(callback) ~= "function" then
+		print("MPT_DS: LoadData 缺少 callback", key);
+		return;
+	end
+	table.insert(g_storageJobs, { kind = "load", fileName = fileName, key = key, callback = callback });
+	StorageRunNext();
 end
 
 -- ============================================================================
--- 启动引导：本文件随 StagingRoom 上下文在前端启动时执行。轮询等待主菜单 LoadGameMenu 控件
--- 出现后自动执行一次加载（此时尚无房间，LoadGame 重置 GameConfiguration 无副作用）；
--- 超时放弃，本次启动存储不可用（MPT_Storage_IsReady()=false，Save 拒绝执行防覆盖磁盘）。
+-- 对外：删——删除 fileName.Civ6Cfg；callback(found:boolean) 可选。
 -- ============================================================================
-local function StorageBootTick()
-	if g_storageBooted then
-		Events.GameCoreEventPublishComplete.Remove(StorageBootTick);
+function MPT_Storage_DeleteFile(fileName : string, callback)
+	if not StorageValidateName(fileName) then
+		print("MPT_DS: 非法 fileName", tostring(fileName));
+		if callback ~= nil then pcall(callback, false); end
 		return;
 	end
-	if os.time() - g_storageBootTime >= STORAGE_BOOT_TIMEOUT then
-		Events.GameCoreEventPublishComplete.Remove(StorageBootTick);
-		print("MPT_DS: 启动引导超时（" .. STORAGE_BOOT_TIMEOUT .. " 秒未等到主菜单控件），本次启动不加载");
-		return;
-	end
-	if ContextPtr:LookUpControl("/FrontEnd/MainMenu/LoadGameMenu") == nil then return; end
-	g_storageBooted = true;
-	Events.GameCoreEventPublishComplete.Remove(StorageBootTick);
-	print("MPT_DS: 主菜单就绪，开始加载本地数据存档");
-	MPT_Storage_Init();
+	table.insert(g_storageJobs, { kind = "delete", fileName = fileName, callback = callback });
+	StorageRunNext();
 end
-g_storageBootTime = os.time();
-Events.GameCoreEventPublishComplete.Add(StorageBootTick);
-print("MPT_DS: 启动引导已注册（等待主菜单 LoadGameMenu 控件）");

@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786372951</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>6</Version>
+		<Version>7</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -169,12 +169,11 @@
 			</Properties>
 			<File>Storage/MPT_Serialize.lua</File>
 		</ImportFiles>
-		<!-- 条目4.3预备：本地数据存储模块（基于PKU框架优化的Civ6Cfg配置存档管线：MPT_Serialize+Deflate压缩择优+EncodeForPrint+切块），MPT_LibDeflate 为第三方库移植件（zlib协议） -->
+		<!-- 条目4.3预备：本地数据读写工具（极简差异化设计：纯序列化+切块，无压缩/缓存/启动预载/索引键；调用方自选文件名与键名，FIFO队列串行读写防并发互顶），供前端上下文 include 复用 -->
 		<ImportFiles id="FE_Import_Storage">
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>Storage/MPT_LibDeflate.lua</File>
 			<File>Storage/MPT_DataStorage.lua</File>
 		</ImportFiles>
 		<!-- 条目4.1：模组校验注册表 MPT_ModCheck（各 mod 自我登记 modId 参与版本校验，仅前端配置库） -->
@@ -202,6 +201,14 @@
 			<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 			<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目4.3预备：存储模块双环境注册（序列化+数据读写工具同时导入游戏内上下文，供游戏内 mod include 复用；InGame 读档时机自负，PKU 有先例） -->
+		<ImportFiles id="IG_Import_Storage">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>Storage/MPT_Serialize.lua</File>
+			<File>Storage/MPT_DataStorage.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -226,7 +233,6 @@
 		<File>UI/AdvancedSetup/AdvancedSetup.lua</File>
 		<File>Scripts/NetConnectionIconLogic.lua</File>
 		<File>Storage/MPT_Serialize.lua</File>
-		<File>Storage/MPT_LibDeflate.lua</File>
 		<File>Storage/MPT_DataStorage.lua</File>
 	</Files>
 </Mod>

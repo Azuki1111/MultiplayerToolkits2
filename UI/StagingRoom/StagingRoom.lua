@@ -12,11 +12,12 @@ include( "PopupDialog" );
 include( "Civ6Common" );
 include( "TeamSupport" );
 -- ============================================================================
--- 条目4.3预备：引入序列化与本地数据存储模块（Storage/ 文件夹）
+-- 条目4.3预备：引入序列化与本地数据读写工具（Storage/ 文件夹，极简差异化设计）
 -- MPT_Serialize：移植1.67 BSR serialize 并精简优化，提供 MPT_Serialize/MPT_Deserialize
--- MPT_DataStorage：Civ6Cfg 配置存档存储管线，由本文件顶层 include 承载（前端实测无法
--- 新建空 Context，必须依附既有界面上下文），随前端启动自动加载并注册 MPT_Storage_*
--- 全局 API；模块内有幂等守卫，重复 include 不会重置状态。
+-- MPT_DataStorage：极简本地数据读写工具（无压缩/缓存/启动预载），由本文件顶层 include
+-- 承载（前端实测无法新建空 Context，必须依附既有界面上下文），注册 MPT_Storage_SaveData/
+-- LoadData/DeleteFile 全局 API（异步回调式，详见该文件头用法说明）；模块内有幂等守卫，
+-- 重复 include 不会重置状态。
 -- ----------------------------------------------------------------------------
 include( "MPT_Serialize" );
 include( "MPT_DataStorage" );
@@ -2545,6 +2546,16 @@ function OnShow()
 	m_shownPBCReadyPopup = false;
 	m_exitReadyWait = false;
 	RestoreAdCarousel();	-- 联机工具箱2.0：重进准备房间恢复广告面板（条目3.6）
+	-- ============================================================================
+	-- 【临时调试】条目4.3预备重构冒烟：进房读回 SmokeTest 并写新时间戳（验证后移除）
+	-- 第一遍期望 log：MPT_SMOKE read=nil → save ok=true；第二遍 read=第一时间戳 回环成立
+	MPT_Storage_LoadData("MPT_ModData", "SmokeTest", function(t)
+		print("MPT_SMOKE read=", type(t) == "table" and t.BootTime or "nil");
+		MPT_Storage_SaveData("MPT_ModData", "SmokeTest", { BootTime = os.time(), Note = "冒烟测试中文" }, function(ok)
+			print("MPT_SMOKE save ok=", ok);
+		end);
+	end);
+	-- ----------------------------------------------------------------------------
 
 	local networkSessionID:number = Network.GetSessionID();
 	if m_sessionID ~= networkSessionID then
