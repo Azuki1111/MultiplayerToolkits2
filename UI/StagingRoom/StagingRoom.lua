@@ -12,10 +12,12 @@ include( "PopupDialog" );
 include( "Civ6Common" );
 include( "TeamSupport" );
 -- ============================================================================
--- 条目4.3预备：引入序列化工具脚本（Scripts/MPT_Serialize.lua，移植1.67 BSR
--- serialize 并精简优化），为黑名单等数据持久化功能提供 MPT_Serialize/MPT_Deserialize
+-- 条目4.3预备：引入数据持久化工具脚本（Storage/ 文件夹）
+-- MPT_Serialize：移植1.67 BSR serialize 并精简优化，提供 MPT_Serialize/MPT_Deserialize
+-- MPT_DataStorage：基于 PKU 框架优化的 Civ6Cfg 配置存档存储管线，提供 MPT_Storage_* 系列
 -- ----------------------------------------------------------------------------
 include( "MPT_Serialize" );
+include( "MPT_DataStorage" );
 
 
 ----------------------------------------------------------------  
@@ -2542,6 +2544,11 @@ function OnShow()
 	m_exitReadyWait = false;
 	RestoreAdCarousel();	-- 联机工具箱2.0：重进准备房间恢复广告面板（条目3.6）
 
+	-- ============================================================================
+	-- 【临时调试】条目4.3 Phase 0：存档储存关键行为实测（实测后删除，函数区见 Initialize 前）
+	MPT_Phase0_Run();
+	-- ----------------------------------------------------------------------------
+
 	local networkSessionID:number = Network.GetSessionID();
 	if m_sessionID ~= networkSessionID then
 		-- This is a fresh session.
@@ -4471,6 +4478,142 @@ end
 function MPT_OnRecheckButton()
 	UI.PlaySound("Play_UI_Click");
 	MPT_PublishCheckList();
+end
+
+-- ============================================================================
+-- 【临时调试】条目4.3 Phase 0：存档储存关键行为实测（实测后整个区域删除，含 OnShow 中的调用）
+-- 用法：
+--   第一遍：进【单人】准备房间 → 自动写测试存档 MPT_P0Test.Civ6Cfg（含中文串与长度阶梯）；
+--   第二遍：重启游戏 → 进【联机】准备房间（建一次性房间即可）→ 自动读回并输出判定日志。
+-- 判定（查 Logs/Lua.log 中 MPT_P0 前缀行）：
+--   P0-LIST-API / P0-LIST-MENU  文件列表由哪种方式触发（API 可用则免开系统菜单）
+--   P0-SAVECOMPLETE             前端 Events.SaveComplete 是否触发（触发则模块落盘后可清键）
+--   P0-LOADCOMPLETE             前端 Events.LoadComplete 是否触发
+--   P0-SENTINEL=alive/nil       LoadGame 合并语义（alive）还是重置语义（nil）——决定模块架构分支
+--   P0-MP-BEFORE/AFTER          标准配置项前后对比（单人存档在联机房间加载时可辨）
+--   P0-LEN-<n>                  GameConfiguration 单值长度上限实测（决定切块大小）
+-- ============================================================================
+local MPT_P0_FILE_NAME : string = "MPT_P0Test";					-- 测试存档文件名
+local MPT_P0_LEN_SIZES : table = {100, 1000, 2000, 4000, 8000};	-- 单值长度阶梯（字符）
+g_mptP0HasRun    = false;	-- 每次启动只测一轮
+g_mptP0Menu      = nil;		-- 回退方式打开的 LoadGameMenu 控件
+g_mptP0ListFrom  = "none";	-- 文件列表来源标记：api / menu
+g_mptP0QueryTime = 0;		-- 查询发起时刻（os.time 墙钟）
+
+-------------------------------------------------
+-- MPT_Phase0_Run（OnShow 调用，每启动只跑一次）
+-------------------------------------------------
+function MPT_Phase0_Run()
+	if g_mptP0HasRun then return; end
+	g_mptP0HasRun = true;
+	print("MPT_P0", "BEGIN", "IsNetworkMultiplayer=", GameConfiguration.IsNetworkMultiplayer());
+	LuaEvents.FileListQueryResults.Add(MPT_Phase0_OnFileList);
+	-- 方式一：UI.QuerySaveGameList 直接查询（可用则免开系统菜单）
+	if UI.QuerySaveGameList ~= nil then
+		local ok, err = pcall(UI.QuerySaveGameList, "Single");
+		print("MPT_P0", "QuerySaveGameList pcall=", ok, err);
+	else
+		print("MPT_P0", "UI.QuerySaveGameList 不存在");
+	end
+	g_mptP0QueryTime = os.time();
+	Events.GameCoreEventPublishComplete.Add(MPT_Phase0_Watchdog);	-- 3s 无列表回退弹窗方式
+end
+
+-------------------------------------------------
+-- MPT_Phase0_Watchdog：API 查询超时回退 LoadGameMenu 弹窗（PKU 实证路径）
+-------------------------------------------------
+function MPT_Phase0_Watchdog()
+	if g_mptP0ListFrom ~= "none" then
+		Events.GameCoreEventPublishComplete.Remove(MPT_Phase0_Watchdog);
+		return;
+	end
+	if os.time() - g_mptP0QueryTime < 3 then return; end
+	Events.GameCoreEventPublishComplete.Remove(MPT_Phase0_Watchdog);
+	local menu = ContextPtr:LookUpControl("/FrontEnd/MainMenu/LoadGameMenu");
+	print("MPT_P0", "LookUpControl LoadGameMenu=", menu ~= nil);
+	if menu ~= nil and menu:IsHidden() then
+		g_mptP0Menu = menu;
+		UIManager:QueuePopup(menu, PopupPriority.Current, { FileType = SaveFileTypes.GAME_CONFIGURATION });
+		print("MPT_P0", "QueuePopup 已调用");
+	end
+end
+
+-------------------------------------------------
+-- MPT_Phase0_OnFileList：文件列表到达——有测试存档走读回（第二遍），否则写测试存档（第一遍）
+-------------------------------------------------
+function MPT_Phase0_OnFileList(fileList, id)
+	LuaEvents.FileListQueryResults.Remove(MPT_Phase0_OnFileList);
+	Events.GameCoreEventPublishComplete.Remove(MPT_Phase0_Watchdog);
+	g_mptP0ListFrom = g_mptP0Menu ~= nil and "menu" or "api";
+	print("MPT_P0", "P0-LIST-" .. string.upper(g_mptP0ListFrom), "文件数=", fileList and table.count(fileList) or "nil");
+	local testFile = nil;
+	for _, file in pairs(fileList or {}) do
+		if file.Name == MPT_P0_FILE_NAME .. ".Civ6Cfg" then
+			testFile = file;
+			break;
+		end
+	end
+	if g_mptP0Menu ~= nil and not g_mptP0Menu:IsHidden() then
+		UIManager:DequeuePopup(g_mptP0Menu);	-- 列表已到，立即关掉弹窗
+		g_mptP0Menu = nil;
+	end
+	if testFile ~= nil then
+		MPT_Phase0_DoLoad(testFile);
+	else
+		MPT_Phase0_DoSave();
+	end
+end
+
+-------------------------------------------------
+-- MPT_Phase0_DoSave（第一遍）：写标记/中文串/长度阶梯 → 保存 MPT_P0Test.Civ6Cfg
+-------------------------------------------------
+function MPT_Phase0_DoSave()
+	GameConfiguration.SetValue("MPT_P0_MARK", "HELLO_存档读写测试_中文_@#");
+	for _, len in ipairs(MPT_P0_LEN_SIZES) do
+		local tail : string = "_END" .. tostring(len);
+		GameConfiguration.SetValue("MPT_P0_LEN_" .. tostring(len), string.rep("A", len - #tail) .. tail);
+	end
+	Events.SaveComplete.Add(MPT_Phase0_OnSaveComplete);
+	Network.SaveGame({ Name = MPT_P0_FILE_NAME, Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION });
+	print("MPT_P0", "SAVE 请求已发出（第一遍）；请重启游戏后进【联机】准备房间读回");
+end
+
+-------------------------------------------------
+-- MPT_Phase0_OnSaveComplete：验证前端 Events.SaveComplete 是否触发
+-------------------------------------------------
+function MPT_Phase0_OnSaveComplete(eResult, eType, eOptions, eFileType)
+	Events.SaveComplete.Remove(MPT_Phase0_OnSaveComplete);
+	print("MPT_P0", "P0-SAVECOMPLETE", "eResult=", eResult, "eFileType=", eFileType);
+end
+
+-------------------------------------------------
+-- MPT_Phase0_DoLoad（第二遍）：先写哨兵键再 LoadGame，读回判定合并/重置语义
+-------------------------------------------------
+function MPT_Phase0_DoLoad(testFile)
+	GameConfiguration.SetValue("MPT_P0_SENTINEL", "alive");
+	print("MPT_P0", "P0-MP-BEFORE", "IsNetworkMultiplayer=", GameConfiguration.IsNetworkMultiplayer(), "StartEra=", tostring(GameConfiguration.GetStartEra()));
+	Events.LoadComplete.Add(MPT_Phase0_OnLoadComplete, 1);	-- 第二参沿用 PKU 实证写法
+	Network.LoadGame(testFile, 0);
+	print("MPT_P0", "LOAD 请求已发出（第二遍）");
+end
+
+-------------------------------------------------
+-- MPT_Phase0_OnLoadComplete：读回全部测试键并输出判定日志
+-------------------------------------------------
+function MPT_Phase0_OnLoadComplete(...)
+	Events.LoadComplete.Remove(MPT_Phase0_OnLoadComplete);
+	print("MPT_P0", "P0-LOADCOMPLETE 触发");
+	print("MPT_P0", "P0-SENTINEL", GameConfiguration.GetValue("MPT_P0_SENTINEL"));	-- alive=合并语义 nil=重置语义
+	print("MPT_P0", "P0-MP-AFTER", "IsNetworkMultiplayer=", GameConfiguration.IsNetworkMultiplayer(), "StartEra=", tostring(GameConfiguration.GetStartEra()));
+	print("MPT_P0", "P0-MARK", GameConfiguration.GetValue("MPT_P0_MARK"));
+	for _, len in ipairs(MPT_P0_LEN_SIZES) do
+		local value = GameConfiguration.GetValue("MPT_P0_LEN_" .. tostring(len));
+		if value ~= nil then
+			print("MPT_P0", "P0-LEN-" .. tostring(len), "实际长度=", string.len(value), "尾部=", string.sub(value, -8));
+		else
+			print("MPT_P0", "P0-LEN-" .. tostring(len), "MISSING");
+		end
+	end
 end
 
 -- ===========================================================================
