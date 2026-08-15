@@ -2545,6 +2545,12 @@ function OnShow()
 	m_shownPBCReadyPopup = false;
 	m_exitReadyWait = false;
 	RestoreAdCarousel();	-- 联机工具箱2.0：重进准备房间恢复广告面板（条目3.6）
+	-- ============================================================================
+	-- 【临时调试】条目4.3预备：非房主读写+延时多次读写测试启动（驱动在本文件末尾，验证后一并移除）
+	g_mptRwTestRound = 0;
+	g_mptRwTestNext = os.time() + 2;
+	print("MPT_RW start host=", Network.IsNetSessionHost());
+	-- ----------------------------------------------------------------------------
 
 	local networkSessionID:number = Network.GetSessionID();
 	if m_sessionID ~= networkSessionID then
@@ -4914,3 +4920,35 @@ function MPT_Storage_DeleteFile(fileName : string, callback)
 	table.insert(g_storageJobs, { kind = "delete", fileName = fileName, callback = callback });
 	StorageRunNext();
 end
+
+
+-- ============================================================================
+-- 【临时调试】条目4.3预备：非房主读写 + 延时多次读写测试（验证后移除）
+-- 进房约 2 秒后启动，每隔 5 秒一轮「读→写」，共 5 轮；日志前缀 MPT_RW 附 host 与轮次。
+-- 判断标准：每轮 read= 应等于上一轮写入的 WrittenAt（首轮为旧值或 nil），save ok=true。
+-- 两个轮次变量为【全局】：OnShow 启动块在本区之前引用，若用 local 会解析成另一全局（踩坑记录同款）。
+-- ============================================================================
+g_mptRwTestRound = 0;							-- 当前轮次（OnShow 启动块重置）
+g_mptRwTestNext = -1;							-- 下一轮触发时刻（os.time 秒，-1=未启动）
+local MPT_RW_TEST_INTERVAL : number = 5;		-- 轮间隔（秒）
+local MPT_RW_TEST_ROUNDS : number = 5;			-- 总轮数
+
+-- 帧更新驱动（os.time 秒级门控，开销可忽略；本文件无既有持续 UpdateHandler，临时新设一个）
+ContextPtr:SetUpdateHandler(function()
+	if g_mptRwTestNext < 0 or os.time() < g_mptRwTestNext then return; end
+	if g_mptRwTestRound >= MPT_RW_TEST_ROUNDS then
+		g_mptRwTestNext = -1;
+		print("MPT_RW done");
+		return;
+	end
+	g_mptRwTestNext = os.time() + MPT_RW_TEST_INTERVAL;
+	g_mptRwTestRound = g_mptRwTestRound + 1;
+	local round : number = g_mptRwTestRound;	-- 捕获本轮次（回调异步到达）
+	local isHost = Network.IsNetSessionHost();
+	MPT_Storage_LoadData("MPT_ModData", "RwTest", function(t)
+		print("MPT_RW round=", round, " host=", isHost, " read=", type(t) == "table" and t.WrittenAt or "nil");
+		MPT_Storage_SaveData("MPT_ModData", "RwTest", { WrittenAt = os.time(), Round = round, IsHost = isHost }, function(ok)
+			print("MPT_RW round=", round, " save ok=", ok);
+		end);
+	end);
+end);
