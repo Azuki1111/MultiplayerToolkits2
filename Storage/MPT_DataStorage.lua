@@ -38,11 +38,9 @@
 -- 幂等守卫：重复 include（本文件可能被多个上下文引入）直接返回，互不影响。
 -- MPT_Storage_Loaded 在文件末尾全部定义完成后才置位：若顶层中途夭折（错误被吞等），
 -- 守卫不置位，下次 include 重新完整执行可自愈。
-print("MPT_DBG: DataStorage executing, loaded=", tostring(MPT_Storage_Loaded));	-- 【临时调试】
 if MPT_Storage_Loaded then return; end
 
 include("MPT_Serialize");
-print("MPT_DBG: serialize inc, MPT_Serialize=", type(MPT_Serialize), " MPT_Deserialize=", type(MPT_Deserialize));	-- 【临时调试】
 
 -- ============================================================================
 -- 常量
@@ -166,7 +164,6 @@ Events.SaveComplete.Add(function(eResult, eType, eOptions, eFileType)
 	StorageClearKey(STORAGE_KEY_PREFIX .. job.key);	-- 落盘后清键，防混入房间配置与真实存档（PKU 同款清理思路）
 	StorageFinishJob(eResult == nil or eResult == 0);
 end);
-print("MPT_DBG: SaveComplete hooked");	-- 【临时调试】
 
 -- ============================================================================
 -- 内部：LoadComplete 派发——在途 load 作业读档完成，读键反序列化后收尾
@@ -176,7 +173,6 @@ Events.LoadComplete.Add(function(eResult, eType, eOptions, eFileType)
 	if job == nil or job.kind ~= "load" or job.queryId ~= nil then return; end	-- 仅在 LoadGame 已发出后认领
 	StorageFinishJob(StorageReadKey(STORAGE_KEY_PREFIX .. job.key));
 end);
-print("MPT_DBG: LoadComplete hooked");	-- 【临时调试】
 
 -- ============================================================================
 -- 内部：文件列表派发（LuaEvents.FileListQueryResults，引擎触发）——按自身 requestID 认领；
@@ -204,7 +200,6 @@ LuaEvents.FileListQueryResults.Add(function(fileList : table, id : number)
 		StorageFinishJob(true);
 	end
 end);
-print("MPT_DBG: FileListQueryResults hooked");	-- 【临时调试】
 
 -- ============================================================================
 -- 对外：写——data 序列化后切块写入并落盘 fileName.Civ6Cfg（Saves\Single）。
@@ -261,4 +256,3 @@ end
 
 -- 幂等守卫置位（放在文件末尾：只有全部定义与事件注册成功才置位，半加载状态可由下次 include 自愈）
 MPT_Storage_Loaded = true;
-print("MPT_DBG: APIs defined", type(MPT_Storage_SaveData), type(MPT_Storage_LoadData), type(MPT_Storage_DeleteFile));	-- 【临时调试】

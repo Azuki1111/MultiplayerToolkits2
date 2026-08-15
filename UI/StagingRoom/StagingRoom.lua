@@ -2545,20 +2545,6 @@ function OnShow()
 	m_shownPBCReadyPopup = false;
 	m_exitReadyWait = false;
 	RestoreAdCarousel();	-- 联机工具箱2.0：重进准备房间恢复广告面板（条目3.6）
-	-- ============================================================================
-	-- 【临时调试】条目4.3预备重构冒烟：进房读回 SmokeTest 并写新时间戳（验证后移除）
-	-- 第一遍期望 log：MPT_SMOKE read=nil → save ok=true；第二遍 read=第一时间戳 回环成立
-	if MPT_Storage_LoadData == nil then
-		print("MPT_SMOKE ERROR: LoadData=nil, ser=", type(MPT_Serialize), "（内联区未执行：本文件顶层在到达末尾分区前中止）");
-	else
-		MPT_Storage_LoadData("MPT_ModData", "SmokeTest", function(t)
-			print("MPT_SMOKE read=", type(t) == "table" and t.BootTime or "nil");
-			MPT_Storage_SaveData("MPT_ModData", "SmokeTest", { BootTime = os.time(), Note = "冒烟测试中文" }, function(ok)
-				print("MPT_SMOKE save ok=", ok);
-			end);
-		end);
-	end
-	-- ----------------------------------------------------------------------------
 
 	local networkSessionID:number = Network.GetSessionID();
 	if m_sessionID ~= networkSessionID then
@@ -4617,7 +4603,6 @@ Initialize();
 -- 精简重写为纯数据表单遍递归：不支持函数/循环表（报错），共享子表按值展开，
 -- 输出 return {...} 字面量（loadstring 可读 1.67 旧数据）；MPT_Deserialize 损坏返回 nil。
 -- ============================================================================
-print("MPT_DBG: Serialize executing");	-- 【临时调试】
 
 -- Lua 关键字表：字符串键为合法标识符时可省略引号括号输出 k=v，是关键字时回退 ["k"]=v
 local g_mpt_luaKeywords = {
@@ -4703,8 +4688,6 @@ function MPT_Deserialize(s)
 	return result;
 end
 
-print("MPT_DBG: Serialize APIs", type(MPT_Serialize), type(MPT_Deserialize));	-- 【临时调试】
-
 -- ============================================================================
 -- 条目4.3预备：MPT_DataStorage 本地数据读写部分（同源自 Storage/MPT_DataStorage.lua）
 -- 极简本地数据读写工具：无压缩/缓存/启动预载/索引键，调用方自选 .Civ6Cfg 文件名与键名，
@@ -4719,7 +4702,6 @@ print("MPT_DBG: Serialize APIs", type(MPT_Serialize), type(MPT_Deserialize));	--
 --   联机准备房间内读档实测不踢人、不影响房间配置；存档恒落 Saves\Single；fileName/key 仅限
 --   字母数字下划线（要拼进 GameConfiguration 键名）。
 -- ============================================================================
-print("MPT_DBG: DataStorage inline executing");	-- 【临时调试】
 
 -- ============================================================================
 -- 常量
@@ -4843,7 +4825,6 @@ Events.SaveComplete.Add(function(eResult, eType, eOptions, eFileType)
 	StorageClearKey(STORAGE_KEY_PREFIX .. job.key);	-- 落盘后清键，防混入房间配置与真实存档（PKU 同款清理思路）
 	StorageFinishJob(eResult == nil or eResult == 0);
 end);
-print("MPT_DBG: SaveComplete hooked");	-- 【临时调试】
 
 -- ============================================================================
 -- 内部：LoadComplete 派发——在途 load 作业读档完成，读键反序列化后收尾
@@ -4853,7 +4834,6 @@ Events.LoadComplete.Add(function(eResult, eType, eOptions, eFileType)
 	if job == nil or job.kind ~= "load" or job.queryId ~= nil then return; end	-- 仅在 LoadGame 已发出后认领
 	StorageFinishJob(StorageReadKey(STORAGE_KEY_PREFIX .. job.key));
 end);
-print("MPT_DBG: LoadComplete hooked");	-- 【临时调试】
 
 -- ============================================================================
 -- 内部：文件列表派发（LuaEvents.FileListQueryResults，引擎触发）——按自身 requestID 认领；
@@ -4881,7 +4861,6 @@ LuaEvents.FileListQueryResults.Add(function(fileList : table, id : number)
 		StorageFinishJob(true);
 	end
 end);
-print("MPT_DBG: FileListQueryResults hooked");	-- 【临时调试】
 
 -- ============================================================================
 -- 对外：写——data 序列化后切块写入并落盘 fileName.Civ6Cfg（Saves\Single）。
@@ -4935,5 +4914,3 @@ function MPT_Storage_DeleteFile(fileName : string, callback)
 	table.insert(g_storageJobs, { kind = "delete", fileName = fileName, callback = callback });
 	StorageRunNext();
 end
-
-print("MPT_DBG: APIs defined", type(MPT_Storage_SaveData), type(MPT_Storage_LoadData), type(MPT_Storage_DeleteFile));	-- 【临时调试】
