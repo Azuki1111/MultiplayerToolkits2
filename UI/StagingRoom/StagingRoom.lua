@@ -5473,6 +5473,7 @@ function MPT_PlayerMark_RebuildList()
 		inst.RowButton:SetToolTipString(tip);
 		inst.RowButton:SetVoid1(i);
 		inst.RowButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnEntryClick);
+		inst.SelectedFrame:SetHide(rec.Id ~= g_PlayerMarkSelectedId);
 	end
 	Controls.PlayerMarkListEmptyLabel:SetHide(#filtered > 0);
 	Controls.PlayerMarkListStack:CalculateSize();
@@ -5527,6 +5528,7 @@ function MPT_PlayerMark_Select(id)
 	end
 	g_PlayerMarkSelectedId = id;
 	MPT_PlayerMark_RefreshEditor();
+	MPT_PlayerMark_RebuildList();	-- 重刷列表以更新选中行金色外框
 	UI.PlaySound("Play_UI_Click");
 end
 
