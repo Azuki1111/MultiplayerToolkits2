@@ -5465,8 +5465,12 @@ function MPT_PlayerMark_RebuildList()
 		g_playerMarkEntryIds[i] = rec.Id;
 		inst.TagIconLabel:SetText(PLAYERMARK_TAG_ICONS[rec.Tag or 2] or "");
 		inst.NameLabel:SetText(rec.Name or "");
-		inst.NameLabel:SetToolTipString(rec.Name or "");
-		inst.IdLabel:SetText(rec.Id or "");
+		-- 行按钮 tooltip：[ICON_YOU]+网络ID，空两行后接简要描述（无简要描述时只显示 ID）
+		local tip : string = "[ICON_YOU]" .. (rec.Id or "");
+		if rec.Brief ~= nil and rec.Brief ~= "" then
+			tip = tip .. "[NEWLINE][NEWLINE]" .. rec.Brief;
+		end
+		inst.RowButton:SetToolTipString(tip);
 		inst.RowButton:SetVoid1(i);
 		inst.RowButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnEntryClick);
 	end
