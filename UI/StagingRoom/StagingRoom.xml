@@ -356,7 +356,7 @@
 				<Stack ID="PlayerMarkEditorStack" Anchor="C,T" Offset="0,10" StackGrowth="Down" Padding="5" Size="parent-24,0">
 					<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
 					<Grid Style="EditTextButton" Size="parent,26">
-						<EditBox ID="PlayerMarkNameEdit" Style="FontNormal16" Anchor="L,C" Offset="12,0" Size="parent-20,16" MaxLength="45" String="" CallOnChar="1"/>
+						<EditBox ID="PlayerMarkNameEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="45" String="" CallOnChar="1"/>
 					</Grid>
 					<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_ID"/>
 					<!-- 主键只读：改 ID = 删除整条记录后重建 -->
@@ -373,7 +373,7 @@
 					</Container>
 					<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
 					<Grid Style="EditTextButton" Size="parent,26">
-						<EditBox ID="PlayerMarkBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="12,0" Size="parent-20,16" MaxLength="128" String="" CallOnChar="1"/>
+						<EditBox ID="PlayerMarkBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" CallOnChar="1"/>
 					</Grid>
 					<Label ID="PlayerMarkModifiedLabel" Style="FontNormal14" Color="GreatPeopleRow" Size="parent,18" String=""/>
 					<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_DETAILS"/>
@@ -385,7 +385,7 @@
 					</Grid>
 					<Container Size="parent,32">
 						<Grid Style="EditTextButton" Anchor="L,C" Size="parent-70,26">
-							<EditBox ID="PlayerMarkDetailEdit" Style="FontNormal16" Anchor="L,C" Offset="12,0" Size="parent-20,16" MaxLength="128" String="" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_INPUT_TT"/>
+							<EditBox ID="PlayerMarkDetailEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_INPUT_TT"/>
 						</Grid>
 						<GridButton ID="PlayerMarkAddDetailButton" Style="MainButtonSmall" Anchor="R,C" Size="60,26" String="LOC_MPT_PLAYERMARK_ADD_DETAIL"/>
 					</Container>
@@ -407,11 +407,11 @@
 				<Stack Offset="0,50" Size="parent-60,0" StackGrowth="Down" Anchor="C,T" Padding="8">
 					<Label Style="FontNormal16" String="LOC_MPT_PLAYERMARK_FIELD_ID"/>
 					<Grid Style="EditTextButton" Size="parent,26">
-						<EditBox ID="PlayerMarkPopupIdEdit" Style="FontNormal16" Anchor="L,C" Offset="12,0" Size="parent-20,16" MaxLength="32" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_ID_TT" CallOnChar="1"/>
+						<EditBox ID="PlayerMarkPopupIdEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="32" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_ID_TT" CallOnChar="1"/>
 					</Grid>
 					<Label Style="FontNormal16" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
 					<Grid Style="EditTextButton" Size="parent,26">
-						<EditBox ID="PlayerMarkPopupNameEdit" Style="FontNormal16" Anchor="L,C" Offset="12,0" Size="parent-20,16" MaxLength="45" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_NAME_TT" CallOnChar="1"/>
+						<EditBox ID="PlayerMarkPopupNameEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="45" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_NAME_TT" CallOnChar="1"/>
 					</Grid>
 					<Label Style="FontNormal16" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
 					<Container Size="parent,34">
@@ -424,7 +424,7 @@
 					</Container>
 					<Label Style="FontNormal16" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
 					<Grid Style="EditTextButton" Size="parent,26">
-						<EditBox ID="PlayerMarkPopupBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="12,0" Size="parent-20,16" MaxLength="128" String="" CallOnChar="1"/>
+						<EditBox ID="PlayerMarkPopupBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" CallOnChar="1"/>
 					</Grid>
 					<Label ID="PlayerMarkPopupHint" Style="FontNormal14" Size="parent,18" String="" Hidden="1"/>
 					<Container Size="parent,50">
