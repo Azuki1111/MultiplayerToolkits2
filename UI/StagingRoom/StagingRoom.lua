@@ -1321,6 +1321,16 @@ function OnHandleExitRequest()
 	print("Staging Room -Handle Exit Request");
 
 	CheckLeaveGame();
+
+	-- ============================================================================
+	-- 联机工具箱2.0：退出房间时自动隐藏更新公告面板（条目3.5）
+	-- 面板可见状态在 Lua 状态跨房间存续（StagingRoom 顶层脚本不随房间重建），
+	-- 若退出时面板仍打开，重进新房间会残留可见；此处统一在退出清理流程中隐藏。
+	-- CloseChangelogPanel 幂等：面板已隐藏时直接返回，不会播放重复关闭音效。
+	-- ============================================================================
+	CloseChangelogPanel();
+	-- ----------------------------------------------------------------------------
+
 	Controls.CountdownTimerAnim:ClearAnimCallback();
 	
 	-- Force close all popups because they are modal and will remain visible even if the screen is hidden
