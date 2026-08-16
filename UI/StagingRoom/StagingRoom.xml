@@ -386,15 +386,15 @@
 						<!-- 编辑字段区（字段与顺序同改版前；ID 只读展示已上移至详情头） -->
 						<Stack ID="PlayerMarkEditorStack" Anchor="C,T" Offset="0,110" StackGrowth="Down" Padding="5" Size="parent-40,0">
 							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
-							<Grid Style="EditTextButton" Size="parent,26">
-								<EditBox ID="PlayerMarkNameEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="45" String="" CallOnChar="1"/>
+							<Grid Style="EditTextButton" Size="parent,36">
+								<EditBox ID="PlayerMarkNameEdit" Style="FontNormal20" Anchor="L,C" Offset="28,0" Size="parent-40,20" MaxLength="45" String="" CallOnChar="1"/>
 							</Grid>
 							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
 							<!-- 标签类型下拉（PullDownBlue，同 Mods.xml 排序下拉；Lua 构建三项「图标+名称」并维护按钮文本，选择即暂存标 dirty） -->
 							<PullDown ID="PlayerMarkTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,T" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
 							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
-							<Grid Style="EditTextButton" Size="parent,26">
-								<EditBox ID="PlayerMarkBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" CallOnChar="1"/>
+							<Grid Style="EditTextButton" Size="parent,36">
+								<EditBox ID="PlayerMarkBriefEdit" Style="FontNormal20" Anchor="L,C" Offset="24,0" Size="parent-40,20" MaxLength="128" String="" CallOnChar="1"/>
 							</Grid>
 							<Label ID="PlayerMarkModifiedLabel" Style="FontNormal14" Color="GreatPeopleRow" Size="parent,18" String=""/>
 							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_DETAILS"/>
@@ -405,10 +405,10 @@
 								</ScrollPanel>
 							</Grid>
 							<Container Size="parent,32">
-								<Grid Style="EditTextButton" Anchor="L,C" Size="parent-70,26">
-									<EditBox ID="PlayerMarkDetailEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_INPUT_TT"/>
+								<Grid Style="EditTextButton" Anchor="L,C" Size="parent-70,36">
+									<EditBox ID="PlayerMarkDetailEdit" Style="FontNormal20" Anchor="L,C" Offset="24,0" Size="parent-34,20" MaxLength="128" String="" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_INPUT_TT"/>
 								</Grid>
-								<GridButton ID="PlayerMarkAddDetailButton" Style="MainButtonSmall" Anchor="R,C" Size="60,26" String="LOC_MPT_PLAYERMARK_ADD_DETAIL"/>
+								<GridButton ID="PlayerMarkAddDetailButton" Style="MainButtonSmall" Anchor="R,C" Size="60,32" String="LOC_MPT_PLAYERMARK_ADD_DETAIL"/>
 							</Container>
 						</Stack>
 
