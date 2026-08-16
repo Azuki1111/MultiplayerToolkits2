@@ -336,7 +336,7 @@
 		<!-- 内容区（左列 402 + 右列 parent-415，比例同 Mods.xml InstalledTabPanel） -->
 		<Container Size="parent-30,parent-74" Anchor="C,T" Offset="0,64">
 
-			<!-- 左列：搜索框 + 排序切换 + 三个过滤复选框 + 玩家列表 + 添加按钮（结构照 Mods.xml 左列） -->
+			<!-- 左列：搜索框 + 排序(左)/三过滤复选框(右,垂直堆叠)同区块 + 玩家列表 + 添加按钮（结构照 Mods.xml 左列） -->
 			<Grid Style="SubContainer" Size="402,parent-6" Anchor="L,T" Offset="0,0">
 				<Stack Padding="5">
 					<Grid Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Offset="0,10" Size="parent,26">
@@ -344,16 +344,17 @@
 						<!-- 占位文本（Label 不吃鼠标事件；Lua 按焦点/内容控制显隐，替代 Mods.lua 的 Search 框架） -->
 						<Label ID="PlayerMarkSearchPlaceholder" Anchor="L,C" Offset="24,0" Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_SEARCH_NAME"/>
 					</Grid>
-					<GridButton ID="PlayerMarkSortButton" Style="ButtonControl" Anchor="C,T" Size="180,24" FontStyle="Stroke" ColorSet="ButtonCS" ToolTip="LOC_MPT_PLAYERMARK_SORT_TT"/>
-					<Container Size="parent,24">
-						<Stack ID="PlayerMarkFilterStack" Anchor="C,C" StackGrowth="Right" Padding="8">
+					<!-- 排序切换（左侧垂直居中）+ 三个过滤复选框（右侧垂直堆叠）同一区块 -->
+					<Container Size="parent,80">
+						<GridButton ID="PlayerMarkSortButton" Style="ButtonControl" Anchor="L,C" Size="180,24" FontStyle="Stroke" ColorSet="ButtonCS" ToolTip="LOC_MPT_PLAYERMARK_SORT_TT"/>
+						<Stack ID="PlayerMarkFilterStack" Anchor="R,C" StackGrowth="Down" Padding="2">
 							<CheckBox ID="PlayerMarkFilterFriend" Style="CheckBoxModsControl" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_FRIEND" ToolTip="LOC_MPT_PLAYERMARK_FILTER_FRIEND_TT"/>
 							<CheckBox ID="PlayerMarkFilterNormal" Style="CheckBoxModsControl" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_NORMAL" ToolTip="LOC_MPT_PLAYERMARK_FILTER_NORMAL_TT"/>
 							<CheckBox ID="PlayerMarkFilterBlack" Style="CheckBoxModsControl" Size="96,24" String="LOC_MPT_PLAYERMARK_FILTER_BLACK" ToolTip="LOC_MPT_PLAYERMARK_FILTER_BLACK_TT"/>
 						</Stack>
 					</Container>
 					<Box Color="10,60,78,255" Anchor="L,B" Size="parent,3" Offset="0,4"/>
-					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-160" AutoScrollBar="1">
+					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-216" AutoScrollBar="1">
 						<Stack ID="PlayerMarkListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
 						<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
 					</ScrollPanel>
