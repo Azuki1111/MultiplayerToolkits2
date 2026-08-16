@@ -5491,7 +5491,9 @@ function MPT_PlayerMark_RefreshEditor()
 		return;
 	end
 	Controls.PlayerMarkNameEdit:SetText(rec.Name or "");
-	Controls.PlayerMarkIdValue:SetText(rec.Id);
+	Controls.PlayerMarkHeaderTagIcon:SetText(PLAYERMARK_TAG_ICONS[rec.Tag or 2] or "");
+	Controls.PlayerMarkHeaderName:SetText(rec.Name or "");
+	Controls.PlayerMarkHeaderId:SetText(rec.Id);
 	g_PlayerMarkEditTag = rec.Tag or 2;
 	PlayerMarkSetTagLines(g_PlayerMarkEditTag, false);
 	Controls.PlayerMarkBriefEdit:SetText(rec.Brief or "");
