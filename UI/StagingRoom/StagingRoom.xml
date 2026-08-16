@@ -383,8 +383,8 @@
 							</Stack>
 						</Grid>
 
-						<!-- 编辑字段区（字段与顺序同改版前；ID 只读展示已上移至详情头） -->
-						<Stack ID="PlayerMarkEditorStack" Anchor="C,T" Offset="0,110" StackGrowth="Down" Padding="5" Size="parent-40,0">
+						<!-- 编辑字段区（字段与顺序同改版前；ID 只读展示已上移至详情头；Stack 固定高 parent-190=顶110+底80之外剩余空间，详情 ScrollPanel 以 parent-258 撑满剩余高度——258=上方固定高控件累计218+8个间距40） -->
+						<Stack ID="PlayerMarkEditorStack" Anchor="C,T" Offset="0,110" StackGrowth="Down" Padding="5" Size="parent-40,parent-190">
 							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
 							<Grid Style="EditTextButton" Size="parent,36">
 								<EditBox ID="PlayerMarkNameEdit" Style="FontNormal20" Anchor="L,C" Offset="28,0" Size="parent-40,20" MaxLength="45" String="" CallOnChar="1"/>
@@ -405,12 +405,10 @@
 								</Grid>
 								<GridButton ID="PlayerMarkAddDetailButton" Style="MainButtonSmall" Anchor="R,C" Size="60,32" String="LOC_MPT_PLAYERMARK_ADD_DETAIL"/>
 							</Container>
-							<Grid Style="SubContainer2" Size="parent,220">
-								<ScrollPanel ID="PlayerMarkDetailScrollPanel" Anchor="C,C" Offset="0,0" Size="parent-8,parent-8" Vertical="1" AutoScrollBar="1">
-									<Stack ID="PlayerMarkDetailStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
-									<ScrollBar Style="Slider_Blue" Anchor="R,T" AnchorSide="O,I" Offset="2,0"/>
-								</ScrollPanel>
-							</Grid>
+							<ScrollPanel ID="PlayerMarkDetailScrollPanel" Anchor="L,T" Offset="0,0" Size="parent,parent-258" Vertical="1" AutoScrollBar="1">
+								<Stack ID="PlayerMarkDetailStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
+								<ScrollBar Style="Slider_Blue" Anchor="R,T" AnchorSide="O,I" Offset="2,0"/>
+							</ScrollPanel>
 						</Stack>
 
 						<!-- 底部操作行（仿 Mods.xml Enable/Disable：分隔条 + 按钮横排居中） -->
@@ -811,8 +809,8 @@
 	<Instance Name="PlayerMarkDetailEntryInstance">
 		<Grid ID="DetailRoot" Size="parent,60" Color="GreatPeopleRowUnOwned" Style="SubContainer2">
 			<Label ID="DetailDateLabel" Anchor="L,T" Offset="10,6" Style="FontNormal14" Color="GreatPeopleRow" String=""/>
-			<Button ID="DetailDeleteButton" Anchor="R,T" Offset="8,4" Size="22,22" Texture="Controls_CloseButtonAlt" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_DELETE_TT"/>
-			<Container Size="parent-46,parent" Offset="10,0">
+			<Button ID="DetailDeleteButton" Anchor="R,C" Offset="8,0" Size="32,32" Texture="Controls_CloseButtonAlt" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_DELETE_TT"/>
+			<Container Size="parent-60,parent" Offset="10,0">
 				<Label ID="DetailTextLabel" Anchor="L,T" Offset="0,26" Style="FontNormal16" WrapWidth="parent" String=""/>
 			</Container>
 		</Grid>
