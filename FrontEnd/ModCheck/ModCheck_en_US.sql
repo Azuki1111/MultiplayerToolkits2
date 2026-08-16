@@ -10,6 +10,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_MODCHECK_POPUP_TEXT', 'en_US', 'Version check failed for the selected mods:'),
 ('LOC_MPT_MODCHECK_POPUP_RECHECK', 'en_US', 'Back and Recheck'),
 ('LOC_MPT_MODCHECK_POPUP_SKIP', 'en_US', 'Skip Check'),
-('LOC_MPT_MODCHECK_DETAIL_NOREPORT', 'en_US', '{1_Name}: no report (this mod may not be installed)'),
-('LOC_MPT_MODCHECK_DETAIL_PENDING', 'en_US', '{1_Name}: waiting for report...'),
-('LOC_MPT_MODCHECK_DETAIL_MISMATCH', 'en_US', '{1_Name}: {2_Mod} version mismatch (host {3_Host} / player {4_Player})');
+('LOC_MPT_MODCHECK_DETAIL_NOREPORT', 'en_US', ': no report (this mod may not be installed)'),
+('LOC_MPT_MODCHECK_DETAIL_PENDING', 'en_US', ': waiting for report...'),
+('LOC_MPT_MODCHECK_DETAIL_MISMATCH_PREFIX', 'en_US', ': '),
+('LOC_MPT_MODCHECK_DETAIL_MISMATCH_SUFFIX', 'en_US', ' version mismatch');

@@ -3706,6 +3706,9 @@ end
 --          TextTag 经 LocalizedText 按当前游戏语言解析（多语言预留，数据表零改动）。
 -- ============================================================================
 
+-- 更新公告本地化文本缓存（条目3.5，预加载避免每次构建公告时重复 Lookup）
+local ChangelogCurrentVersionStr = Locale.Lookup("LOC_MPT_FE_CHANGELOG_CURRENT");
+
 -------------------------------------------------
 -- BuildChangelog
 -- 从 MPT_Changelog 表构建公告列表；数据静态，每次加载只在首次打开面板时构建一次。
@@ -3744,7 +3747,7 @@ function BuildChangelog()
 		-- 版本号（左上），首组为最新版本追加「（当前版本）」
 		local versionText : string = versionGroup.Version;
 		if groupNumber == 1 then
-			versionText = versionText .. " " .. Locale.Lookup("LOC_MPT_FE_CHANGELOG_CURRENT");
+			versionText = versionText .. " " .. ChangelogCurrentVersionStr;
 		end
 		entryInstance.VersionLabel:SetText(versionText);
 		-- 日期（右上）
@@ -4161,6 +4164,17 @@ end
 --   MPT_MC_VERS  非房主写自己："<rev>_<v1>;<v2>;..."（针对清单 rev 的回报；rev 不匹配视为未回报）
 -- 防换槽误报：状态键 = playerID+玩家名，换槽/换人即重置；回报自带 rev，旧清单回报天然失效。
 -- ============================================================================
+-- 版本校验本地化文本缓存（条目4.1，预加载避免每次弹窗/构建明细时重复 Lookup）
+-- 明细行由「玩家名 + 前缀分隔 + 模组名 + 固定正文」用 .. 拼接，全部为无参数纯文本 tag。
+local ModCheckDetailNoReportStr = Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_NOREPORT");
+local ModCheckDetailMismatchPrefixStr = Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_MISMATCH_PREFIX");
+local ModCheckDetailMismatchSuffixStr = Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_MISMATCH_SUFFIX");
+local ModCheckDetailPendingStr = Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_PENDING");
+local ModCheckPopupTitleStr = Locale.Lookup("LOC_MPT_MODCHECK_POPUP_TITLE");
+local ModCheckPopupTextStr = Locale.Lookup("LOC_MPT_MODCHECK_POPUP_TEXT");
+local ModCheckPopupRecheckStr = Locale.Lookup("LOC_MPT_MODCHECK_POPUP_RECHECK");
+local ModCheckPopupSkipStr = Locale.Lookup("LOC_MPT_MODCHECK_POPUP_SKIP");
+
 local MPT_CHECK = { PENDING = 0, OK = 1, FAILED = 2, HOST = 99 };	-- 校验状态命名常量（替代 MPH 魔法数字）
 local MPT_MC_LIST_KEY : string = "MPT_MC_LIST";
 local MPT_MC_HOSTV_KEY : string = "MPT_MC_HOSTV";
@@ -4597,14 +4611,14 @@ function MPT_BuildFailureDetails()
 	for playerID, info in pairs(g_mpt_playerModStatus) do
 		if info.Status == MPT_CHECK.FAILED then
 			if info.NoReport then
-				table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_NOREPORT", info.Name));
+				table.insert(details, info.Name .. ModCheckDetailNoReportStr);
 			else
 				for _, m in ipairs(info.Mismatch) do
-					table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_MISMATCH", info.Name, MPT_GetModTitle(m.ModId), m.HostVer, m.PlayerVer));
+					table.insert(details, info.Name .. ModCheckDetailMismatchPrefixStr .. MPT_GetModTitle(m.ModId) .. ModCheckDetailMismatchSuffixStr);
 				end
 			end
 		elseif info.Status == MPT_CHECK.PENDING then
-			table.insert(details, Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_PENDING", info.Name));
+			table.insert(details, info.Name .. ModCheckDetailPendingStr);
 		end
 	end
 	return table.concat(details, "[NEWLINE]");
@@ -4621,10 +4635,10 @@ function MPT_MaybePopupModCheckWarning()
 	end
 	g_mpt_popupShownRev = g_mpt_listRev;
 	m_kPopupDialog:Close();
-	m_kPopupDialog:AddTitle(Locale.ToUpper(Locale.Lookup("LOC_MPT_MODCHECK_POPUP_TITLE")));
-	m_kPopupDialog:AddText(Locale.Lookup("LOC_MPT_MODCHECK_POPUP_TEXT") .. "[NEWLINE]" .. MPT_BuildFailureDetails());
-	m_kPopupDialog:AddButton(Locale.Lookup("LOC_MPT_MODCHECK_POPUP_RECHECK"), MPT_OnPopupRecheck);
-	m_kPopupDialog:AddButton(Locale.Lookup("LOC_MPT_MODCHECK_POPUP_SKIP"), MPT_OnPopupSkip);
+	m_kPopupDialog:AddTitle(Locale.ToUpper(ModCheckPopupTitleStr));
+	m_kPopupDialog:AddText(ModCheckPopupTextStr .. "[NEWLINE]" .. MPT_BuildFailureDetails());
+	m_kPopupDialog:AddButton(ModCheckPopupRecheckStr, MPT_OnPopupRecheck);
+	m_kPopupDialog:AddButton(ModCheckPopupSkipStr, MPT_OnPopupSkip);
 	m_kPopupDialog:Open();
 end
 
@@ -4656,6 +4670,12 @@ end
 --       订阅状态用 Modding.GetSubscriptions()（本机订阅 ID 列表，比较时 tostring 归一）。
 -- 面板每次打开都重建列表（跨房无残留）；关闭走 SlideAnim Reverse 滑回左侧。
 -- ============================================================================
+-- 模组清单本地化文本缓存（条目4.2，预加载避免每次重建列表时重复 Lookup）
+local ModListLocalStr = Locale.Lookup("LOC_MPT_MODLIST_LOCAL");
+local ModListSubscribedStr = Locale.Lookup("LOC_MPT_MODLIST_SUBSCRIBED");
+local ModListUnsubscribedStr = Locale.Lookup("LOC_MPT_MODLIST_UNSUBSCRIBED");
+local ModListEmptyStr = Locale.Lookup("LOC_MPT_MODLIST_EMPTY");
+
 local m_modListEntryIM = InstanceManager:new("ModListEntryInstance", "EntryRoot", Controls.ModListStack);
 g_modListOpen = false;	-- 面板开/关态。不用 local：KeyUpHandler/OnHandleExitRequest（本文件前部）引用本变量，且 SlideAnim Reverse 不回设 Hidden，IsHidden 不可靠
 
@@ -4714,15 +4734,15 @@ function MPT_BuildModList()
 
 			if not hasSubId then
 				-- 本地（非工坊）模组：无订阅判定，不可点，状态「本地」
-				entryInstance.SubscribedLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_LOCAL"));
+				entryInstance.SubscribedLabel:SetText(ModListLocalStr);
 				entryInstance.ModRowButton:SetDisabled(true);
 			else
 				local isSubscribed : boolean = subscribedSet[tostring(subscriptionId)] ~= nil;
 				entryInstance.ModRowButton:SetDisabled(false);
 				if isSubscribed then
-					entryInstance.SubscribedLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_SUBSCRIBED"));
+					entryInstance.SubscribedLabel:SetText(ModListSubscribedStr);
 				else
-					entryInstance.SubscribedLabel:SetText("[COLOR_RED]" .. Locale.Lookup("LOC_MPT_MODLIST_UNSUBSCRIBED") .. "[ENDCOLOR]");
+					entryInstance.SubscribedLabel:SetText("[COLOR_RED]" .. ModListUnsubscribedStr .. "[ENDCOLOR]");
 				end
 				local url : string = "https://steamcommunity.com/sharedfiles/filedetails/?id=" .. tostring(subscriptionId);
 				entryInstance.ModRowButton:RegisterCallback(Mouse.eLClick, function()
@@ -4737,7 +4757,7 @@ function MPT_BuildModList()
 	if shownCount == 0 then
 		-- 空态提示：无交互行展示「本房间没有启用非官方模组」
 		local emptyInstance = m_modListEntryIM:GetInstance();
-		emptyInstance.ModNameLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_EMPTY"));
+		emptyInstance.ModNameLabel:SetText(ModListEmptyStr);
 		emptyInstance.SubscribedLabel:SetText("");
 		emptyInstance.ModRowButton:SetDisabled(true);
 		emptyInstance.ModRowButton:SetToolTipString(nil);

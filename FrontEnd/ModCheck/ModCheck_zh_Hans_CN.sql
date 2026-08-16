@@ -10,6 +10,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_MODCHECK_POPUP_TEXT', 'zh_Hans_CN', '所选模组的版本校验未通过：'),
 ('LOC_MPT_MODCHECK_POPUP_RECHECK', 'zh_Hans_CN', '返回重新验证'),
 ('LOC_MPT_MODCHECK_POPUP_SKIP', 'zh_Hans_CN', '放弃验证'),
-('LOC_MPT_MODCHECK_DETAIL_NOREPORT', 'zh_Hans_CN', '{1_Name}：未回报（可能未安装本模组）'),
-('LOC_MPT_MODCHECK_DETAIL_PENDING', 'zh_Hans_CN', '{1_Name}：正在等待回报……'),
-('LOC_MPT_MODCHECK_DETAIL_MISMATCH', 'zh_Hans_CN', '{1_Name}：{2_Mod} 版本不一致（房主 {3_Host} / 该玩家 {4_Player}）');
+('LOC_MPT_MODCHECK_DETAIL_NOREPORT', 'zh_Hans_CN', '：未回报（可能未安装本模组）'),
+('LOC_MPT_MODCHECK_DETAIL_PENDING', 'zh_Hans_CN', '：正在等待回报……'),
+('LOC_MPT_MODCHECK_DETAIL_MISMATCH_PREFIX', 'zh_Hans_CN', '：'),
+('LOC_MPT_MODCHECK_DETAIL_MISMATCH_SUFFIX', 'zh_Hans_CN', ' 版本不一致');
