@@ -5365,6 +5365,13 @@ function MPT_PlayerMark_FormatDate(time : number)
 end
 
 -- ============================================================================
+-- MPT_PlayerMark_FormatDateTime(time)：时间戳转 "YYYY-MM-DD HH:MM:SS"（详细描述条目用，精确到秒）。
+-- ============================================================================
+function MPT_PlayerMark_FormatDateTime(time : number)
+	return os.date("%Y-%m-%d %H:%M:%S", time or 0);
+end
+
+-- ============================================================================
 -- MPT_PlayerMark_IsValidId(id)：ID 校验——17 位纯数字（Steam）或 32 位字符（Epic）。
 -- ============================================================================
 function MPT_PlayerMark_IsValidId(id)
@@ -5428,7 +5435,7 @@ function MPT_PlayerMark_RebuildDetails()
 	m_playerMarkDetailIM:ResetInstances();
 	for i, detail in ipairs(g_PlayerMarkWorkDetails) do
 		local inst = m_playerMarkDetailIM:GetInstance();
-		inst.DetailDateLabel:SetText(MPT_PlayerMark_FormatDate(detail.Time));
+		inst.DetailDateLabel:SetText(MPT_PlayerMark_FormatDateTime(detail.Time));
 		inst.DetailTextLabel:SetText(detail.Text or "");
 		inst.DetailTextLabel:SetToolTipString(detail.Text or "");
 		-- 行高自适应（同更新公告条目3.5）：文本上偏移26 + 文本高 + 底边距14
