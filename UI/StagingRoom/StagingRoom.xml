@@ -371,10 +371,10 @@
 					<Label ID="PlayerMarkEmptyHint" Anchor="C,C" Style="FontNormal16" Align="Center" WrapWidth="320" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_SELECT"/>
 					<Container ID="PlayerMarkEditor" Size="parent,parent" Hidden="1">
 
-						<!-- 详情头（仿 Mods.xml 详情头：IconBacking50 + 标签图标 + 昵称标题 + 分隔条 + NetworkIdentifier） -->
+						<!-- 详情头（仿 Mods.xml 详情头：IconBacking50 + CommunityContent_50 贴图 + 昵称标题 + 分隔条 + NetworkIdentifier） -->
 						<Grid Size="parent-20,90" Anchor="C,T" Offset="0,10" Style="SubContainer">
 							<Image Texture="AdditionalContent_IconBacking50" Size="70,70" Anchor="L,C" Offset="6,0">
-								<Label ID="PlayerMarkHeaderTagIcon" Anchor="C,C" Offset="0,0" Style="FontFlair24" String=""/>
+								<Image Anchor="C,C" Size="50,50" Offset="4,0" Texture="CommunityContent_50"/>
 							</Image>
 							<Stack Anchor="C,T" Offset="30,8" StackPadding="7">
 								<Label ID="PlayerMarkHeaderName" Anchor="C,T" Style="FontFlair16" SmallCaps="22" SmallCapsType="EveryWord"/>
