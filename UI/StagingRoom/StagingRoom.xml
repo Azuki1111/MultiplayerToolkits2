@@ -337,7 +337,7 @@
 		<Container Size="parent-30,parent-74" Anchor="C,T" Offset="0,64">
 
 			<!-- 左列：搜索框 + 排序切换 + 三个过滤复选框 + 玩家列表 + 添加按钮（结构照 Mods.xml 左列） -->
-			<Grid Style="SubContainer" Size="402,parent" Anchor="L,T" Offset="0,0">
+			<Grid Style="SubContainer" Size="402,parent-6" Anchor="L,T" Offset="0,0">
 				<Stack Padding="5">
 					<Grid Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Offset="0,10" Size="parent,26">
 						<EditBox ID="PlayerMarkSearchEditBox" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-10,16" MaxLength="40" String="" ToolTip="LOC_MPT_PLAYERMARK_SEARCH_TT" CallOnChar="1"/>
@@ -353,9 +353,9 @@
 						</Stack>
 					</Container>
 					<Box Color="10,60,78,255" Anchor="L,B" Size="parent,3" Offset="0,4"/>
-					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="0,0" Size="parent,parent-160" AutoScrollBar="1">
+					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-160" AutoScrollBar="1">
 						<Stack ID="PlayerMarkListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
-						<ScrollBar Style="Slider_Blue" Offset="7,0" Anchor="R,T" AnchorSide="O,I"/>
+						<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
 					</ScrollPanel>
 					<Box Color="10,60,78,255" Anchor="L,T" Size="parent,3" Offset="0,0"/>
 				</Stack>
@@ -364,7 +364,7 @@
 			</Grid>
 
 			<!-- 右列：玩家信息（DecoGrid + 水印，照 Mods.xml 右列；未选中显示空态提示；改动暂存，保存才落盘） -->
-			<Grid Style="SubContainer" Size="parent-415,parent" Anchor="R,T" Offset="0,0">
+			<Grid Style="SubContainer" Size="parent-415,parent-6" Anchor="R,T" Offset="0,0">
 				<Grid Style="DecoGrid" Anchor="C,C" Size="parent-10,parent-10" Color="26,61,90,255">
 					<Image Anchor="C,C" Size="457,469" Texture="AdditionalContent_Watermark"/>
 					<Label ID="PlayerMarkEmptyHint" Anchor="C,C" Style="FontNormal16" Align="Center" WrapWidth="320" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_SELECT"/>
@@ -803,11 +803,12 @@
 
 	<!-- 条目4.4：玩家标记列表行实例（整行按钮；第一行标签图标+昵称，第二行 NetworkIdentifier 小字；点击右侧载入该记录） -->
 	<Instance Name="PlayerMarkEntryInstance">
-		<Container ID="EntryRoot" Size="parent,46" Anchor="L,C">
-			<GridButton ID="RowButton" Style="ButtonControl" Size="parent+8,parent" Offset="-4,0">
-				<Label ID="TagIconLabel" Anchor="L,T" Offset="8,4" Style="FontNormal16" String=""/>
-				<ScrollTextField ID="NameLabel" Size="300,16" Offset="32,6" Anchor="L,T" Style="FontNormal16" FontStyle="stroke" String="Name"/>
-				<Label ID="IdLabel" Anchor="L,B" Offset="32,5" Style="FontNormal12" FontStyle="stroke" Color="GreatPeopleRow" String=""/>
+		<Container ID="EntryRoot" Size="parent,52" Anchor="L,C">
+			<GridButton ID="RowButton" Style="ButtonControl" Size="parent,parent" Offset="-4,0">
+				<Image Texture="Controls_CircleRim50" Size="50,50" Anchor="L,C" Offset="0,-1" Color="2,119,186"/>
+				<Label ID="TagIconLabel" Anchor="L,C" Offset="15,2" Style="FontNormal16" String=""/>
+				<ScrollTextField ID="NameLabel" Size="300,16" Offset="54,6" Anchor="L,T" Style="FontNormal18" FontStyle="stroke" String="Name"/>
+				<Label ID="IdLabel" Anchor="L,B" Offset="54,5" Style="FontNormal12" FontStyle="stroke" Color="GreatPeopleRow" String=""/>
 			</GridButton>
 		</Container>
 	</Instance>
