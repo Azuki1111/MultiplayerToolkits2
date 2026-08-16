@@ -21,9 +21,9 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
-		<Created>1786372951</Created>
+		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>11</Version>
+		<Version>12</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -179,6 +179,14 @@
 			<File>FrontEnd/ModList/ModList_zh_Hans_CN.sql</File>
 			<File>FrontEnd/ModList/ModList_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目4.4：玩家标记管理专属文本（仅前端注册；纯本地玩家档案，数据走条目4.3 存储管线，无数据表） -->
+		<UpdateText id="FE_PlayerMark_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>FrontEnd/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
+			<File>FrontEnd/PlayerMark/PlayerMark_en_US.sql</File>
+		</UpdateText>
 	</FrontEndActions>
 	<InGameActions>
 		<!-- 游戏内上下文注册同一份文本文件（其中的 LOC_MPT_FE_DUMMY_TEXT 为虚构示例，无任何引用） -->
@@ -211,6 +219,8 @@
 		<File>FrontEnd/ModCheck/ModCheck_Data.sql</File>
 		<File>FrontEnd/ModList/ModList_zh_Hans_CN.sql</File>
 		<File>FrontEnd/ModList/ModList_en_US.sql</File>
+		<File>FrontEnd/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
+		<File>FrontEnd/PlayerMark/PlayerMark_en_US.sql</File>
 		<File>UI/StagingRoom/StagingRoom.lua</File>
 		<File>UI/StagingRoom/StagingRoom.xml</File>
 		<File>UI/AdvancedSetup/AdvancedSetup.lua</File>

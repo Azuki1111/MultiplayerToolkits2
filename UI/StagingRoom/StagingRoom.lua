@@ -209,6 +209,18 @@ end
 -- ===========================================================================
 function KeyUpHandler( key:number )
 	-- ============================================================================
+	-- 联机工具箱2.0：玩家标记管理打开时 ESC 优先关闭（条目4.4；添加弹窗在时先关弹窗，再关面板；
+	-- 两个函数定义在本文件末尾条目4.4分区，全局函数运行时解析）
+	-- ============================================================================
+	if not Controls.PlayerMarkEditPopup:IsHidden() then
+		MPT_PlayerMark_CloseAddPopup();
+		return true;
+	end
+	if not Controls.PlayerMarkPanel:IsHidden() then
+		MPT_PlayerMark_Close();
+		return true;
+	end
+	-- ============================================================================
 	-- 联机工具箱2.0：非官方模组清单面板打开时 ESC 优先关闭面板（条目4.2；
 	-- 判定用 g_modListOpen，SlideAnim Reverse 不回设 Hidden，IsHidden 不可靠）
 	-- ============================================================================
@@ -5245,3 +5257,519 @@ function MPT_Storage_DeleteFile(fileName : string, callback)
 	table.insert(g_storageJobs, { kind = "delete", fileName = fileName, callback = callback });
 	StorageRunNext();
 end
+
+-- ############################################################################
+-- 条目4.4：玩家标记管理（纯本地玩家档案：好友/一般/黑名单标记 + 记事本）
+-- ============================================================================
+-- 用法：左下角 BottomLeftButtonStack「玩家标记」按钮打开面板；左列 过滤/搜索/排序/列表/添加，
+--   右列内联编辑选中记录（含详细描述记事本）。面板与弹窗布局见 StagingRoom.xml 条目4.4 注释区。
+-- 定位：纯本地记事本，不读取当前房间实况、不做任何房间联动/警告（与用户确认的边界）。
+-- 存储：严格走条目4.3预备内联副本的 MPT_Storage_SaveData/LoadData（MPT_DataStorage 格式），
+--   专属文件 MPT_PlayerInfo.Civ6Cfg（Saves\Single）、键 "Players"；每次打开面板真实读盘，
+--   仅「保存」按钮落盘；面板代码不直接碰 Network.SaveGame/GameConfiguration。
+-- 数据：g_PlayerMarkList = { { Id=主键(17位纯数字Steam/32位字符Epic), Name=昵称,
+--   Tag=1好友/2一般/3黑名单, Brief=简要描述, Details={ {Text,Time=os.time()}, ... },
+--   Modified=os.time() }, ... }；显示日期一律由时间戳现算（os.date），不冗余存储。
+-- 编辑语义：右侧改动（含详情增删）先暂存内存，「保存」才写盘并刷新 Modified；
+--   「取消」还原；切换玩家/关闭面板时有未保存改动先弹确认框。
+-- ############################################################################
+
+-- ============================================================================
+-- 条目4.4：本地化文本预加载缓存（规范：分区头后集中预加载；XML String=/ToolTip= 不预加载）
+-- ============================================================================
+local PlayerMarkSortDescStr			: string = Locale.Lookup("LOC_MPT_PLAYERMARK_SORT_DESC");
+local PlayerMarkSortAscStr			: string = Locale.Lookup("LOC_MPT_PLAYERMARK_SORT_ASC");
+local PlayerMarkModifiedPrefixStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_MODIFIED_PREFIX");
+local PlayerMarkIdInvalidStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_ID_INVALID");
+local PlayerMarkNameEmptyStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_NAME_EMPTY");
+local PlayerMarkNoticeTitleStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_NOTICE_TITLE");
+local PlayerMarkExistsTitleStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_EXISTS_TITLE");
+local PlayerMarkExistsTextStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_EXISTS_TEXT");
+local PlayerMarkConfirmDeleteTitleStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONFIRM_DELETE_TITLE");
+local PlayerMarkConfirmDeleteTextStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONFIRM_DELETE_TEXT");
+local PlayerMarkConfirmDiscardTitleStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONFIRM_DISCARD_TITLE");
+local PlayerMarkConfirmDiscardTextStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONFIRM_DISCARD_TEXT");
+local PlayerMarkOkStr				: string = Locale.Lookup("LOC_OK");
+local PlayerMarkCancelStr			: string = Locale.Lookup("LOC_CANCEL");
+
+-- ============================================================================
+-- 常量与全局状态（全局而非 local：KeyUpHandler 等本文件前部代码要调用本分区函数；
+--   且「声明点之前引用的 local 会解析为全局」为已踩坑，统一全局避免声明顺序问题）
+-- ============================================================================
+local PLAYERMARK_STORAGE_FILE : string = "MPT_PlayerInfo";	-- 专属玩家信息存档文件名（字母数字下划线）
+local PLAYERMARK_STORAGE_KEY  : string = "Players";			-- 存档内键名
+local PLAYERMARK_TAG_ICONS : table = { "[ICON_OnlineGreenPingPip]", "[ICON_OnlineYellowPingPig]", "[ICON_OnlineRedPingPig]" };	-- 下标即 Tag：1好友 2一般 3黑名单（游戏真实图标名黄/红为 PingPig，已核实）
+
+g_PlayerMarkList        = {};		-- 玩家记录数组（磁盘内容的工作副本）
+g_PlayerMarkSelectedId  = nil;		-- 当前选中玩家 Id（nil=未选中）
+g_PlayerMarkSortAsc     = false;	-- 排序方向：false=最新修改在前（默认）
+g_PlayerMarkFilterTag   = { true, true, true };	-- 三个过滤复选框勾选态（下标即 Tag）
+g_PlayerMarkSearchStr   = "";		-- 搜索框当前内容（已转小写）
+g_PlayerMarkDirty       = false;	-- 右侧有未保存改动
+g_PlayerMarkEditTag     = 2;		-- 右侧编辑暂存：标签类型
+g_PlayerMarkWorkDetails = {};		-- 右侧编辑暂存：详细描述数组（保存时整体写回记录）
+g_PlayerMarkPopupTag    = 2;		-- 添加弹窗暂存：标签类型（默认一般）
+g_PlayerMarkLoading     = false;	-- 右侧编辑区装载中（屏蔽 SetText 触发的改动回调，防误标 dirty）
+
+local m_playerMarkEntryIM  = InstanceManager:new("PlayerMarkEntryInstance", "EntryRoot", Controls.PlayerMarkListStack);
+local m_playerMarkDetailIM = InstanceManager:new("PlayerMarkDetailEntryInstance", "DetailRoot", Controls.PlayerMarkDetailStack);
+local m_kPlayerMarkDialog  = PopupDialog:new("MPT_PlayerMark");	-- 本功能专用确认/提示弹窗（与房间 m_kPopupDialog 互不干扰）
+local g_playerMarkEntryIds : table = {};	-- 左列实例序号 -> 玩家 Id（点击行时反查，列表过滤/排序后下标不稳定）
+
+-- ============================================================================
+-- 内部：PlayerMarkSetTagLines(tag, isPopup)
+-- 刷新三标签按钮的选中下划线（编辑区与添加弹窗各一组，isPopup 区分）。
+-- ============================================================================
+local function PlayerMarkSetTagLines(tag : number, isPopup : boolean)
+	if isPopup then
+		Controls.PlayerMarkPopupTagLine1:SetHide(tag ~= 1);
+		Controls.PlayerMarkPopupTagLine2:SetHide(tag ~= 2);
+		Controls.PlayerMarkPopupTagLine3:SetHide(tag ~= 3);
+	else
+		Controls.PlayerMarkTagLine1:SetHide(tag ~= 1);
+		Controls.PlayerMarkTagLine2:SetHide(tag ~= 2);
+		Controls.PlayerMarkTagLine3:SetHide(tag ~= 3);
+	end
+end
+
+-- ============================================================================
+-- 内部：PlayerMarkOnEditorFieldChanged
+-- 右侧编辑区文本改动回调：装载期（g_PlayerMarkLoading）屏蔽，其余置 dirty。
+-- ============================================================================
+local function PlayerMarkOnEditorFieldChanged()
+	if g_PlayerMarkLoading then return; end
+	g_PlayerMarkDirty = true;
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_FormatDate(time)：时间戳转显示日期串（YYYY-MM-DD）。
+-- ============================================================================
+function MPT_PlayerMark_FormatDate(time : number)
+	return os.date("%Y-%m-%d", time or 0);
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_IsValidId(id)：ID 校验——17 位纯数字（Steam）或 32 位字符（Epic）。
+-- ============================================================================
+function MPT_PlayerMark_IsValidId(id)
+	if type(id) ~= "string" then return false; end
+	if #id == 17 then return string.match(id, "^%d+$") ~= nil; end
+	if #id == 32 then return string.match(id, "^%w+$") ~= nil; end
+	return false;
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_FindIndex(id)：按主键查记录下标，未找到返回 nil。
+-- ============================================================================
+function MPT_PlayerMark_FindIndex(id)
+	for i, rec in ipairs(g_PlayerMarkList) do
+		if rec.Id == id then return i; end
+	end
+	return nil;
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_GetSelected()：取当前选中记录（无选中/记录已被删返回 nil）。
+-- ============================================================================
+function MPT_PlayerMark_GetSelected()
+	if g_PlayerMarkSelectedId == nil then return nil; end
+	local idx = MPT_PlayerMark_FindIndex(g_PlayerMarkSelectedId);
+	if idx == nil then return nil; end
+	return g_PlayerMarkList[idx];
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_Confirm(titleStr, textStr, onConfirm)：通用确认框（确定/取消）。
+-- ============================================================================
+function MPT_PlayerMark_Confirm(titleStr : string, textStr : string, onConfirm)
+	m_kPlayerMarkDialog:Close();
+	m_kPlayerMarkDialog:AddTitle(titleStr);
+	m_kPlayerMarkDialog:AddText(textStr);
+	m_kPlayerMarkDialog:AddButton(PlayerMarkOkStr, function() if onConfirm ~= nil then onConfirm(); end end);
+	m_kPlayerMarkDialog:AddButton(PlayerMarkCancelStr);
+	m_kPlayerMarkDialog:Open();
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_LoadFromDisk(callback) / MPT_PlayerMark_SaveToDisk(callback)
+-- 条目4.3 存储管线包装：真实读盘刷新 g_PlayerMarkList / 把工作副本落盘。
+-- ============================================================================
+function MPT_PlayerMark_LoadFromDisk(callback)
+	MPT_Storage_LoadData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_KEY, function(data)
+		g_PlayerMarkList = (type(data) == "table") and data or {};
+		if callback ~= nil then callback(); end
+	end);
+end
+
+function MPT_PlayerMark_SaveToDisk(callback)
+	MPT_Storage_SaveData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_KEY, g_PlayerMarkList, callback);
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_RebuildDetails()：由暂存数组 g_PlayerMarkWorkDetails 重建右侧详情列表。
+-- ============================================================================
+function MPT_PlayerMark_RebuildDetails()
+	m_playerMarkDetailIM:ResetInstances();
+	for i, detail in ipairs(g_PlayerMarkWorkDetails) do
+		local inst = m_playerMarkDetailIM:GetInstance();
+		inst.DetailDateLabel:SetText(MPT_PlayerMark_FormatDate(detail.Time));
+		inst.DetailTextLabel:SetText(detail.Text or "");
+		inst.DetailTextLabel:SetToolTipString(detail.Text or "");
+		inst.DetailDeleteButton:SetVoid1(i);
+		inst.DetailDeleteButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnDeleteDetail);
+	end
+	Controls.PlayerMarkDetailStack:CalculateSize();
+	Controls.PlayerMarkDetailScrollPanel:CalculateSize();
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_RebuildList()：按 过滤复选框 + 搜索子串 + 日期排序 重建左列。
+--   搜索同时匹配昵称与 NetworkIdentifier（string.find 纯文本模式，ASCII 大小写不敏感）；
+--   排序按 Modified 时间戳，g_PlayerMarkSortAsc 控向（默认最新在前），等值按昵称字典序。
+-- ============================================================================
+function MPT_PlayerMark_RebuildList()
+	local filtered : table = {};
+	for _, rec in ipairs(g_PlayerMarkList) do
+		if g_PlayerMarkFilterTag[rec.Tag or 2] then
+			local matchSearch : boolean = true;
+			if g_PlayerMarkSearchStr ~= "" then
+				matchSearch = string.find(string.lower(rec.Name or ""), g_PlayerMarkSearchStr, 1, true) ~= nil
+					or string.find(string.lower(rec.Id or ""), g_PlayerMarkSearchStr, 1, true) ~= nil;
+			end
+			if matchSearch then
+				table.insert(filtered, rec);
+			end
+		end
+	end
+	table.sort(filtered, function(a, b)
+		local ma : number = a.Modified or 0;
+		local mb : number = b.Modified or 0;
+		if ma == mb then return (a.Name or "") < (b.Name or ""); end
+		if g_PlayerMarkSortAsc then return ma < mb; end
+		return ma > mb;
+	end);
+
+	m_playerMarkEntryIM:ResetInstances();
+	g_playerMarkEntryIds = {};
+	for i, rec in ipairs(filtered) do
+		local inst = m_playerMarkEntryIM:GetInstance();
+		g_playerMarkEntryIds[i] = rec.Id;
+		inst.TagIconLabel:SetText(PLAYERMARK_TAG_ICONS[rec.Tag or 2] or "");
+		inst.NameLabel:SetText(rec.Name or "");
+		inst.NameLabel:SetToolTipString(rec.Name or "");
+		inst.IdLabel:SetText(rec.Id or "");
+		inst.RowButton:SetVoid1(i);
+		inst.RowButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnEntryClick);
+	end
+	Controls.PlayerMarkListEmptyLabel:SetHide(#filtered > 0);
+	Controls.PlayerMarkListStack:CalculateSize();
+	Controls.PlayerMarkListScrollPanel:CalculateSize();
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_RefreshEditor()：把选中记录载入右侧编辑区；无选中则显示空态提示。
+--   装载期间置 g_PlayerMarkLoading 屏蔽文本改动回调（防 SetText 误标 dirty）。
+-- ============================================================================
+function MPT_PlayerMark_RefreshEditor()
+	local rec = MPT_PlayerMark_GetSelected();
+	Controls.PlayerMarkEmptyHint:SetHide(rec ~= nil);
+	Controls.PlayerMarkEditor:SetHide(rec == nil);
+	g_PlayerMarkLoading = true;
+	if rec == nil then
+		g_PlayerMarkDirty = false;
+		g_PlayerMarkLoading = false;
+		return;
+	end
+	Controls.PlayerMarkNameEdit:SetText(rec.Name or "");
+	Controls.PlayerMarkIdValue:SetText(rec.Id);
+	g_PlayerMarkEditTag = rec.Tag or 2;
+	PlayerMarkSetTagLines(g_PlayerMarkEditTag, false);
+	Controls.PlayerMarkBriefEdit:SetText(rec.Brief or "");
+	Controls.PlayerMarkModifiedLabel:SetText(PlayerMarkModifiedPrefixStr .. MPT_PlayerMark_FormatDate(rec.Modified));
+	-- 详情编辑走暂存副本（单层深拷贝），保存时才整体写回记录
+	g_PlayerMarkWorkDetails = {};
+	for i, detail in ipairs(rec.Details or {}) do
+		g_PlayerMarkWorkDetails[i] = { Text = detail.Text, Time = detail.Time };
+	end
+	g_PlayerMarkLoading = false;
+	g_PlayerMarkDirty = false;
+	MPT_PlayerMark_RebuildDetails();
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_Select(id)：选中玩家并载入编辑区；有未保存改动先弹确认（放弃/取消）。
+-- ============================================================================
+function MPT_PlayerMark_Select(id)
+	if id == g_PlayerMarkSelectedId then return; end
+	if g_PlayerMarkDirty and g_PlayerMarkSelectedId ~= nil then
+		MPT_PlayerMark_Confirm(PlayerMarkConfirmDiscardTitleStr, PlayerMarkConfirmDiscardTextStr, function()
+			g_PlayerMarkDirty = false;
+			MPT_PlayerMark_Select(id);
+		end);
+		return;
+	end
+	g_PlayerMarkSelectedId = id;
+	MPT_PlayerMark_RefreshEditor();
+	UI.PlaySound("Play_UI_Click");
+end
+
+-- ============================================================================
+-- 左列行点击：实例序号反查玩家 Id 后选中。
+-- ============================================================================
+function MPT_PlayerMark_OnEntryClick(index : number)
+	local id = g_playerMarkEntryIds[index];
+	if id ~= nil then
+		MPT_PlayerMark_Select(id);
+	end
+end
+
+-- ============================================================================
+-- 详情行删除 / 详情输入行添加（均为暂存改动：置 dirty，保存生效/取消还原，不弹确认）。
+-- ============================================================================
+function MPT_PlayerMark_OnDeleteDetail(index : number)
+	if index == nil or index < 1 or index > #g_PlayerMarkWorkDetails then return; end
+	table.remove(g_PlayerMarkWorkDetails, index);
+	g_PlayerMarkDirty = true;
+	MPT_PlayerMark_RebuildDetails();
+end
+
+function MPT_PlayerMark_OnAddDetail()
+	local text = Controls.PlayerMarkDetailEdit:GetText();
+	if text == nil or text == "" then return; end
+	table.insert(g_PlayerMarkWorkDetails, { Text = text, Time = os.time() });
+	Controls.PlayerMarkDetailEdit:SetText("");
+	Controls.PlayerMarkDetailEdit:TakeFocus();
+	g_PlayerMarkDirty = true;
+	MPT_PlayerMark_RebuildDetails();
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_ApplySave()：保存按钮——昵称非空校验后写回记录（Modified 刷新为当前
+--   时间戳），落盘成功才重建列表/重载编辑区；落盘期间防连点置灰保存按钮。
+-- ============================================================================
+function MPT_PlayerMark_ApplySave()
+	local rec = MPT_PlayerMark_GetSelected();
+	if rec == nil then return; end
+	local name = Controls.PlayerMarkNameEdit:GetText();
+	if name == nil or name == "" then
+		m_kPlayerMarkDialog:Close();
+		m_kPlayerMarkDialog:AddTitle(PlayerMarkNoticeTitleStr);
+		m_kPlayerMarkDialog:AddText(PlayerMarkNameEmptyStr);
+		m_kPlayerMarkDialog:AddButton(PlayerMarkOkStr);
+		m_kPlayerMarkDialog:Open();
+		return;
+	end
+	rec.Name = name;
+	rec.Brief = Controls.PlayerMarkBriefEdit:GetText() or "";
+	rec.Tag = g_PlayerMarkEditTag;
+	rec.Details = g_PlayerMarkWorkDetails;
+	rec.Modified = os.time();
+	g_PlayerMarkDirty = false;
+	Controls.PlayerMarkSaveButton:SetDisabled(true);
+	MPT_PlayerMark_SaveToDisk(function(ok)
+		Controls.PlayerMarkSaveButton:SetDisabled(false);
+		if ok then
+			UI.PlaySound("Play_UI_Click");
+		else
+			print("MPT_PlayerMark: 保存失败（存储管线回调 false）");
+		end
+		MPT_PlayerMark_RebuildList();
+		MPT_PlayerMark_RefreshEditor();
+	end);
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_CancelEdit()：取消按钮——重新载入选中记录即还原全部暂存改动。
+-- ============================================================================
+function MPT_PlayerMark_CancelEdit()
+	if MPT_PlayerMark_GetSelected() == nil then return; end
+	MPT_PlayerMark_RefreshEditor();
+	UI.PlaySound("Play_UI_Click");
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_DeleteSelected()：删除玩家按钮——弹确认框；确认后立即从存档抹除
+--   （不走保存按钮、不可经取消还原），落盘后重建并回到未选中态。
+-- ============================================================================
+function MPT_PlayerMark_DeleteSelected()
+	local rec = MPT_PlayerMark_GetSelected();
+	if rec == nil then return; end
+	MPT_PlayerMark_Confirm(PlayerMarkConfirmDeleteTitleStr, PlayerMarkConfirmDeleteTextStr, function()
+		local idx = MPT_PlayerMark_FindIndex(g_PlayerMarkSelectedId);
+		if idx ~= nil then
+			table.remove(g_PlayerMarkList, idx);
+		end
+		g_PlayerMarkSelectedId = nil;
+		g_PlayerMarkDirty = false;
+		MPT_PlayerMark_SaveToDisk(function(ok)
+			if not ok then
+				print("MPT_PlayerMark: 删除落盘失败（存储管线回调 false）");
+			end
+			MPT_PlayerMark_RebuildList();
+			MPT_PlayerMark_RefreshEditor();
+		end);
+	end);
+end
+
+-- ============================================================================
+-- 添加弹窗：打开（清空并默认「一般」标签）/ 关闭 / 字段改动实时校验 / 创建。
+-- 创建时重复 ID 不建新档：转为选中已有记录并弹提示。
+-- ============================================================================
+function MPT_PlayerMark_OpenAddPopup()
+	Controls.PlayerMarkPopupIdEdit:SetText("");
+	Controls.PlayerMarkPopupNameEdit:SetText("");
+	Controls.PlayerMarkPopupBriefEdit:SetText("");
+	g_PlayerMarkPopupTag = 2;
+	PlayerMarkSetTagLines(2, true);
+	Controls.PlayerMarkPopupHint:SetHide(true);
+	Controls.PlayerMarkPopupCreateButton:SetDisabled(true);
+	Controls.PlayerMarkEditPopup:SetHide(false);
+	Controls.PlayerMarkPopupIdEdit:TakeFocus();
+	UI.PlaySound("Play_UI_Click");
+end
+
+function MPT_PlayerMark_CloseAddPopup()
+	Controls.PlayerMarkEditPopup:SetHide(true);
+end
+
+function MPT_PlayerMark_OnPopupFieldChanged()
+	local id = Controls.PlayerMarkPopupIdEdit:GetText();
+	local name = Controls.PlayerMarkPopupNameEdit:GetText();
+	local idValid : boolean = MPT_PlayerMark_IsValidId(id);
+	Controls.PlayerMarkPopupCreateButton:SetDisabled(not idValid or name == nil or name == "");
+	if id ~= nil and id ~= "" and not idValid then
+		Controls.PlayerMarkPopupHint:SetText(PlayerMarkIdInvalidStr);
+		Controls.PlayerMarkPopupHint:SetHide(false);
+	else
+		Controls.PlayerMarkPopupHint:SetHide(true);
+	end
+end
+
+function MPT_PlayerMark_CreateFromPopup()
+	local id = Controls.PlayerMarkPopupIdEdit:GetText();
+	local name = Controls.PlayerMarkPopupNameEdit:GetText();
+	if not MPT_PlayerMark_IsValidId(id) or name == nil or name == "" then return; end
+	MPT_PlayerMark_CloseAddPopup();
+	if MPT_PlayerMark_FindIndex(id) ~= nil then
+		-- 重复 ID：转为编辑已有记录并提示
+		MPT_PlayerMark_Select(id);
+		m_kPlayerMarkDialog:Close();
+		m_kPlayerMarkDialog:AddTitle(PlayerMarkExistsTitleStr);
+		m_kPlayerMarkDialog:AddText(PlayerMarkExistsTextStr);
+		m_kPlayerMarkDialog:AddButton(PlayerMarkOkStr);
+		m_kPlayerMarkDialog:Open();
+		return;
+	end
+	table.insert(g_PlayerMarkList, {
+		Id = id,
+		Name = name,
+		Tag = g_PlayerMarkPopupTag,
+		Brief = Controls.PlayerMarkPopupBriefEdit:GetText() or "",
+		Details = {},
+		Modified = os.time(),
+	});
+	MPT_PlayerMark_SaveToDisk(function(ok)
+		if ok then
+			MPT_PlayerMark_RebuildList();
+			MPT_PlayerMark_Select(id);
+		else
+			print("MPT_PlayerMark: 创建落盘失败（存储管线回调 false）");
+		end
+	end);
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_Open() / MPT_PlayerMark_Close()
+-- 打开：显示遮挡层与面板后真实读盘，回调到达后重建列表/编辑区（面板已关也无碍）。
+-- 关闭：先收添加弹窗；有未保存改动先弹确认（确认后递归关闭）；幂等。
+-- ============================================================================
+function MPT_PlayerMark_Open()
+	Controls.PlayerMarkModalBlocker:SetHide(false);
+	Controls.PlayerMarkPanel:SetHide(false);
+	UI.PlaySound("UI_Screen_Open");
+	MPT_PlayerMark_LoadFromDisk(function()
+		MPT_PlayerMark_RebuildList();
+		MPT_PlayerMark_RefreshEditor();
+	end);
+end
+
+function MPT_PlayerMark_Close()
+	if Controls.PlayerMarkPanel:IsHidden() then
+		return;
+	end
+	if not Controls.PlayerMarkEditPopup:IsHidden() then
+		MPT_PlayerMark_CloseAddPopup();
+	end
+	if g_PlayerMarkDirty then
+		MPT_PlayerMark_Confirm(PlayerMarkConfirmDiscardTitleStr, PlayerMarkConfirmDiscardTextStr, function()
+			g_PlayerMarkDirty = false;
+			MPT_PlayerMark_Close();
+		end);
+		return;
+	end
+	Controls.PlayerMarkPanel:SetHide(true);
+	Controls.PlayerMarkModalBlocker:SetHide(true);
+	UI.PlaySound("UI_Screen_Close");
+end
+
+-- ============================================================================
+-- 条目4.4：控件注册（分区自包含初始化；本文件每前端状态只执行一次，无需守卫。
+--   复选框默认全勾选；排序按钮文案默认「最新修改在前」；搜索占位文本按焦点/内容显隐）
+-- ============================================================================
+Controls.PlayerMarkButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Open);
+Controls.PlayerMarkButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+Controls.PlayerMarkCloseButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Close);
+Controls.PlayerMarkModalBlocker:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Close);
+
+-- 左列：过滤复选框 / 排序切换 / 搜索框
+local function PlayerMarkOnFilterChanged()
+	g_PlayerMarkFilterTag[1] = Controls.PlayerMarkFilterFriend:IsChecked();
+	g_PlayerMarkFilterTag[2] = Controls.PlayerMarkFilterNormal:IsChecked();
+	g_PlayerMarkFilterTag[3] = Controls.PlayerMarkFilterBlack:IsChecked();
+	MPT_PlayerMark_RebuildList();
+end
+Controls.PlayerMarkFilterFriend:SetCheck(true);
+Controls.PlayerMarkFilterNormal:SetCheck(true);
+Controls.PlayerMarkFilterBlack:SetCheck(true);
+Controls.PlayerMarkFilterFriend:RegisterCallback(Mouse.eLClick, PlayerMarkOnFilterChanged);
+Controls.PlayerMarkFilterNormal:RegisterCallback(Mouse.eLClick, PlayerMarkOnFilterChanged);
+Controls.PlayerMarkFilterBlack:RegisterCallback(Mouse.eLClick, PlayerMarkOnFilterChanged);
+Controls.PlayerMarkSortButton:SetText(PlayerMarkSortDescStr);
+Controls.PlayerMarkSortButton:RegisterCallback(Mouse.eLClick, function()
+	g_PlayerMarkSortAsc = not g_PlayerMarkSortAsc;
+	Controls.PlayerMarkSortButton:SetText(g_PlayerMarkSortAsc and PlayerMarkSortAscStr or PlayerMarkSortDescStr);
+	MPT_PlayerMark_RebuildList();
+end);
+Controls.PlayerMarkSearchEditBox:RegisterStringChangedCallback(function()
+	g_PlayerMarkSearchStr = string.lower(Controls.PlayerMarkSearchEditBox:GetText() or "");
+	Controls.PlayerMarkSearchPlaceholder:SetHide(g_PlayerMarkSearchStr ~= "");
+	MPT_PlayerMark_RebuildList();
+end);
+Controls.PlayerMarkSearchEditBox:RegisterHasFocusCallback(function()
+	Controls.PlayerMarkSearchPlaceholder:SetHide(true);
+end);
+Controls.PlayerMarkSearchEditBox:RegisterLostFocusCallback(function()
+	Controls.PlayerMarkSearchPlaceholder:SetHide((Controls.PlayerMarkSearchEditBox:GetText() or "") ~= "");
+end);
+
+-- 左列底部添加按钮与添加弹窗
+Controls.PlayerMarkAddButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OpenAddPopup);
+Controls.PlayerMarkPopupCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CloseAddPopup);
+Controls.PlayerMarkPopupCreateButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CreateFromPopup);
+Controls.PlayerMarkPopupIdEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
+Controls.PlayerMarkPopupNameEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
+Controls.PlayerMarkPopupTagButton1:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 1; PlayerMarkSetTagLines(1, true); end);
+Controls.PlayerMarkPopupTagButton2:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 2; PlayerMarkSetTagLines(2, true); end);
+Controls.PlayerMarkPopupTagButton3:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 3; PlayerMarkSetTagLines(3, true); end);
+
+-- 右列编辑区：文本改动标 dirty（装载期屏蔽）；标签三按钮；详情输入回车=添加；保存/取消/删除
+Controls.PlayerMarkNameEdit:RegisterStringChangedCallback(PlayerMarkOnEditorFieldChanged);
+Controls.PlayerMarkBriefEdit:RegisterStringChangedCallback(PlayerMarkOnEditorFieldChanged);
+Controls.PlayerMarkTagButton1:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 1; PlayerMarkSetTagLines(1, false); g_PlayerMarkDirty = true; end);
+Controls.PlayerMarkTagButton2:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 2; PlayerMarkSetTagLines(2, false); g_PlayerMarkDirty = true; end);
+Controls.PlayerMarkTagButton3:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 3; PlayerMarkSetTagLines(3, false); g_PlayerMarkDirty = true; end);
+Controls.PlayerMarkDetailEdit:RegisterCommitCallback(MPT_PlayerMark_OnAddDetail);
+Controls.PlayerMarkAddDetailButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnAddDetail);
+Controls.PlayerMarkSaveButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_ApplySave);
+Controls.PlayerMarkCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CancelEdit);
+Controls.PlayerMarkDeleteButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_DeleteSelected);

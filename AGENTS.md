@@ -27,7 +27,7 @@
 | `Config/Config_Base.xml` | 条目2：联机常用游戏设置预设（无蛮族开/回合60秒/允许重复文明领袖/新增「禁用领袖池」参数） |
 | `Config/Config_Disaster.sql` | 条目2：灾害强度下限 0→-1（完全无灾害），LoadOrder 99999 强制后置 |
 | `UI/Options/Options.xml` | 条目1：整文件同名覆盖原版，唯一改动 LAN 玩家名 MaxLength 22→45 |
-| `UI/StagingRoom/StagingRoom.lua`（~5000行） | 条目3 核心：同名覆盖原版准备房间脚本。房间20人上限、快捷开关AI（3.2）、快捷分队（3.3）、房主权限提升改他人队伍/领袖（3.4）、更新公告面板（3.5）、广告轮播（3.6）、ping 常驻显示（3.7，分区内联覆盖原版 UpdateNetConnectionIcon：新增可选第三参数 pingLabel，传 nil 与原版行为一致，含 1.67 黑灯修复）、mod 版本校验（4.1）、非官方模组清单（4.2，侧滑面板显示房间非官方 mod 订阅状态/点击跳工坊）、序列化与数据读写内联分区（4.3预备，文件末尾） |
+| `UI/StagingRoom/StagingRoom.lua`（~5500行） | 条目3 核心：同名覆盖原版准备房间脚本。房间20人上限、快捷开关AI（3.2）、快捷分队（3.3）、房主权限提升改他人队伍/领袖（3.4）、更新公告面板（3.5）、广告轮播（3.6）、ping 常驻显示（3.7，分区内联覆盖原版 UpdateNetConnectionIcon：新增可选第三参数 pingLabel，传 nil 与原版行为一致，含 1.67 黑灯修复）、mod 版本校验（4.1）、非官方模组清单（4.2，侧滑面板显示房间非官方 mod 订阅状态/点击跳工坊）、序列化与数据读写内联分区（4.3预备，文件末尾）、玩家标记管理（4.4，文件末尾 4.3 之后：纯本地玩家档案——好友/一般/黑名单标记+记事本，纯本地面板不读房间实况；数据经 4.3 内联 API 存 MPT_PlayerInfo.Civ6Cfg，键 Players；右侧内联编辑+保存/取消暂存语义，仅整档删除弹确认；ESC/点外/X 关闭，有未保存改动先弹确认） |
 | `UI/StagingRoom/StagingRoom.xml` | 条目3：同名覆盖原版准备房间布局 |
 | `UI/AdvancedSetup/AdvancedSetup.lua` | 单人高级设置替换：minPlayers 2→1，允许移除全部 AI、1 人开局 |
 | `Storage/` | 条目4.3预备：序列化与数据读写的**独立文件副本**（保留给未来游戏内消费方；当前未在任何 action 注册、不被游戏加载）。`MPT_Serialize.lua` 序列化（移植 1.67 BSR，精简为纯数据表单遍递归，%q 转义纯 ASCII）；`MPT_DataStorage.lua` 极简本地数据读写工具：对外仅 `MPT_Storage_SaveData(fileName, key, data, callback)` / `MPT_Storage_LoadData(fileName, key, callback)` / `MPT_Storage_DeleteFile(fileName, callback)` 三个异步回调式全局 API，调用方自选 .Civ6Cfg 文件名与键名；内建 FIFO 作业队列（任时刻一作业在途，防并发查询互顶），写前清旧块、切块 128000、恒 SINGLE_PLAYER 落盘 Saves\Single，LoadData 每次都真实读盘；幂等守卫置位在文件末尾（半加载可自愈）。**前端实际承载 = StagingRoom.lua 末尾「条目4.3预备」内联副本**（因引擎 include 缺陷，见踩坑记录），两副本改动必须双向同步 |
@@ -36,6 +36,7 @@
 | `FrontEnd/Ads/` | 条目3.6 广告轮播：`MPT_Ads` 数据表 + 专属文本 + DDS 贴图（A8R8G8B8 单 mip，经 ImportFiles 入 VFS） |
 | `FrontEnd/ModCheck/` | 条目4.1 模组校验：`MPT_ModCheck` 注册表（mod 自我登记 modId）+ 专属文本 |
 | `FrontEnd/ModList/` | 条目4.2 非官方模组清单：专属文本（按钮/面板/行状态 Tag；数据走运行时 Modding API，无数据表） |
+| `FrontEnd/PlayerMark/` | 条目4.4 玩家标记管理：专属文本（按钮/面板/弹窗/确认框 Tag；无数据表，数据走条目4.3 存储管线，专属文件 MPT_PlayerInfo.Civ6Cfg 键 Players） |
 
 ## 加载机制（.modinfo）
 
