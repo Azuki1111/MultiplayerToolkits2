@@ -323,16 +323,15 @@
 	<Container ID="PlayerMarkPanel" Anchor="C,C" Size="1024,parent" Hidden="1">
 		<!-- 底板 ConsumeMouse=1：拦截面板区域点击，防止穿透到下层遮挡层误关面板 -->
 		<Box Anchor="C,C" Size="parent,parent" Color="11,27,40,255" ConsumeMouse="1"/>
-		<Grid Anchor="C,C" Size="parent+9,parent+9" Style="WindowFrameTopOnly"/>
-		<Button ID="PlayerMarkCloseButton" Anchor="R,T" Offset="-3,-1" Size="44,44" Texture="Controls_CloseLarge"/>
-
 		<!-- 头部（照 Mods.xml：DecoFrame + ShellHeader 标题 + 上下 Divider3Grid） -->
 		<Container Size="parent,54">
 			<Grid Anchor="C,T" Size="parent-10,39" Texture="Controls_DecoFrame" SliceCorner="19,18" SliceSize="1,1" SliceTextureSize="40,38" Color="41,74,108,255" Offset="0,6"/>
 			<Label Style="ShellHeader" Anchor="C,C" String="LOC_MPT_PLAYERMARK_TITLE"/>
 			<Grid Style="Divider3Grid" Size="parent+4,8" Anchor="L,B" Offset="-2,0"/>
-			<Grid Style="Divider3Grid" Size="parent+4,8" Anchor="L,T" Offset="-2,0" Color="150,150,150,255"/>
 		</Container>
+
+		<Grid Anchor="C,C" Size="parent+9,parent+9" Style="WindowFrameTopOnly"/>
+		<Button ID="PlayerMarkCloseButton" Anchor="R,T" Offset="-3,-1" Size="44,44" Texture="Controls_CloseLarge"/>
 
 		<!-- 内容区（左列 402 + 右列 parent-415，比例同 Mods.xml InstalledTabPanel） -->
 		<Container Size="parent-30,parent-74" Anchor="C,T" Offset="0,64">
@@ -361,7 +360,7 @@
 					<Box Color="10,60,78,255" Anchor="L,T" Size="parent,3" Offset="0,0"/>
 				</Stack>
 				<Label ID="PlayerMarkListEmptyLabel" Anchor="C,C" Offset="0,60" Style="FontNormal16" Align="Center" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_LIST" Hidden="1"/>
-				<GridButton ID="PlayerMarkAddButton" Style="MainButtonSmall" Anchor="C,B" Offset="0,-5" Size="250,30" String="LOC_MPT_PLAYERMARK_ADD"/>
+				<GridButton ID="PlayerMarkAddButton" Style="MainButtonSmall" Anchor="C,B" Offset="0,4" Size="parent-10,30" String="LOC_MPT_PLAYERMARK_ADD"/>
 			</Grid>
 
 			<!-- 右列：玩家信息（DecoGrid + 水印，照 Mods.xml 右列；未选中显示空态提示；改动暂存，保存才落盘） -->
