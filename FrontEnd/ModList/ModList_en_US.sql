@@ -6,7 +6,7 @@
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_MODLIST_OPEN_NAME', 'en_US', 'Mod List'),
 ('LOC_MPT_MODLIST_OPEN_TT', 'en_US', 'View the non-official mods enabled in this room and their subscription status'),
-('LOC_MPT_MODLIST_TITLE', 'en_US', 'Non-Official Mods'),
+('LOC_MPT_MODLIST_TITLE', 'en_US', 'Mod List'),
 ('LOC_MPT_MODLIST_SUBSCRIBED', 'en_US', 'Subscribed'),
 ('LOC_MPT_MODLIST_UNSUBSCRIBED', 'en_US', 'Not Subscribed'),
 ('LOC_MPT_MODLIST_LOCAL', 'en_US', 'Local'),

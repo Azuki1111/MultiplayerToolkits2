@@ -6,7 +6,7 @@
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_MODLIST_OPEN_NAME', 'zh_Hans_CN', '模组清单'),
 ('LOC_MPT_MODLIST_OPEN_TT', 'zh_Hans_CN', '查看本房间启用的非官方模组及其订阅状态'),
-('LOC_MPT_MODLIST_TITLE', 'zh_Hans_CN', '非官方模组'),
+('LOC_MPT_MODLIST_TITLE', 'zh_Hans_CN', '模组清单'),
 ('LOC_MPT_MODLIST_SUBSCRIBED', 'zh_Hans_CN', '已订阅'),
 ('LOC_MPT_MODLIST_UNSUBSCRIBED', 'zh_Hans_CN', '未订阅'),
 ('LOC_MPT_MODLIST_LOCAL', 'zh_Hans_CN', '本地'),

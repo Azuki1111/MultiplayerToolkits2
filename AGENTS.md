@@ -61,6 +61,7 @@ g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 20);
 
 - 新功能函数必须带注释与用法说明；同一类函数集中放在规范的区域（StagingRoom.lua 末尾按条目分区，如「条目3.2 快捷开关AI」「条目4.1 版本校验」各成一节）。
 - **本地化一律用 SQL**（`INSERT OR REPLACE INTO LocalizedText`），通用文本集中放 `FrontEnd/Text/` 每语言一个文件、同语言多行 VALUES；功能专属文本随功能文件夹存放。
+- **本地化文本预加载缓存（StagingRoom.lua）**：本 mod 新增文本在 Lua 中使用时，按条目分区头后集中预加载为 `local XxxStr = Locale.Lookup("LOC_...")` 缓存，运行时直接引用变量、不再内联 `Locale.Lookup("LOC_...")`。**带参数文本不用 `Locale.Lookup(tag, args)`**，改为「无参数纯文本 tag + Lua `..` 拼接」（如 4.1 明细行 `info.Name .. ModCheckDetailMismatchPrefixStr .. MPT_GetModTitle(m.ModId) .. ModCheckDetailMismatchSuffixStr`，把原 MISMATCH 拆成 PREFIX/SUFFIX 两个无参数 tag）。缓存块放在对应条目分区头之后、本分区函数定义之前（避免「声明点之前引用 local 解析为全局」，参照 3.7 分区）。不预加载：XML `String=`/`ToolTip=` 属性（XML 系统自动解析）、数据驱动的动态 key（`row.TextTag`、`adEntry.ToolTipTag`、`Modding` 的 Name/Description 等运行时才知道的 tag）。
 - 代码风格遵循游戏官方 Lua 风格（Tab 缩进、`local x : number` 类型标注、行尾分号、函数头注释块）。
 - 涉及深度设计疑问时使用 deep-probe 技能追问；文明6 mod 开发知识查 civ6 技能。
 
