@@ -5437,7 +5437,10 @@ function MPT_PlayerMark_RebuildDetails()
 		inst.DetailDeleteButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnDeleteDetail);
 	end
 	Controls.PlayerMarkDetailStack:CalculateSize();
+	-- ScrollPanel 高度随内容自适应：内容高+4 封顶 212、保底 30，超出上限出滚动条
+	Controls.PlayerMarkDetailScrollPanel:SetSizeY(math.min(math.max(Controls.PlayerMarkDetailStack:GetSizeY() + 4, 30), 212));
 	Controls.PlayerMarkDetailScrollPanel:CalculateSize();
+	Controls.PlayerMarkEditorStack:CalculateSize();
 end
 
 -- ============================================================================
