@@ -109,6 +109,7 @@
 			</Properties>
 			<File>FrontEnd/Ads/QiaoEr_FFA.dds</File>
 			<File>FrontEnd/Ads/QiaoEr_FFA2.dds</File>
+			<File>FrontEnd/Ads/XiXueGuiTest1_.dds</File>
 		</ImportFiles>
 		<!-- 条目2：灾害强度下限 0 到 -1（完全无灾害），强制后置防覆盖 -->
 		<UpdateDatabase id="FE_Config_DD">
@@ -204,6 +205,7 @@
 		<File>FrontEnd/Ads/Ads_en_US.sql</File>
 		<File>FrontEnd/Ads/QiaoEr_FFA.dds</File>
 		<File>FrontEnd/Ads/QiaoEr_FFA2.dds</File>
+		<File>FrontEnd/Ads/XiXueGuiTest1_.dds</File>
 		<File>FrontEnd/ModCheck/ModCheck_zh_Hans_CN.sql</File>
 		<File>FrontEnd/ModCheck/ModCheck_en_US.sql</File>
 		<File>FrontEnd/ModCheck/ModCheck_Data.sql</File>
