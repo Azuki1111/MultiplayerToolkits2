@@ -348,9 +348,9 @@
 					<Container Size="parent,80">
 						<GridButton ID="PlayerMarkSortButton" Style="ButtonControl" Anchor="L,C" Size="180,24" FontStyle="Stroke" ColorSet="ButtonCS" ToolTip="LOC_MPT_PLAYERMARK_SORT_TT"/>
 						<Stack ID="PlayerMarkFilterStack" Anchor="R,C" StackGrowth="Down" Padding="2">
-							<CheckBox ID="PlayerMarkFilterFriend" Style="CheckBoxModsControl" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_FRIEND" ToolTip="LOC_MPT_PLAYERMARK_FILTER_FRIEND_TT"/>
-							<CheckBox ID="PlayerMarkFilterNormal" Style="CheckBoxModsControl" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_NORMAL" ToolTip="LOC_MPT_PLAYERMARK_FILTER_NORMAL_TT"/>
-							<CheckBox ID="PlayerMarkFilterBlack" Style="CheckBoxModsControl" Size="96,24" String="LOC_MPT_PLAYERMARK_FILTER_BLACK" ToolTip="LOC_MPT_PLAYERMARK_FILTER_BLACK_TT"/>
+							<CheckBox ID="PlayerMarkFilterFriend" Style="CheckBoxModsControl" Anchor="R,T" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_FRIEND" ToolTip="LOC_MPT_PLAYERMARK_FILTER_FRIEND_TT"/>
+							<CheckBox ID="PlayerMarkFilterNormal" Style="CheckBoxModsControl" Anchor="R,T" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_NORMAL" ToolTip="LOC_MPT_PLAYERMARK_FILTER_NORMAL_TT"/>
+							<CheckBox ID="PlayerMarkFilterBlack" Style="CheckBoxModsControl" Anchor="R,T" Size="96,24" String="LOC_MPT_PLAYERMARK_FILTER_BLACK" ToolTip="LOC_MPT_PLAYERMARK_FILTER_BLACK_TT"/>
 						</Stack>
 					</Container>
 					<Box Color="10,60,78,255" Anchor="L,B" Size="parent,3" Offset="0,4"/>
