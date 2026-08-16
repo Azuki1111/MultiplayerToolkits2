@@ -5291,6 +5291,10 @@ local PlayerMarkConfirmDiscardTitleStr	: string = Locale.Lookup("LOC_MPT_PLAYERM
 local PlayerMarkConfirmDiscardTextStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONFIRM_DISCARD_TEXT");
 local PlayerMarkOkStr				: string = Locale.Lookup("LOC_OK");
 local PlayerMarkCancelStr			: string = Locale.Lookup("LOC_CANCEL");
+local PlayerMarkTagNameStrs			: table = {	-- 下标即 Tag：标签下拉项/按钮文本（复用过滤复选框文本 tag）
+	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_FRIEND"),
+	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_NORMAL"),
+	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_BLACK") };
 
 -- ============================================================================
 -- 常量与全局状态（全局而非 local：KeyUpHandler 等本文件前部代码要调用本分区函数；
@@ -5317,19 +5321,22 @@ local m_kPlayerMarkDialog  = PopupDialog:new("MPT_PlayerMark");	-- 本功能专�
 local g_playerMarkEntryIds : table = {};	-- 左列实例序号 -> 玩家 Id（点击行时反查，列表过滤/排序后下标不稳定）
 
 -- ============================================================================
--- 内部：PlayerMarkSetTagLines(tag, isPopup)
--- 刷新三标签按钮的选中下划线（编辑区与添加弹窗各一组，isPopup 区分）。
+-- 内部：PlayerMarkSetTagLines(tag)
+-- 刷新添加弹窗三标签按钮的选中下划线（右侧编辑区已改下拉选择，见 PlayerMarkRefreshTagPullDown）。
 -- ============================================================================
-local function PlayerMarkSetTagLines(tag : number, isPopup : boolean)
-	if isPopup then
-		Controls.PlayerMarkPopupTagLine1:SetHide(tag ~= 1);
-		Controls.PlayerMarkPopupTagLine2:SetHide(tag ~= 2);
-		Controls.PlayerMarkPopupTagLine3:SetHide(tag ~= 3);
-	else
-		Controls.PlayerMarkTagLine1:SetHide(tag ~= 1);
-		Controls.PlayerMarkTagLine2:SetHide(tag ~= 2);
-		Controls.PlayerMarkTagLine3:SetHide(tag ~= 3);
-	end
+local function PlayerMarkSetTagLines(tag : number)
+	Controls.PlayerMarkPopupTagLine1:SetHide(tag ~= 1);
+	Controls.PlayerMarkPopupTagLine2:SetHide(tag ~= 2);
+	Controls.PlayerMarkPopupTagLine3:SetHide(tag ~= 3);
+end
+
+-- ============================================================================
+-- 内部：PlayerMarkRefreshTagPullDown()
+-- 按 g_PlayerMarkEditTag 刷新右侧标签下拉按钮文本（图标+名称）。
+-- ============================================================================
+local function PlayerMarkRefreshTagPullDown()
+	local tag : number = g_PlayerMarkEditTag or 2;
+	Controls.PlayerMarkTagPullDown:GetButton():SetText(PLAYERMARK_TAG_ICONS[tag] .. " " .. PlayerMarkTagNameStrs[tag]);
 end
 
 -- ============================================================================
@@ -5499,7 +5506,7 @@ function MPT_PlayerMark_RefreshEditor()
 	Controls.PlayerMarkHeaderName:SetText(rec.Name or "");
 	Controls.PlayerMarkHeaderId:SetText(rec.Id);
 	g_PlayerMarkEditTag = rec.Tag or 2;
-	PlayerMarkSetTagLines(g_PlayerMarkEditTag, false);
+	PlayerMarkRefreshTagPullDown();
 	Controls.PlayerMarkBriefEdit:SetText(rec.Brief or "");
 	Controls.PlayerMarkModifiedLabel:SetText(PlayerMarkModifiedPrefixStr .. MPT_PlayerMark_FormatDate(rec.Modified));
 	-- 详情编辑走暂存副本（单层深拷贝），保存时才整体写回记录
@@ -5639,7 +5646,7 @@ function MPT_PlayerMark_OpenAddPopup()
 	Controls.PlayerMarkPopupNameEdit:SetText("");
 	Controls.PlayerMarkPopupBriefEdit:SetText("");
 	g_PlayerMarkPopupTag = 2;
-	PlayerMarkSetTagLines(2, true);
+	PlayerMarkSetTagLines(2);
 	Controls.PlayerMarkPopupHint:SetHide(true);
 	Controls.PlayerMarkPopupCreateButton:SetDisabled(true);
 	Controls.PlayerMarkEditPopup:SetHide(false);
@@ -5777,16 +5784,28 @@ Controls.PlayerMarkPopupCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerM
 Controls.PlayerMarkPopupCreateButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CreateFromPopup);
 Controls.PlayerMarkPopupIdEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
 Controls.PlayerMarkPopupNameEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
-Controls.PlayerMarkPopupTagButton1:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 1; PlayerMarkSetTagLines(1, true); end);
-Controls.PlayerMarkPopupTagButton2:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 2; PlayerMarkSetTagLines(2, true); end);
-Controls.PlayerMarkPopupTagButton3:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 3; PlayerMarkSetTagLines(3, true); end);
+Controls.PlayerMarkPopupTagButton1:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 1; PlayerMarkSetTagLines(1); end);
+Controls.PlayerMarkPopupTagButton2:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 2; PlayerMarkSetTagLines(2); end);
+Controls.PlayerMarkPopupTagButton3:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 3; PlayerMarkSetTagLines(3); end);
 
--- 右列编辑区：文本改动标 dirty（装载期屏蔽）；标签三按钮；详情输入回车=添加；保存/取消/删除
+-- 右列编辑区：文本改动标 dirty（装载期屏蔽）；标签类型下拉；详情输入回车=添加；保存/取消/删除
 Controls.PlayerMarkNameEdit:RegisterStringChangedCallback(PlayerMarkOnEditorFieldChanged);
 Controls.PlayerMarkBriefEdit:RegisterStringChangedCallback(PlayerMarkOnEditorFieldChanged);
-Controls.PlayerMarkTagButton1:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 1; PlayerMarkSetTagLines(1, false); g_PlayerMarkDirty = true; PlayerMarkUpdateSaveButton(); end);
-Controls.PlayerMarkTagButton2:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 2; PlayerMarkSetTagLines(2, false); g_PlayerMarkDirty = true; PlayerMarkUpdateSaveButton(); end);
-Controls.PlayerMarkTagButton3:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 3; PlayerMarkSetTagLines(3, false); g_PlayerMarkDirty = true; PlayerMarkUpdateSaveButton(); end);
+-- 标签类型下拉：构建三项（图标+名称，范式同 Mods.lua 排序下拉），选中即暂存 g_PlayerMarkEditTag 并标 dirty
+Controls.PlayerMarkTagPullDown:ClearEntries();
+for tag = 1, 3 do
+	local entry : table = {};
+	Controls.PlayerMarkTagPullDown:BuildEntry("InstanceOne", entry);
+	entry.Button:SetText(PLAYERMARK_TAG_ICONS[tag] .. " " .. PlayerMarkTagNameStrs[tag]);
+	entry.Button:RegisterCallback(Mouse.eLClick, function()
+		g_PlayerMarkEditTag = tag;
+		PlayerMarkRefreshTagPullDown();
+		g_PlayerMarkDirty = true;
+		PlayerMarkUpdateSaveButton();
+	end);
+end
+Controls.PlayerMarkTagPullDown:CalculateInternals();
+PlayerMarkRefreshTagPullDown();
 Controls.PlayerMarkDetailEdit:RegisterCommitCallback(MPT_PlayerMark_OnAddDetail);
 Controls.PlayerMarkAddDetailButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnAddDetail);
 Controls.PlayerMarkSaveButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_ApplySave);
