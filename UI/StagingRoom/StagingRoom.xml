@@ -376,10 +376,10 @@
 							<Image Texture="AdditionalContent_IconBacking50" Size="70,70" Anchor="L,C" Offset="6,0">
 								<Image Anchor="C,C" Size="50,50" Offset="4,0" Texture="CommunityContent_50"/>
 							</Image>
-							<Stack Anchor="C,T" Offset="30,8" StackPadding="7">
-								<Label ID="PlayerMarkHeaderName" Anchor="C,T" Style="FontFlair16" SmallCaps="22" SmallCapsType="EveryWord"/>
-								<Box Color="10,60,78,255" Anchor="C,T" Size="parent-120,3"/>
-								<Label ID="PlayerMarkHeaderId" Style="FontNormal16"/>
+							<Stack Anchor="C,C" Offset="30,0" StackPadding="7">
+								<Label ID="PlayerMarkHeaderName" Anchor="C,C" Style="FontFlair20" SmallCaps="22" SmallCapsType="EveryWord" TruncateWidth="400" TruncatedTooltip="1"/>
+								<Box Color="10,60,78,255" Anchor="C,C" Size="parent-120,3"/>
+								<Label ID="PlayerMarkHeaderId" Style="FontNormal16" Anchor="C,C"/>
 							</Stack>
 						</Grid>
 
