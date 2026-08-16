@@ -5431,6 +5431,8 @@ function MPT_PlayerMark_RebuildDetails()
 		inst.DetailDateLabel:SetText(MPT_PlayerMark_FormatDate(detail.Time));
 		inst.DetailTextLabel:SetText(detail.Text or "");
 		inst.DetailTextLabel:SetToolTipString(detail.Text or "");
+		-- 行高自适应（同更新公告条目3.5）：文本上偏移26 + 文本高 + 底边距14
+		inst.DetailRoot:SetSizeY(inst.DetailTextLabel:GetSizeY() + 40);
 		inst.DetailDeleteButton:SetVoid1(i);
 		inst.DetailDeleteButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnDeleteDetail);
 	end

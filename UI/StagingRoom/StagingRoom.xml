@@ -398,18 +398,19 @@
 							</Grid>
 							<Label ID="PlayerMarkModifiedLabel" Style="FontNormal14" Color="GreatPeopleRow" Size="parent,18" String=""/>
 							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_DETAILS"/>
-							<Grid Style="SubContainer2" Size="parent,220">
-								<ScrollPanel ID="PlayerMarkDetailScrollPanel" Anchor="C,C" Offset="0,0" Size="parent-8,parent-8" Vertical="1" AutoScrollBar="1">
-									<Stack ID="PlayerMarkDetailStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
-									<ScrollBar Style="Slider_Blue" Anchor="R,T" AnchorSide="O,I" Offset="2,0"/>
-								</ScrollPanel>
-							</Grid>
+							<!-- 详情输入行（在展示列表上方；回车或点添加即入暂存列表） -->
 							<Container Size="parent,32">
 								<Grid Style="EditTextButton" Anchor="L,C" Size="parent-70,36">
 									<EditBox ID="PlayerMarkDetailEdit" Style="FontNormal20" Anchor="L,C" Offset="24,0" Size="parent-34,20" MaxLength="128" String="" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_INPUT_TT"/>
 								</Grid>
 								<GridButton ID="PlayerMarkAddDetailButton" Style="MainButtonSmall" Anchor="R,C" Size="60,32" String="LOC_MPT_PLAYERMARK_ADD_DETAIL"/>
 							</Container>
+							<Grid Style="SubContainer2" Size="parent,220">
+								<ScrollPanel ID="PlayerMarkDetailScrollPanel" Anchor="C,C" Offset="0,0" Size="parent-8,parent-8" Vertical="1" AutoScrollBar="1">
+									<Stack ID="PlayerMarkDetailStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
+									<ScrollBar Style="Slider_Blue" Anchor="R,T" AnchorSide="O,I" Offset="2,0"/>
+								</ScrollPanel>
+							</Grid>
 						</Stack>
 
 						<!-- 底部操作行（仿 Mods.xml Enable/Disable：分隔条 + 按钮横排居中） -->
@@ -806,13 +807,15 @@
 		</Container>
 	</Instance>
 
-	<!-- 条目4.4：详细描述行实例（日期戳 + 单行文本 + 右侧删除按钮；删除为暂存改动，保存生效/取消还原，不弹确认） -->
+	<!-- 条目4.4：详细描述行实例（卡片仿更新公告 ChangelogEntryInstance：SubContainer2 底，日期左上、删除钮右上、文本换行显示，行高由 Lua 按文本高自适应；删除为暂存改动，保存生效/取消还原，不弹确认） -->
 	<Instance Name="PlayerMarkDetailEntryInstance">
-		<Container ID="DetailRoot" Size="parent,26" Anchor="L,C">
-			<Label ID="DetailDateLabel" Anchor="L,C" Offset="4,0" Style="FontNormal12" FontStyle="stroke" Color="GreatPeopleRow" String=""/>
-			<ScrollTextField ID="DetailTextLabel" Size="parent-110,16" Offset="86,0" Anchor="L,C" Style="FontNormal14" FontStyle="stroke" String=""/>
-			<Button ID="DetailDeleteButton" Anchor="R,C" Offset="4,0" Size="22,22" Texture="Controls_CloseButtonAlt" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_DELETE_TT"/>
-		</Container>
+		<Grid ID="DetailRoot" Size="parent,60" Color="GreatPeopleRowUnOwned" Style="SubContainer2">
+			<Label ID="DetailDateLabel" Anchor="L,T" Offset="10,6" Style="FontNormal14" Color="GreatPeopleRow" String=""/>
+			<Button ID="DetailDeleteButton" Anchor="R,T" Offset="8,4" Size="22,22" Texture="Controls_CloseButtonAlt" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_DELETE_TT"/>
+			<Container Size="parent-46,parent" Offset="10,0">
+				<Label ID="DetailTextLabel" Anchor="L,T" Offset="0,26" Style="FontNormal16" WrapWidth="parent" String=""/>
+			</Container>
+		</Grid>
 	</Instance>
 
 </ContextDefaults>
