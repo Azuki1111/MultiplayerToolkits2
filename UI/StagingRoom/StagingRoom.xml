@@ -358,7 +358,7 @@
 						<Stack ID="PlayerMarkListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
 						<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
 					</ScrollPanel>
-					<Box Color="10,60,78,255" Anchor="L,T" Size="parent,3" Offset="0,0"/>
+					<Box Color="10,60,78,255" Anchor="C,T" Size="parent+4,3" Offset="-4,0"/>
 				</Stack>
 				<Label ID="PlayerMarkListEmptyLabel" Anchor="C,C" Offset="0,60" Style="FontNormal16" Align="Center" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_LIST" Hidden="1"/>
 				<GridButton ID="PlayerMarkAddButton" Style="MainButtonSmall" Anchor="C,B" Offset="0,8" Size="parent-10,52" String="LOC_MPT_PLAYERMARK_ADD"/>
@@ -420,11 +420,11 @@
 						</Stack>
 
 						<!-- 底部操作行（仿 Mods.xml Enable/Disable：分隔条 + 按钮横排居中） -->
-						<Box Color="10,60,78,255" Anchor="C,B" Size="parent,3" Offset="0,36"/>
-						<Stack Anchor="C,B" Offset="0,4" StackGrowth="Right" Padding="10">
-							<GridButton ID="PlayerMarkSaveButton" Style="MainButtonSmall" Size="150,30" String="LOC_MPT_PLAYERMARK_SAVE"/>
-							<GridButton ID="PlayerMarkCancelButton" Style="MainButtonSmall" Size="150,30" String="LOC_CANCEL"/>
-							<GridButton ID="PlayerMarkDeleteButton" Style="MainButtonSmall" Size="150,30" String="LOC_MPT_PLAYERMARK_DELETE" ToolTip="LOC_MPT_PLAYERMARK_DELETE_TT"/>
+						<Box Color="10,60,78,255" Anchor="C,B" Size="parent,3" Offset="0,67"/>
+						<Stack Anchor="C,B" Offset="0,4" StackGrowth="Right" Padding="4">
+							<GridButton ID="PlayerMarkSaveButton" Style="MainButtonSmall" Size="170,52" String="LOC_MPT_PLAYERMARK_SAVE"/>
+							<GridButton ID="PlayerMarkCancelButton" Style="MainButtonSmall" Size="170,52" String="LOC_CANCEL"/>
+							<GridButton ID="PlayerMarkDeleteButton" Style="MainButtonSmall" Size="170,52" String="LOC_MPT_PLAYERMARK_DELETE" ToolTip="LOC_MPT_PLAYERMARK_DELETE_TT"/>
 						</Stack>
 					</Container>
 				</Grid>
