@@ -5333,12 +5333,21 @@ local function PlayerMarkSetTagLines(tag : number, isPopup : boolean)
 end
 
 -- ============================================================================
+-- 内部：PlayerMarkUpdateSaveButton()
+-- 按 dirty/选中态刷新「保存」按钮可用性：无未保存改动或无选中记录时禁用（初始即禁用）。
+-- ============================================================================
+local function PlayerMarkUpdateSaveButton()
+	Controls.PlayerMarkSaveButton:SetDisabled(not g_PlayerMarkDirty or MPT_PlayerMark_GetSelected() == nil);
+end
+
+-- ============================================================================
 -- 内部：PlayerMarkOnEditorFieldChanged
--- 右侧编辑区文本改动回调：装载期（g_PlayerMarkLoading）屏蔽，其余置 dirty。
+-- 右侧编辑区文本改动回调：装载期（g_PlayerMarkLoading）屏蔽，其余置 dirty 并放行保存按钮。
 -- ============================================================================
 local function PlayerMarkOnEditorFieldChanged()
 	if g_PlayerMarkLoading then return; end
 	g_PlayerMarkDirty = true;
+	PlayerMarkUpdateSaveButton();
 end
 
 -- ============================================================================
@@ -5478,6 +5487,7 @@ function MPT_PlayerMark_RefreshEditor()
 	if rec == nil then
 		g_PlayerMarkDirty = false;
 		g_PlayerMarkLoading = false;
+		PlayerMarkUpdateSaveButton();
 		return;
 	end
 	Controls.PlayerMarkNameEdit:SetText(rec.Name or "");
@@ -5494,6 +5504,7 @@ function MPT_PlayerMark_RefreshEditor()
 	g_PlayerMarkLoading = false;
 	g_PlayerMarkDirty = false;
 	MPT_PlayerMark_RebuildDetails();
+	PlayerMarkUpdateSaveButton();
 end
 
 -- ============================================================================
@@ -5531,6 +5542,7 @@ function MPT_PlayerMark_OnDeleteDetail(index : number)
 	table.remove(g_PlayerMarkWorkDetails, index);
 	g_PlayerMarkDirty = true;
 	MPT_PlayerMark_RebuildDetails();
+	PlayerMarkUpdateSaveButton();
 end
 
 function MPT_PlayerMark_OnAddDetail()
@@ -5541,11 +5553,12 @@ function MPT_PlayerMark_OnAddDetail()
 	Controls.PlayerMarkDetailEdit:TakeFocus();
 	g_PlayerMarkDirty = true;
 	MPT_PlayerMark_RebuildDetails();
+	PlayerMarkUpdateSaveButton();
 end
 
 -- ============================================================================
 -- MPT_PlayerMark_ApplySave()：保存按钮——昵称非空校验后写回记录（Modified 刷新为当前
---   时间戳），落盘成功才重建列表/重载编辑区；落盘期间防连点置灰保存按钮。
+--   时间戳），落盘成功才重建列表/重载编辑区；保存后 dirty 清零、按钮回禁用态（防连点重复落盘）。
 -- ============================================================================
 function MPT_PlayerMark_ApplySave()
 	local rec = MPT_PlayerMark_GetSelected();
@@ -5565,9 +5578,8 @@ function MPT_PlayerMark_ApplySave()
 	rec.Details = g_PlayerMarkWorkDetails;
 	rec.Modified = os.time();
 	g_PlayerMarkDirty = false;
-	Controls.PlayerMarkSaveButton:SetDisabled(true);
+	PlayerMarkUpdateSaveButton();
 	MPT_PlayerMark_SaveToDisk(function(ok)
-		Controls.PlayerMarkSaveButton:SetDisabled(false);
 		if ok then
 			UI.PlaySound("Play_UI_Click");
 		else
@@ -5765,9 +5777,9 @@ Controls.PlayerMarkPopupTagButton3:RegisterCallback(Mouse.eLClick, function() g_
 -- 右列编辑区：文本改动标 dirty（装载期屏蔽）；标签三按钮；详情输入回车=添加；保存/取消/删除
 Controls.PlayerMarkNameEdit:RegisterStringChangedCallback(PlayerMarkOnEditorFieldChanged);
 Controls.PlayerMarkBriefEdit:RegisterStringChangedCallback(PlayerMarkOnEditorFieldChanged);
-Controls.PlayerMarkTagButton1:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 1; PlayerMarkSetTagLines(1, false); g_PlayerMarkDirty = true; end);
-Controls.PlayerMarkTagButton2:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 2; PlayerMarkSetTagLines(2, false); g_PlayerMarkDirty = true; end);
-Controls.PlayerMarkTagButton3:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 3; PlayerMarkSetTagLines(3, false); g_PlayerMarkDirty = true; end);
+Controls.PlayerMarkTagButton1:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 1; PlayerMarkSetTagLines(1, false); g_PlayerMarkDirty = true; PlayerMarkUpdateSaveButton(); end);
+Controls.PlayerMarkTagButton2:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 2; PlayerMarkSetTagLines(2, false); g_PlayerMarkDirty = true; PlayerMarkUpdateSaveButton(); end);
+Controls.PlayerMarkTagButton3:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkEditTag = 3; PlayerMarkSetTagLines(3, false); g_PlayerMarkDirty = true; PlayerMarkUpdateSaveButton(); end);
 Controls.PlayerMarkDetailEdit:RegisterCommitCallback(MPT_PlayerMark_OnAddDetail);
 Controls.PlayerMarkAddDetailButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnAddDetail);
 Controls.PlayerMarkSaveButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_ApplySave);
