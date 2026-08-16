@@ -209,6 +209,14 @@ end
 -- ===========================================================================
 function KeyUpHandler( key:number )
 	-- ============================================================================
+	-- 联机工具箱2.0：非官方模组清单面板打开时 ESC 优先关闭面板（条目4.2；
+	-- 判定用 g_modListOpen，SlideAnim Reverse 不回设 Hidden，IsHidden 不可靠）
+	-- ============================================================================
+	if g_modListOpen then
+		CloseModListPanel();
+		return true;
+	end
+	-- ============================================================================
 	-- 联机工具箱2.0：更新公告面板打开时 ESC 优先关闭面板（条目3.5；原版 ESC 为退出房间确认，需拦截）
 	-- ============================================================================
 	if not Controls.ChangelogPanel:IsHidden() then
@@ -1329,6 +1337,10 @@ function OnHandleExitRequest()
 	-- CloseChangelogPanel 幂等：面板已隐藏时直接返回，不会播放重复关闭音效。
 	-- ============================================================================
 	CloseChangelogPanel();
+	-- ============================================================================
+	-- 联机工具箱2.0：退出房间时关闭非官方模组清单面板（条目4.2，硬关闭防跨房残留）
+	-- ============================================================================
+	CloseModListPanel(true);
 	-- ----------------------------------------------------------------------------
 
 	Controls.CountdownTimerAnim:ClearAnimCallback();
@@ -4629,6 +4641,135 @@ function MPT_OnRecheckButton()
 	MPT_PublishCheckList();
 end
 
+-- ============================================================================
+-- 非官方模组清单侧滑面板（条目4.2）
+-- 用法：左下角「模组清单」按钮打开侧滑面板，列出本房间启用的非官方 mod；
+--       点击行经 Steam.ActivateGameOverlayToUrl 打开对应创意工坊页面；
+--       本机未订阅的行显橙色底 + 「未订阅」，已订阅正常，无 SubscriptionId 的本地 mod 不可点。
+-- 数据来源（参考 BSR OnModCheckButton）：GameConfiguration.GetEnabledMods()（房间启用 mod）
+--       与 Modding.GetInstalledMods()（本机安装 mod，含 Official/SubscriptionId/Name）交叉，
+--       订阅状态用 Modding.GetSubscriptions()（本机订阅 ID 列表，比较时 tostring 归一）。
+-- 面板每次打开都重建列表（跨房无残留）；关闭走 SlideAnim Reverse 滑回左侧。
+-- ============================================================================
+local m_modListEntryIM = InstanceManager:new("ModListEntryInstance", "EntryRoot", Controls.ModListStack);
+g_modListOpen = false;	-- 面板开/关态。不用 local：KeyUpHandler/OnHandleExitRequest（本文件前部）引用本变量，且 SlideAnim Reverse 不回设 Hidden，IsHidden 不可靠
+
+-------------------------------------------------
+-- MPT_BuildModList
+-- 重建模组清单：房间启用 ∩ 非官方；未订阅行橙色底；本地（无工坊 ID）行不可点。
+-------------------------------------------------
+function MPT_BuildModList()
+	m_modListEntryIM:ResetInstances();
+
+	-- 本机订阅 ID 集合（tostring 归一，与 installed.SubscriptionId 比较）
+	local subscribedSet : table = {};
+	local subscriptions = Modding.GetSubscriptions() or {};
+	for _, sid in ipairs(subscriptions) do
+		subscribedSet[tostring(sid)] = true;
+	end
+
+	-- 本机安装 mod 映射 [modId] = installedMod（含 Official/SubscriptionId/Name）
+	local installedMap : table = {};
+	local installedMods = Modding.GetInstalledMods() or {};
+	for _, mod in ipairs(installedMods) do
+		installedMap[tostring(mod.Id)] = mod;
+	end
+
+	local enabledMods = GameConfiguration.GetEnabledMods() or {};
+	local shownCount : number = 0;
+
+	for _, curMod in ipairs(enabledMods) do
+		local modId : string = tostring(curMod.Id);
+		local installed = installedMap[modId];
+		if installed ~= nil and not installed.Official then
+			local entryInstance = m_modListEntryIM:GetInstance();
+			shownCount = shownCount + 1;
+
+			-- 显示名：优先已安装 mod 的 Name（LOC 标签本地化），缺失回退 Title（MPT_GetModTitle）
+			local displayName : string = nil;
+			if installed.Name ~= nil and installed.Name ~= "" then
+				displayName = Locale.Lookup(installed.Name);
+			end
+			if displayName == nil or displayName == "" then
+				displayName = MPT_GetModTitle(modId);
+			end
+			entryInstance.ModNameLabel:SetText(displayName);
+
+			local subscriptionId = installed.SubscriptionId;
+			local hasSubId : boolean = subscriptionId ~= nil and tostring(subscriptionId) ~= "";
+
+			if not hasSubId then
+				-- 本地（非工坊）模组：无订阅判定，不置橙、不可点、状态「本地」
+				entryInstance.UnsubscribedBox:SetHide(true);
+				entryInstance.SubscribedLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_LOCAL"));
+				entryInstance.ModRowButton:SetDisabled(true);
+			else
+				local isSubscribed : boolean = subscribedSet[tostring(subscriptionId)] ~= nil;
+				entryInstance.ModRowButton:SetDisabled(false);
+				if isSubscribed then
+					entryInstance.UnsubscribedBox:SetHide(true);
+					entryInstance.SubscribedLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_SUBSCRIBED"));
+				else
+					entryInstance.UnsubscribedBox:SetHide(false);
+					entryInstance.SubscribedLabel:SetText("[COLOR_RED]" .. Locale.Lookup("LOC_MPT_MODLIST_UNSUBSCRIBED") .. "[ENDCOLOR]");
+				end
+				entryInstance.ModRowButton:SetToolTipString(Locale.Lookup("LOC_MPT_MODLIST_CLICK_HINT"));
+				local url : string = "https://steamcommunity.com/sharedfiles/filedetails/?id=" .. tostring(subscriptionId);
+				entryInstance.ModRowButton:RegisterCallback(Mouse.eLClick, function()
+					Steam.ActivateGameOverlayToUrl(url);
+				end);
+			end
+
+			entryInstance.ModRowButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+		end
+	end
+
+	if shownCount == 0 then
+		-- 空态提示：无交互行展示「本房间没有启用非官方模组」
+		local emptyInstance = m_modListEntryIM:GetInstance();
+		emptyInstance.ModNameLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_EMPTY"));
+		emptyInstance.UnsubscribedBox:SetHide(true);
+		emptyInstance.SubscribedLabel:SetText("");
+		emptyInstance.ModRowButton:SetDisabled(true);
+	end
+
+	Controls.ModListStack:CalculateSize();
+	Controls.ModListScrollPanel:CalculateSize();
+end
+
+-------------------------------------------------
+-- OpenModListPanel / CloseModListPanel
+-- 打开（重建列表 + 左侧滑出 + 显示全屏拦截层）/ 关闭。
+-- CloseModListPanel(instant)：instant=true 硬关闭（直接隐藏，退出房间用），
+-- 否则动画滑回（Header 关闭按钮 / 点击面板外 / ESC 用）。Close 幂等。
+-------------------------------------------------
+function OpenModListPanel()
+	MPT_BuildModList();
+	g_modListOpen = true;
+	Controls.ModListModalBlocker:SetHide(false);
+	Controls.ModListSlideAnim:SetHide(false);
+	Controls.ModListSlideAnim:SetSpeed(1);
+	Controls.ModListSlideAnim:SetToBeginning();
+	Controls.ModListSlideAnim:Play();
+	UI.PlaySound("UI_Screen_Open");
+end
+
+function CloseModListPanel( instant:boolean )
+	if not g_modListOpen then
+		return;
+	end
+	g_modListOpen = false;
+	Controls.ModListModalBlocker:SetHide(true);
+	if instant then
+		-- 硬关闭：直接隐藏，不依赖滑回动画完成（退出房间时屏幕即将被回收）
+		Controls.ModListSlideAnim:SetHide(true);
+	else
+		Controls.ModListSlideAnim:SetSpeed(3);
+		Controls.ModListSlideAnim:Reverse();
+		UI.PlaySound("UI_Screen_Close");
+	end
+end
+
 -- ===========================================================================
 --	Initialize screen
 -- ===========================================================================
@@ -4692,6 +4833,14 @@ function Initialize()
 	Controls.ModRecheckButton:RegisterCallback( Mouse.eLClick, MPT_OnRecheckButton );
 	Controls.ModRecheckButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 	Events.GameCoreEventPublishComplete.Add( MPT_ModCheckTick );
+	-- ============================================================================
+	-- 联机工具箱2.0：注册「非官方模组清单」按钮与面板关闭回调（条目4.2）
+	-- ----------------------------------------------------------------------------
+	Controls.ModListButton:RegisterCallback( Mouse.eLClick, OpenModListPanel );
+	Controls.ModListButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.ModListCloseButton:RegisterCallback( Mouse.eLClick, function() CloseModListPanel(); end );
+	Controls.ModListCloseButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+	Controls.ModListModalBlocker:RegisterCallback( Mouse.eLClick, function() CloseModListPanel(); end );
 
 	Controls.InviteButton:SetToolTipString(GetInviteTT());
 
