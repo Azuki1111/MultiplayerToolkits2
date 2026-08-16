@@ -3118,6 +3118,11 @@ function BuildAdditionalContent()
 	for _, curMod in ipairs(enabledMods) do
 		local modControl = m_modsIM:GetInstance();
 		local modTitleStr : string = curMod.Title;
+		-- ============================================================================
+		-- 联机工具箱2.0：去除内联字号标签 [size_N]（大小写不敏感），与模组清单面板一致
+		-- 原代码直接使用 curMod.Title，此处增加剥离
+		modTitleStr = string.gsub(modTitleStr, "%[[sS][iI][zZ][eE]_%d+%]", "");
+		-- ----------------------------------------------------------------------------
 
 		-- Color unofficial mods to call them out.
 		if(not curMod.Official) then
@@ -4693,6 +4698,8 @@ function MPT_BuildModList()
 			if displayName == nil or displayName == "" then
 				displayName = MPT_GetModTitle(modId);
 			end
+			-- 去除内联字号标签 [size_N]（大小写不敏感），避免污染列表展示
+			displayName = string.gsub(displayName, "%[[sS][iI][zZ][eE]_%d+%]", "");
 			entryInstance.ModNameLabel:SetText(displayName);
 
 			local subscriptionId = installed.SubscriptionId;

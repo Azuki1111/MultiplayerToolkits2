@@ -639,7 +639,7 @@
 		<Container ID="EntryRoot" Size="418,52" Anchor="L,C">
 			<GridButton ID="ModRowButton" Anchor="L,C" Offset="-10,0" Size="parent+10,parent" Texture="Controls_ButtonControl" SliceCorner="12,12" SliceTextureSize="24,24" StateOffsetIncrement="0,24">
 				<Box ID="UnsubscribedBox" Anchor="L,C" Size="parent-2,parent-2" Color="255,140,0,120" Hidden="1" ConsumeMouse="0"/>
-				<Label ID="ModNameLabel" Offset="16,0" Anchor="L,C" Style="FontFlair18" FontStyle="stroke" String="Name" TruncateWidth="340" TruncatedTooltip="1"/>
+				<ScrollTextField ID="ModNameLabel" Size="320,40" Offset="16,0" Anchor="L,C" Style="FontFlair18" FontStyle="stroke" String="Name"/>
 				<Label ID="SubscribedLabel" Offset="10,0" Anchor="R,C" Style="FontFlair16" FontStyle="stroke" String=""/>
 			</GridButton>
 		</Container>
