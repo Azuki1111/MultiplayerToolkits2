@@ -5430,10 +5430,14 @@ end
 
 -- ============================================================================
 -- MPT_PlayerMark_RebuildDetails()：由暂存数组 g_PlayerMarkWorkDetails 重建右侧详情列表。
+--   倒序遍历显示（最新添加在数组尾、显示在最上）；删除按钮 SetVoid1 仍传原数组下标。
 -- ============================================================================
 function MPT_PlayerMark_RebuildDetails()
 	m_playerMarkDetailIM:ResetInstances();
-	for i, detail in ipairs(g_PlayerMarkWorkDetails) do
+	local n : number = #g_PlayerMarkWorkDetails;
+	for row = 1, n do
+		local i : number = n - row + 1;
+		local detail : table = g_PlayerMarkWorkDetails[i];
 		local inst = m_playerMarkDetailIM:GetInstance();
 		inst.DetailDateLabel:SetText(MPT_PlayerMark_FormatDateTime(detail.Time));
 		inst.DetailTextLabel:SetText(detail.Text or "");
