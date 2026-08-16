@@ -4705,22 +4705,25 @@ function MPT_BuildModList()
 			local subscriptionId = installed.SubscriptionId;
 			local hasSubId : boolean = subscriptionId ~= nil and tostring(subscriptionId) ~= "";
 
+			-- Tooltip：显示 mod 的 Description（本地/工坊通用，对齐原版 Mods.lua 读取方式）
+			local description = Modding.GetModProperty(installed.Handle, "Description");
+			if description ~= nil and description ~= "" then
+				description = Modding.GetModText(installed.Handle, description) or description;
+			end
+			entryInstance.ModRowButton:SetToolTipString((description ~= nil and description ~= "") and Locale.Lookup(description) or nil);
+
 			if not hasSubId then
-				-- 本地（非工坊）模组：无订阅判定，不置橙、不可点、状态「本地」
-				entryInstance.UnsubscribedBox:SetHide(true);
+				-- 本地（非工坊）模组：无订阅判定，不可点，状态「本地」
 				entryInstance.SubscribedLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_LOCAL"));
 				entryInstance.ModRowButton:SetDisabled(true);
 			else
 				local isSubscribed : boolean = subscribedSet[tostring(subscriptionId)] ~= nil;
 				entryInstance.ModRowButton:SetDisabled(false);
 				if isSubscribed then
-					entryInstance.UnsubscribedBox:SetHide(true);
 					entryInstance.SubscribedLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_SUBSCRIBED"));
 				else
-					entryInstance.UnsubscribedBox:SetHide(false);
 					entryInstance.SubscribedLabel:SetText("[COLOR_RED]" .. Locale.Lookup("LOC_MPT_MODLIST_UNSUBSCRIBED") .. "[ENDCOLOR]");
 				end
-				entryInstance.ModRowButton:SetToolTipString(Locale.Lookup("LOC_MPT_MODLIST_CLICK_HINT"));
 				local url : string = "https://steamcommunity.com/sharedfiles/filedetails/?id=" .. tostring(subscriptionId);
 				entryInstance.ModRowButton:RegisterCallback(Mouse.eLClick, function()
 					Steam.ActivateGameOverlayToUrl(url);
@@ -4735,9 +4738,9 @@ function MPT_BuildModList()
 		-- 空态提示：无交互行展示「本房间没有启用非官方模组」
 		local emptyInstance = m_modListEntryIM:GetInstance();
 		emptyInstance.ModNameLabel:SetText(Locale.Lookup("LOC_MPT_MODLIST_EMPTY"));
-		emptyInstance.UnsubscribedBox:SetHide(true);
 		emptyInstance.SubscribedLabel:SetText("");
 		emptyInstance.ModRowButton:SetDisabled(true);
+		emptyInstance.ModRowButton:SetToolTipString(nil);
 	end
 
 	Controls.ModListStack:CalculateSize();

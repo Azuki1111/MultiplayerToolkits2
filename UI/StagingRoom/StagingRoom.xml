@@ -275,12 +275,12 @@
 
 	<!-- 条目4.2：点击面板外关闭（仿更新日志 ChangelogModalBlocker；声明在面板前，位于面板下层） -->
 	<GridButton ID="ModListModalBlocker" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1"/>
-	<!-- 条目4.2：非官方模组清单侧滑面板（仿 BSR LeaderStatsSlideAnim；宽度 300 -> 440，Begin 相应 -460；Header 关闭按钮 / 点击面板外 / ESC 关闭） -->
+	<!-- 条目4.2：非官方模组清单侧滑面板（仿 BSR LeaderStatsSlideAnim；列宽 440，Begin 相应 -460；Header 关闭按钮 / 点击面板外 / ESC 关闭） -->
 	<SlideAnim ID="ModListSlideAnim" Size="auto,parent" Anchor="L,T" Begin="-460,0" End="0,0" Cycle="Once" Speed="1" Function="OutQuint" Hidden="1" ConsumeMouse="1">
 		<Container ID="ModListRoot" Size="auto,parent" Offset="-3,54">
 			<Grid ID="ModListBottomGrid" Size="440,parent" Offset="0,-40" Texture="Controls_ContainerBlue" SliceStart="0,0" SliceCorner="3,3" SliceSize="9,9" SliceTextureSize="16,16">
-				<ScrollPanel ID="ModListScrollPanel" Offset="14,20" Size="parent,parent-38" Vertical="1" AutoScrollBar="1">
-					<Stack ID="ModListStack" Offset="2,0" StackGrowth="Down"/>
+				<ScrollPanel ID="ModListScrollPanel" Offset="14,24" Size="parent-28,parent-38" Vertical="1" AutoScrollBar="1">
+					<Stack ID="ModListStack" Anchor="L,T" StackGrowth="Bottom" Padding="5"/>
 				</ScrollPanel>
 			</Grid>
 			<!-- 标题栏（深色 HeaderBannerLeft + 关闭按钮，同 BSR LeaderStats 头部） -->
@@ -634,13 +634,12 @@
 		</Container>
 	</Instance>
 
-	<!-- 条目4.2：非官方模组清单行实例（未订阅时显橙色底 + 右侧「未订阅」；点击整行打开工坊页面） -->
+	<!-- 条目4.2：非官方模组清单行实例（尺寸仿原版 Mods.xml ModInstance：行高60、按钮 ButtonControl、状态右上 FontNormal12；无图标；未订阅红字；点击整行打开工坊页面） -->
 	<Instance Name="ModListEntryInstance">
-		<Container ID="EntryRoot" Size="418,52" Anchor="L,C">
-			<GridButton ID="ModRowButton" Anchor="L,C" Offset="-10,0" Size="parent+10,parent" Texture="Controls_ButtonControl" SliceCorner="12,12" SliceTextureSize="24,24" StateOffsetIncrement="0,24">
-				<Box ID="UnsubscribedBox" Anchor="L,C" Size="parent-2,parent-2" Color="255,140,0,120" Hidden="1" ConsumeMouse="0"/>
-				<ScrollTextField ID="ModNameLabel" Size="320,40" Offset="16,0" Anchor="L,C" Style="FontFlair18" FontStyle="stroke" String="Name"/>
-				<Label ID="SubscribedLabel" Offset="10,0" Anchor="R,C" Style="FontFlair16" FontStyle="stroke" String=""/>
+		<Container ID="EntryRoot" Size="parent,60" Anchor="L,C">
+			<GridButton ID="ModRowButton" Style="ButtonControl" Size="parent+8,parent" Offset="-4,0">
+				<ScrollTextField ID="ModNameLabel" Size="280,40" Offset="16,0" Anchor="L,C" Style="FontNormal16" FontStyle="stroke" String="Name"/>
+				<Label ID="SubscribedLabel" Offset="6,6" Anchor="R,T" Style="FontNormal12" FontStyle="stroke" String=""/>
 			</GridButton>
 		</Container>
 	</Instance>

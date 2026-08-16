@@ -10,5 +10,4 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_MODLIST_SUBSCRIBED', 'en_US', 'Subscribed'),
 ('LOC_MPT_MODLIST_UNSUBSCRIBED', 'en_US', 'Not Subscribed'),
 ('LOC_MPT_MODLIST_LOCAL', 'en_US', 'Local'),
-('LOC_MPT_MODLIST_EMPTY', 'en_US', 'No non-official mods are enabled in this room'),
-('LOC_MPT_MODLIST_CLICK_HINT', 'en_US', 'Click to open the Workshop page');
+('LOC_MPT_MODLIST_EMPTY', 'en_US', 'No non-official mods are enabled in this room');

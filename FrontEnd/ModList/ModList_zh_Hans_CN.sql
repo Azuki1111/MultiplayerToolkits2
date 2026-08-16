@@ -10,5 +10,4 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_MODLIST_SUBSCRIBED', 'zh_Hans_CN', '已订阅'),
 ('LOC_MPT_MODLIST_UNSUBSCRIBED', 'zh_Hans_CN', '未订阅'),
 ('LOC_MPT_MODLIST_LOCAL', 'zh_Hans_CN', '本地'),
-('LOC_MPT_MODLIST_EMPTY', 'zh_Hans_CN', '本房间没有启用非官方模组'),
-('LOC_MPT_MODLIST_CLICK_HINT', 'zh_Hans_CN', '点击打开创意工坊页面');
+('LOC_MPT_MODLIST_EMPTY', 'zh_Hans_CN', '本房间没有启用非官方模组');
