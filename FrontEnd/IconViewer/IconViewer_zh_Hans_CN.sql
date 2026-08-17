@@ -7,7 +7,7 @@
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 入口按钮/面板标题
 ('LOC_MPT_ICONVIEWER_NAME', 'zh_Hans_CN', '图标查看器'),
-('LOC_MPT_ICONVIEWER_TOOLTIP', 'zh_Hans_CN', '打开图标查看器（5056 个收集的图标，点击图标自动复制文本到剪贴板）'),
+('LOC_MPT_ICONVIEWER_TOOLTIP', 'zh_Hans_CN', '打开图标查看器（4975 个收集的图标，点击图标自动复制文本到剪贴板）'),
 ('LOC_MPT_ICONVIEWER_TITLE', 'zh_Hans_CN', '图标查看器'),
 -- 搜索框（占位文本/提示）
 ('LOC_MPT_ICONVIEWER_SEARCH_NAME', 'zh_Hans_CN', '搜索图标名'),

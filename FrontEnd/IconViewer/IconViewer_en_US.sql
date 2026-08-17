@@ -7,7 +7,7 @@
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 入口按钮/面板标题
 ('LOC_MPT_ICONVIEWER_NAME', 'en_US', 'Icon Viewer'),
-('LOC_MPT_ICONVIEWER_TOOLTIP', 'en_US', 'Open Icon Viewer (5056 collected icons; click an icon to copy its text to clipboard)'),
+('LOC_MPT_ICONVIEWER_TOOLTIP', 'en_US', 'Open Icon Viewer (4975 collected icons; click an icon to copy its text to clipboard)'),
 ('LOC_MPT_ICONVIEWER_TITLE', 'en_US', 'Icon Viewer'),
 -- 搜索框（占位文本/提示）
 ('LOC_MPT_ICONVIEWER_SEARCH_NAME', 'en_US', 'Search icon name'),
