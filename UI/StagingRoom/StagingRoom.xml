@@ -388,7 +388,7 @@
 							<!-- 昵称标签行 + 右侧「最近修改」同行 -->
 							<Container Size="parent,18">
 								<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_NAME" Anchor="L,C"/>
-								<Label ID="PlayerMarkModifiedLabel" Style="FontNormal14" Color="GreatPeopleRow" Anchor="R,C" String=""/>
+								<Label ID="PlayerMarkModifiedLabel" Style="FontNormal14" Color="GreatPeopleRow" Anchor="R,C" String="" Offset="6,0"/>
 							</Container>
 							<Grid Style="EditTextButton" Size="parent,36">
 								<EditBox ID="PlayerMarkNameEdit" Style="FontNormal20" Anchor="L,C" Offset="28,0" Size="parent-40,20" MaxLength="45" String="" CallOnChar="1"/>
