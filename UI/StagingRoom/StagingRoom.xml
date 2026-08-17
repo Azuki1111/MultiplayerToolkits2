@@ -261,9 +261,10 @@
 		</Button>
 		<!-- 条目4.5：图标查看器唤起按钮（仿 ChangelogButton；打开图标查看面板，5056 图标点击复制，图标用 WB 可见性工具图标） -->
 		<Button ID="IconViewerButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_ICONVIEWER_TOOLTIP">
-			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_VISIBILITY"/>
+			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_RESOURCES"/>
 			<Label Anchor="L,C" String="LOC_MPT_ICONVIEWER_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
 		</Button>
+
 		<!-- 条目3.6：广告轮播（仿原版主菜单 ChallengeContainer，数据驱动 MPT_Ads 表；StackGrowth Up 使本控件位于公告按钮正上方；右偏 24 避免外框贴住屏幕左缘） -->
 		<Container ID="AdCarouselContainer" Anchor="L,B" Size="400,300" Offset="24,0" Hidden="1">
 			<ScrollPanel ID="AdScroll" Anchor="C,C" Size="400,300" Horizontal="1" AutoScollbar="0" ClampSize="V" DisableMouseWheelScroll="1">
