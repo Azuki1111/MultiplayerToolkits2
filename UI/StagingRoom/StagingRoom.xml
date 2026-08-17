@@ -325,7 +325,7 @@
 			<!-- 按尺寸排序开关：原作 EasyIconViewer 复选框样式（圆形 CheckTexture；NoStateChange=1 点击不自动翻转，
 			     Lua 回调内手动 SetCheck）；文本在左、圆钮在右，外套固定宽 Container 槽位（CheckBox 布局只按圆钮计宽） -->
 			<Container Size="180,35" Anchor="R,C">
-				<Label Anchor="L,C" String="LOC_MPT_ICONVIEWER_TOGGLE_SORT" ToolTip="LOC_MPT_ICONVIEWER_TOGGLE_SORT_TT" Style="FontNormal15"/>
+				<Label Anchor="R,C" Offset="36,0" String="LOC_MPT_ICONVIEWER_TOGGLE_SORT" Style="FontNormal15"/>
 				<CheckBox ID="IconViewerToggleSortCheck" Anchor="R,C" ConsumeMouseOver="1" ButtonSize="35,35" ButtonTexture="Controls_CheckboxCircle" CheckTexture="Controls_CheckboxCircle" CheckSize="35,35" CheckTextureOffset="0,35" NoStateChange="1" Style="FontNormal16" ToolTip="LOC_MPT_ICONVIEWER_TOGGLE_SORT_TT"/>
 			</Container>
 		</Container>
