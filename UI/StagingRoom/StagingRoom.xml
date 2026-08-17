@@ -259,6 +259,11 @@
 			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_PLAYER_DETAILS"/>
 			<Label Anchor="L,C" String="LOC_MPT_PLAYERMARK_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
 		</Button>
+		<!-- 条目4.5：图标查看器唤起按钮（仿 ChangelogButton；打开图标查看面板，5056 图标点击复制，图标用 WB 可见性工具图标） -->
+		<Button ID="IconViewerButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_ICONVIEWER_TOOLTIP">
+			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_VISIBILITY"/>
+			<Label Anchor="L,C" String="LOC_MPT_ICONVIEWER_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
+		</Button>
 		<!-- 条目3.6：广告轮播（仿原版主菜单 ChallengeContainer，数据驱动 MPT_Ads 表；StackGrowth Up 使本控件位于公告按钮正上方；右偏 24 避免外框贴住屏幕左缘） -->
 		<Container ID="AdCarouselContainer" Anchor="L,B" Size="400,300" Offset="24,0" Hidden="1">
 			<ScrollPanel ID="AdScroll" Anchor="C,C" Size="400,300" Horizontal="1" AutoScollbar="0" ClampSize="V" DisableMouseWheelScroll="1">
@@ -295,6 +300,44 @@
 			</Grid>
 		</Container>
 	</SlideAnim>
+
+	<!-- 条目4.5：图标查看器面板（移植 EasyIconViewer 3173843667 并优化：搜索过滤 + 构建时顺带测宽免独立测量循环；
+	     尺寸/横向滚动同原作刚好塞满布局；仅 关闭钮 / 点击面板外 / ESC 关闭，同更新公告面板惯例） -->
+	<GridButton ID="IconViewerModalBlocker" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1"/>
+	<Container ID="IconViewerPanel" Anchor="C,C" Size="parent,800" Hidden="1">
+		<!-- 底板 ConsumeMouse=1：拦截面板区域点击，防止穿透到下层遮挡层误关面板 -->
+		<Box Anchor="C,C" Size="parent,parent" Color="11,27,40,255" ConsumeMouse="1"/>
+		<Image Anchor="C,B" Size="parent,parent" Texture="Wood_Pattern"/>
+		<Box Anchor="C,T" Color="0,0,0,128" Size="parent,44"/>
+		<Grid Anchor="C,C" Size="parent+9,parent+9" Style="WindowFrameTopOnly"/>
+		<Button ID="IconViewerCloseButton" Anchor="R,T" Offset="-3,-1" Size="44,44" Texture="Controls_CloseLarge"/>
+		<Image Anchor="C,T" Size="parent,44" Color="61,112,154,255" Texture="Controls_Gradient_HalfRadial"/>
+		<Label Anchor="C,T" Offset="0,14" Style="FontFlair24" FontStyle="Glow" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255" SmallCaps="28" SmallCapsType="EveryWord" String="LOC_MPT_ICONVIEWER_TITLE"/>
+		<Grid Anchor="C,T" Offset="0,44" Size="parent-6,8" Style="Divider3Grid"/>
+		<!-- 工具行：左搜索框，中状态文本（结果计数），右「按尺寸排序」开关 -->
+		<Container ID="IconViewerToolbar" Anchor="C,T" Offset="0,54" Size="parent-40,30">
+			<Grid Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Anchor="L,C" Size="320,26">
+				<EditBox ID="IconViewerSearchEditBox" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-10,16" MaxLength="40" String="" ToolTip="LOC_MPT_ICONVIEWER_SEARCH_TT" CallOnChar="1"/>
+				<!-- 占位文本（Label 不吃鼠标事件；Lua 按焦点/内容控制显隐，同 4.4 搜索框惯例） -->
+				<Label ID="IconViewerSearchPlaceholder" Anchor="L,C" Offset="24,0" Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_ICONVIEWER_SEARCH_NAME"/>
+			</Grid>
+			<Label ID="IconViewerStatusLabel" Anchor="C,C" Style="FontNormal14" Color="GreatPeopleRow" String=""/>
+			<!-- 按尺寸排序开关：原作 EasyIconViewer 复选框样式（圆形 CheckTexture；NoStateChange=1 点击不自动翻转，
+			     Lua 回调内手动 SetCheck）；文本在左、圆钮在右，外套固定宽 Container 槽位（CheckBox 布局只按圆钮计宽） -->
+			<Container Size="180,35" Anchor="R,C">
+				<Label Anchor="L,C" String="LOC_MPT_ICONVIEWER_TOGGLE_SORT" ToolTip="LOC_MPT_ICONVIEWER_TOGGLE_SORT_TT" Style="FontNormal15"/>
+				<CheckBox ID="IconViewerToggleSortCheck" Anchor="R,C" ConsumeMouseOver="1" ButtonSize="35,35" ButtonTexture="Controls_CheckboxCircle" CheckTexture="Controls_CheckboxCircle" CheckSize="35,35" CheckTextureOffset="0,35" NoStateChange="1" Style="FontNormal16" ToolTip="LOC_MPT_ICONVIEWER_TOGGLE_SORT_TT"/>
+			</Container>
+		</Container>
+		<!-- 横向滚动（同原作 EasyIconViewer：Vertical=0 + 底部横向滚动条 + FullClip；
+		     Stack 方向 Down+WrapRight 为配合横向滚动——先向下排满一列再向右换列） -->
+		<ScrollPanel ID="IconViewerScrollPanel" Anchor="C,T" Offset="0,92" Size="parent-40,parent-100" Vertical="0" FullClip="1">
+			<Stack ID="IconViewerStack" Anchor="C,T" StackGrowth="Down" Padding="5" WrapWidth="parent" WrapGrowth="Right"/>
+			<ScrollBar Anchor="L,B" Offset="0,15" Size="parent-20,8" Style="ScrollHorizontalBackingAlt">
+				<Thumb Style="ScrollThumbHAlt"/>
+			</ScrollBar>
+		</ScrollPanel>
+	</Container>
 
 	<!-- 联机工具箱2.0：更新公告面板（条目3.5，数据驱动 MPT_Changelog 表；仅 X 按钮 / 点击面板外 / ESC 关闭） -->
 	<!-- 根级全屏遮挡 + 屏幕居中；边框/背景 texture 参考 Poker_Blackjack_21.xml Main_Poker（含标题深色横条） -->
@@ -817,6 +860,14 @@
 				<Label ID="DetailTextLabel" Anchor="L,T" Offset="0,26" Style="FontNormal16" WrapWidth="parent" String=""/>
 			</Container>
 		</Grid>
+	</Instance>
+	<!-- 条目4.5：图标按钮实例（深色底，移植 EasyIconViewer DarkIconButtonInstance；IconLabel 由 Lua SetText 后按实际宽度居中，点击复制图标文本） -->
+	<Instance Name="IconViewerDarkInstance">
+		<Container ID="ButtonRoot" Size="128,128" Anchor="L,C">
+			<GridButton ID="IconButton" Anchor="C,C" Offset="0,0" Size="parent,parent" Texture="Controls_ButtonControl" SliceCorner="12,12" SliceTextureSize="24,24" StateOffsetIncrement="0,24">
+				<Label ID="IconLabel" Style="FontNormal0" FontStyle="stroke" Anchor="L,B"/>
+			</GridButton>
+		</Container>
 	</Instance>
 
 </ContextDefaults>

@@ -236,6 +236,14 @@ function KeyUpHandler( key:number )
 		return true;
 	end
 	-- ============================================================================
+	-- 联机工具箱2.0：图标查看器面板打开时 ESC 优先关闭面板（条目4.5；
+	-- 函数定义在本文件末尾条目4.5分区，全局函数运行时解析）
+	-- ============================================================================
+	if not Controls.IconViewerPanel:IsHidden() then
+		MPT_IconViewer_Close();
+		return true;
+	end
+	-- ============================================================================
 	if key == Keys.VK_ESCAPE then
 		Close();
 		return true;
@@ -1353,6 +1361,11 @@ function OnHandleExitRequest()
 	-- 联机工具箱2.0：退出房间时关闭非官方模组清单面板（条目4.2，硬关闭防跨房残留）
 	-- ============================================================================
 	CloseModListPanel(true);
+	-- ----------------------------------------------------------------------------
+	-- ============================================================================
+	-- 联机工具箱2.0：退出房间时关闭图标查看器面板（条目4.5，幂等防跨房残留）
+	-- ============================================================================
+	MPT_IconViewer_Close();
 	-- ----------------------------------------------------------------------------
 
 	Controls.CountdownTimerAnim:ClearAnimCallback();
@@ -5824,3 +5837,215 @@ Controls.PlayerMarkAddDetailButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMar
 Controls.PlayerMarkSaveButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_ApplySave);
 Controls.PlayerMarkCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CancelEdit);
 Controls.PlayerMarkDeleteButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_DeleteSelected);
+
+
+-- ############################################################################
+-- 条目4.5：图标查看器（移植 Easy Icon Viewer 工坊 3173843667，本作者旧作，并优化）
+-- ============================================================================
+-- 用法：左下角 BottomLeftButtonStack「图标查看器」按钮打开面板；点击图标复制 [ICON_x]
+--   文本到剪贴板；搜索框按图标名子串过滤（大小写不敏感）；「按尺寸排序」开关按图标宽度重排。
+--   关闭：X 按钮 / 点击面板外 / ESC；退出房间自动关闭（OnHandleExitRequest）。
+-- 数据源：前端配置库 MPT_IconCollection 表（FrontEnd/IconViewer/IconViewer_Data.sql，
+--   5056 行；DB.ConfigurationQuery 为前端配置库句柄，同条目3.5 公告读取先例），
+--   本分区顶层一次性预加载进 g_IconViewerData（纯数据，不建实例）。
+-- 相对原作的优化：
+--   1) 构建方式同原作：首开面板一次性同步构建全部实例（逐帧分批构建实测更卡，已弃用）；
+--      图标宽度在构建实例时顺带测量存回数据行，免掉原作独立的 5056 次测量循环；
+--   2) 重建走 InstanceManager 实例池（ResetInstances 释放复用），二次重建开销极小；
+--   3) pairs 改 ipairs；新增搜索过滤；布局与横向滚动保持原作观感（浅色背景开关已按需求移除）。
+-- ############################################################################
+
+-- ============================================================================
+-- 条目4.5：本地化文本预加载缓存（规范：分区头后集中预加载；XML String=/ToolTip= 不预加载；
+--   带数字文本拆无参数前缀/后缀 tag，缓存后运行时用 .. 拼接）
+-- ============================================================================
+local IconViewerCountPrefixStr		: string = Locale.Lookup("LOC_MPT_ICONVIEWER_COUNT_PREFIX");
+local IconViewerCountSuffixStr		: string = Locale.Lookup("LOC_MPT_ICONVIEWER_COUNT_SUFFIX");
+
+-- ============================================================================
+-- 常量与全局状态（全局而非 local：KeyUpHandler/OnHandleExitRequest 等本文件前部代码
+--   要调用本分区函数；且「声明点之前引用的 local 会解析为全局」为已踩坑，统一全局避免声明顺序问题）
+-- ============================================================================
+g_IconViewerData           = {};		-- 预加载全量数据：{ { IconString="[ICON_X]", Size=测得宽度或nil }, ... }（[ICON_ICON 前缀组排末尾）
+g_IconViewerSearchStr      = "";		-- 搜索框当前内容（已转小写）
+g_IconViewerSortBySize     = false;		-- 按尺寸排序开关
+g_IconViewerShownList      = nil;		-- 当前展示的数据行数组（点击图标反查用；nil=尚未构建）
+g_IconViewerBuiltOnce      = false;		-- 无过滤全量构建已完成（全部图标宽度测量齐备，尺寸排序可用）
+
+local m_iconViewerDarkIM  = InstanceManager:new("IconViewerDarkInstance", "ButtonRoot", Controls.IconViewerStack);
+
+-- ============================================================================
+-- 内部：MPT_IconViewer_Preload()
+-- 顶层一次性预加载 MPT_IconCollection 全表到 g_IconViewerData（纯数据，不建实例）。
+-- 顺序语义同原作 InitializeData：[ICON_ICON 前缀组移到末尾，其余保持数据库顺序。
+-- ============================================================================
+local function MPT_IconViewer_Preload()
+	local iconRows = DB.ConfigurationQuery("SELECT IconString FROM MPT_IconCollection");
+	if iconRows == nil then
+		return;
+	end
+	local normalIcons    : table = {};
+	local iconIconGroup  : table = {};	-- [ICON_ICON 前缀组（原作语义：排末尾）
+	for i, row in ipairs(iconRows) do
+		local iconString : string = row.IconString;
+		if iconString ~= nil and iconString ~= "" then
+			if string.upper(string.sub(iconString, 2, 10)) == "ICON_ICON" then
+				table.insert(iconIconGroup, { IconString = iconString });
+			else
+				table.insert(normalIcons, { IconString = iconString });
+			end
+		end
+	end
+	for i, data in ipairs(iconIconGroup) do
+		table.insert(normalIcons, data);
+	end
+	g_IconViewerData = normalIcons;
+end
+MPT_IconViewer_Preload();
+
+-- ============================================================================
+-- 内部：IconViewerComputeBuildList()
+-- 按当前搜索串过滤、按当前排序开关排序，返回待构建的数据行数组。
+-- 尺寸排序需首轮无过滤构建完成（全部宽度测量齐备）后才应用，否则保持预加载顺序。
+-- ============================================================================
+local function IconViewerComputeBuildList()
+	local buildList : table = {};
+	for i, data in ipairs(g_IconViewerData) do
+		if g_IconViewerSearchStr == ""
+			or string.find(string.lower(data.IconString), g_IconViewerSearchStr, 1, true) ~= nil then
+			table.insert(buildList, data);
+		end
+	end
+	if g_IconViewerSortBySize and g_IconViewerBuiltOnce then
+		table.sort(buildList, function(a, b)
+			if a.Size == b.Size then
+				return a.IconString < b.IconString;
+			end
+			return (a.Size or 0) < (b.Size or 0);
+		end);
+	end
+	return buildList;
+end
+
+-- ============================================================================
+-- 内部：IconViewerUpdateStatus()
+-- 刷新状态行为当前展示集计数「共 N 个图标」（未构建时清空）。
+-- ============================================================================
+local function IconViewerUpdateStatus()
+	if g_IconViewerShownList ~= nil then
+		Controls.IconViewerStatusLabel:SetText(IconViewerCountPrefixStr .. #g_IconViewerShownList .. IconViewerCountSuffixStr);
+	else
+		Controls.IconViewerStatusLabel:SetText("");
+	end
+end
+
+-- ============================================================================
+-- 条目4.5 公开：MPT_IconViewer_OnIconClick(i)
+-- 图标按钮点击：复制该图标的 [ICON_x] 全文到剪贴板（i 为当前展示列表下标，经 SetVoid1 传入；
+-- 前端剪贴板同 StagingRoom 原版 OnClickToCopy 加入代码复制的用法）。
+-- ============================================================================
+function MPT_IconViewer_OnIconClick(i : number)
+	if g_IconViewerShownList == nil or g_IconViewerShownList[i] == nil then
+		return;
+	end
+	UIManager:SetClipboardString(g_IconViewerShownList[i].IconString);
+end
+
+-- ============================================================================
+-- 内部：MPT_IconViewer_StartBuild()
+-- 重新计算构建列表并一次性同步构建全部实例（同原作加载方式；逐帧分批构建实测更卡，已弃用）。
+-- 实例池释放复用（ResetInstances）；SetText 后顺带 GetSizeX 测量图标宽度存回数据行
+-- （供尺寸排序，免原作独立测量循环）；无贴图图标（宽<=1）隐藏占位。
+-- ============================================================================
+function MPT_IconViewer_StartBuild()
+	g_IconViewerShownList = IconViewerComputeBuildList();
+	m_iconViewerDarkIM:ResetInstances();
+	for i, data in ipairs(g_IconViewerShownList) do
+		local iconInstance : table = m_iconViewerDarkIM:GetInstance();
+		iconInstance.IconLabel:SetText("[size_0]" .. data.IconString);
+		local iconSizeX : number = iconInstance.IconLabel:GetSizeX();
+		data.Size = iconSizeX;	-- 顺带测量存回（无贴图图标宽度<=1，排序时自然排最前）
+		if iconSizeX <= 1 then
+			iconInstance.ButtonRoot:SetHide(true);
+		else
+			iconInstance.IconLabel:SetOffsetX(64 - iconSizeX / 2);
+			iconInstance.IconLabel:SetOffsetY(66 - iconSizeX / 2);
+		end
+		iconInstance.IconButton:SetToolTipString(string.sub(data.IconString, 2, -2));	-- 去首尾方括号显示图标名
+		iconInstance.IconButton:SetVoid1(i);
+		iconInstance.IconButton:RegisterCallback(Mouse.eLClick, MPT_IconViewer_OnIconClick);
+	end
+	Controls.IconViewerStack:CalculateSize();
+	Controls.IconViewerScrollPanel:CalculateInternalSize();
+	-- 无过滤构建完成即全部图标宽度测量齐备，尺寸排序可用
+	if g_IconViewerSearchStr == "" then
+		g_IconViewerBuiltOnce = true;
+	end
+	IconViewerUpdateStatus();
+end
+
+-- ============================================================================
+-- 条目4.5 公开：MPT_IconViewer_RequestRebuild()
+-- 搜索串/背景/排序任一变化时立即同步重建；面板从未构建过（从未打开）时不启动，
+-- 避免隐藏态白建 5056 实例。
+-- ============================================================================
+function MPT_IconViewer_RequestRebuild()
+	if g_IconViewerShownList == nil then
+		return;
+	end
+	MPT_IconViewer_StartBuild();
+end
+
+-- ============================================================================
+-- 条目4.5 公开：MPT_IconViewer_Open() / MPT_IconViewer_Close()
+-- 打开 / 关闭图标查看器面板（含全屏点击拦截层）；首次打开才同步构建全部实例，
+-- 之后重开直接复用已建实例；Close 幂等；ESC 拦截见 KeyUpHandler，退房关闭见 OnHandleExitRequest。
+-- ============================================================================
+function MPT_IconViewer_Open()
+	Controls.IconViewerModalBlocker:SetHide(false);
+	Controls.IconViewerPanel:SetHide(false);
+	UI.PlaySound("UI_Screen_Open");
+	IconViewerUpdateStatus();
+	if g_IconViewerShownList == nil then
+		MPT_IconViewer_StartBuild();
+	end
+end
+
+function MPT_IconViewer_Close()
+	if Controls.IconViewerPanel:IsHidden() then
+		return;
+	end
+	Controls.IconViewerPanel:SetHide(true);
+	Controls.IconViewerModalBlocker:SetHide(true);
+	UI.PlaySound("UI_Screen_Close");
+end
+
+-- ============================================================================
+-- 条目4.5：控件注册（分区自包含初始化；本文件每前端状态只执行一次，无需守卫）
+-- ============================================================================
+Controls.IconViewerButton:RegisterCallback(Mouse.eLClick, MPT_IconViewer_Open);
+Controls.IconViewerButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+Controls.IconViewerCloseButton:RegisterCallback(Mouse.eLClick, MPT_IconViewer_Close);
+Controls.IconViewerCloseButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+Controls.IconViewerModalBlocker:RegisterCallback(Mouse.eLClick, MPT_IconViewer_Close);
+
+-- 搜索框：内容变化即重建过滤；占位文本按焦点/内容显隐（同 4.4 搜索框惯例）
+Controls.IconViewerSearchEditBox:RegisterStringChangedCallback(function()
+	g_IconViewerSearchStr = string.lower(Controls.IconViewerSearchEditBox:GetText() or "");
+	Controls.IconViewerSearchPlaceholder:SetHide(g_IconViewerSearchStr ~= "");
+	MPT_IconViewer_RequestRebuild();
+end);
+Controls.IconViewerSearchEditBox:RegisterHasFocusCallback(function()
+	Controls.IconViewerSearchPlaceholder:SetHide(true);
+end);
+Controls.IconViewerSearchEditBox:RegisterLostFocusCallback(function()
+	Controls.IconViewerSearchPlaceholder:SetHide((Controls.IconViewerSearchEditBox:GetText() or "") ~= "");
+end);
+
+-- 「按尺寸排序」开关（复选框为原作样式 NoStateChange=1，点击不自动翻转，回调内自管状态并手动 SetCheck，同原作做法）
+Controls.IconViewerToggleSortCheck:RegisterCallback(Mouse.eLClick, function()
+	g_IconViewerSortBySize = not g_IconViewerSortBySize;
+	Controls.IconViewerToggleSortCheck:SetCheck(g_IconViewerSortBySize);
+	UI.PlaySound("Tech_Tray_Slide_Open");
+	MPT_IconViewer_RequestRebuild();
+end);
