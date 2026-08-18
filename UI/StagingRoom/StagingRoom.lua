@@ -244,6 +244,14 @@ function KeyUpHandler( key:number )
 		return true;
 	end
 	-- ============================================================================
+	-- 联机工具箱2.0：贴图查看器面板打开时 ESC 优先关闭面板（条目4.6；
+	-- 函数定义在本文件末尾条目4.6分区，全局函数运行时解析）
+	-- ============================================================================
+	if not Controls.TextureViewerPanel:IsHidden() then
+		MPT_TextureViewer_Close();
+		return true;
+	end
+	-- ============================================================================
 	if key == Keys.VK_ESCAPE then
 		Close();
 		return true;
@@ -1366,6 +1374,11 @@ function OnHandleExitRequest()
 	-- 联机工具箱2.0：退出房间时关闭图标查看器面板（条目4.5，幂等防跨房残留）
 	-- ============================================================================
 	MPT_IconViewer_Close();
+	-- ----------------------------------------------------------------------------
+	-- ============================================================================
+	-- 联机工具箱2.0：退出房间时关闭贴图查看器面板（条目4.6，幂等防跨房残留）
+	-- ============================================================================
+	MPT_TextureViewer_Close();
 	-- ----------------------------------------------------------------------------
 
 	Controls.CountdownTimerAnim:ClearAnimCallback();
@@ -4953,6 +4966,10 @@ Initialize();
 --   且 chunk 顶层中间的 return 会编译失败，守卫结构本也无法照搬），无 include。
 -- ############################################################################
 
+-- 寄存器上限适配：本分区块级 do...end 包裹，块内顶层 local 随块结束释放寄存器
+--（Civ6 Lua 主 chunk 寄存器有限，各分区 local 累积过多会编译报 too many registers；
+--  块内全局函数/回调以 upvalue 捕获 local，功能不受影响）
+do
 -- ============================================================================
 -- 条目4.3预备：MPT_Serialize 序列化部分（同源自 Storage/MPT_Serialize.lua）
 -- 移植自联机工具箱1.67 BSR serialize/deserialize（原版出自 metalua，MIT 协议），
@@ -5270,6 +5287,7 @@ function MPT_Storage_DeleteFile(fileName : string, callback)
 	table.insert(g_storageJobs, { kind = "delete", fileName = fileName, callback = callback });
 	StorageRunNext();
 end
+end	-- 条目4.3预备 do 块结束（寄存器上限适配）
 
 -- ############################################################################
 -- 条目4.4：玩家标记管理（纯本地玩家档案：好友/一般/黑名单标记 + 记事本）
@@ -5287,6 +5305,8 @@ end
 --   「取消」还原；切换玩家/关闭面板时有未保存改动先弹确认框。
 -- ############################################################################
 
+-- 寄存器上限适配：本分区块级 do...end 包裹（同条目4.3预备注释）
+do
 -- ============================================================================
 -- 条目4.4：本地化文本预加载缓存（规范：分区头后集中预加载；XML String=/ToolTip= 不预加载）
 -- ============================================================================
@@ -5837,6 +5857,7 @@ Controls.PlayerMarkAddDetailButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMar
 Controls.PlayerMarkSaveButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_ApplySave);
 Controls.PlayerMarkCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CancelEdit);
 Controls.PlayerMarkDeleteButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_DeleteSelected);
+end	-- 条目4.4 do 块结束（寄存器上限适配）
 
 
 -- ############################################################################
@@ -5855,6 +5876,8 @@ Controls.PlayerMarkDeleteButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_D
 --   3) pairs 改 ipairs；新增搜索过滤；布局与横向滚动保持原作观感（浅色背景开关已按需求移除）。
 -- ############################################################################
 
+-- 寄存器上限适配：本分区块级 do...end 包裹（同条目4.3预备注释）
+do
 -- ============================================================================
 -- 条目4.5：本地化文本预加载缓存（规范：分区头后集中预加载；XML String=/ToolTip= 不预加载；
 --   带数字文本拆无参数前缀/后缀 tag，缓存后运行时用 .. 拼接）
@@ -6049,3 +6072,244 @@ Controls.IconViewerToggleSortCheck:RegisterCallback(Mouse.eLClick, function()
 	UI.PlaySound("Tech_Tray_Slide_Open");
 	MPT_IconViewer_RequestRebuild();
 end);
+end	-- 条目4.5 do 块结束（寄存器上限适配）
+
+
+-- ############################################################################
+-- 条目4.6：贴图查看器（移植 TextureViewer「Texture查看器」mod，本作者旧作，并适配优化）
+-- ============================================================================
+-- 用法：左下角 BottomLeftButtonStack「贴图查看器」按钮打开面板；悬停格子显示自定义预览
+--   Tooltip（贴图真实比例 + 像素尺寸 + 贴图名 + 来源 blp 包），点击格子复制贴图名到剪贴板；
+--   搜索框按贴图名子串过滤（大小写不敏感）；「按来源包分组」开关按 SourceBlp 分组排序。
+--   关闭：X 按钮 / 点击面板外 / ESC；退出房间自动关闭（OnHandleExitRequest）。
+-- 数据源：前端配置库 MPT_TextureCollection 表（FrontEnd/TextureViewer/TextureViewer_Data.sql，
+--   5017 行；DB.ConfigurationQuery 为前端配置库句柄，同条目4.5 先例），本分区顶层一次性
+--   预加载进 g_TextureViewerData（纯数据，不建实例）。
+-- 相对原作的适配与优化：
+--   1) 承载从 InGame 独立 Context 改为准备房间面板（前端无法新建 UI Context，见踩坑记录），
+--      入口从 LaunchBar 改为 BottomLeftButtonStack 按钮；
+--   2) 原作 Initialize 即全量构建 5017 实例（进游戏就建）改为首开面板懒构建 +
+--      InstanceManager 实例池复用（同条目4.5 惯例），二次重建开销极小；
+--   3) 来源分组排序副本在预加载时一次算好（与正常序共享行表，行内容只读），开关切换零排序计算；
+--   4) 自定义预览 Tooltip 机制不变（TTManager + StagingRoom.xml 内 ToolTipType，
+--      前端可行有联机工具箱1.67 StagingRoom.xml 内 TooltipType_TPT_Update 先例）。
+-- ############################################################################
+
+-- 寄存器上限适配：本分区块级 do...end 包裹（同条目4.3预备注释）
+do
+-- ============================================================================
+-- 条目4.6：本地化文本预加载缓存（规范：分区头后集中预加载；XML String=/ToolTip= 不预加载；
+--   带数字文本拆无参数前缀/后缀 tag，缓存后运行时用 .. 拼接）
+-- ============================================================================
+local TextureViewerCountPrefixStr	: string = Locale.Lookup("LOC_MPT_TEXTUREVIEWER_COUNT_PREFIX");
+local TextureViewerCountSuffixStr	: string = Locale.Lookup("LOC_MPT_TEXTUREVIEWER_COUNT_SUFFIX");
+local TextureViewerTTSourceStr		: string = Locale.Lookup("LOC_MPT_TEXTUREVIEWER_TT_SOURCE");
+
+-- ============================================================================
+-- 常量与全局状态（全局而非 local：KeyUpHandler/OnHandleExitRequest 等本文件前部代码
+--   要调用本分区函数；且「声明点之前引用的 local 会解析为全局」为已踩坑，统一全局避免声明顺序问题）
+-- ============================================================================
+g_TextureViewerData          = {};		-- 预加载全量数据：{ { TextureName="X", SourceBlp="Y.blp" }, ... }（数据库顺序）
+g_TextureViewerSourceData    = {};		-- 按来源包分组排序副本（SourceBlp 字典序，同包内按 TextureName；与上表共享行表）
+g_TextureViewerSearchStr     = "";		-- 搜索框当前内容（已转小写）
+g_TextureViewerSortBySource  = false;	-- 按来源包分组开关
+g_TextureViewerShownList     = nil;		-- 当前展示的数据行数组（点击格子反查用；nil=尚未构建）
+
+local m_textureViewerIM       = InstanceManager:new("TextureViewerTileInstance", "ButtonRoot", Controls.TextureViewerStack);
+local m_textureViewerTooltip  = {};		-- 自定义 Tooltip 控件表（分区末尾 TTManager:GetTypeControlTable 填充）
+
+local TEXTUREVIEWER_TT_SCREEN_MARGIN : number = 40;	-- 预览 Tooltip 超屏缩放边距（屏幕四边各留空间）
+
+-- ============================================================================
+-- 内部：MPT_TextureViewer_Preload()
+-- 顶层一次性预加载 MPT_TextureCollection 全表（纯数据，不建实例）。
+-- 同时算出按来源包分组的排序副本（原作 GetSourceSortData 语义：SourceBlp 字典序，同包内按贴图名）。
+-- ============================================================================
+local function MPT_TextureViewer_Preload()
+	local textureRows = DB.ConfigurationQuery("SELECT TextureName, SourceBlp FROM MPT_TextureCollection");
+	if textureRows == nil then
+		return;
+	end
+	local normalData : table = {};
+	for i, row in ipairs(textureRows) do
+		if row.TextureName ~= nil and row.TextureName ~= "" then
+			table.insert(normalData, { TextureName = row.TextureName, SourceBlp = row.SourceBlp or "" });
+		end
+	end
+	g_TextureViewerData = normalData;
+	-- 来源分组排序副本：共享行表（行内容只读），预加载时一次排序，开关切换零计算
+	local sourceData : table = {};
+	for i, data in ipairs(normalData) do
+		table.insert(sourceData, data);
+	end
+	table.sort(sourceData, function(a, b)
+		if a.SourceBlp == b.SourceBlp then
+			return a.TextureName < b.TextureName;
+		end
+		return a.SourceBlp < b.SourceBlp;
+	end);
+	g_TextureViewerSourceData = sourceData;
+end
+MPT_TextureViewer_Preload();
+
+-- ============================================================================
+-- 内部：TextureViewerComputeBuildList()
+-- 按当前排序开关取基础数组（正常序 / 来源分组序），再按当前搜索串过滤，返回待构建的数据行数组。
+-- ============================================================================
+local function TextureViewerComputeBuildList()
+	local baseList : table = g_TextureViewerSortBySource and g_TextureViewerSourceData or g_TextureViewerData;
+	local buildList : table = {};
+	for i, data in ipairs(baseList) do
+		if g_TextureViewerSearchStr == ""
+			or string.find(string.lower(data.TextureName), g_TextureViewerSearchStr, 1, true) ~= nil then
+			table.insert(buildList, data);
+		end
+	end
+	return buildList;
+end
+
+-- ============================================================================
+-- 内部：TextureViewerUpdateStatus()
+-- 刷新状态行为当前展示集计数「共 N 个贴图」（未构建时清空）。
+-- ============================================================================
+local function TextureViewerUpdateStatus()
+	if g_TextureViewerShownList ~= nil then
+		Controls.TextureViewerStatusLabel:SetText(TextureViewerCountPrefixStr .. #g_TextureViewerShownList .. TextureViewerCountSuffixStr);
+	else
+		Controls.TextureViewerStatusLabel:SetText("");
+	end
+end
+
+-- ============================================================================
+-- 条目4.6 公开：MPT_TextureViewer_OnTileClick(i)
+-- 格子点击：复制该格贴图名到剪贴板（i 为当前展示列表下标，经 SetVoid1 传入；
+-- 前端剪贴板同 StagingRoom 原版 OnClickToCopy 加入代码复制的用法）。
+-- ============================================================================
+function MPT_TextureViewer_OnTileClick(i : number)
+	if g_TextureViewerShownList == nil or g_TextureViewerShownList[i] == nil then
+		return;
+	end
+	UIManager:SetClipboardString(g_TextureViewerShownList[i].TextureName);
+end
+
+-- ============================================================================
+-- 内部：TextureViewerFillTooltip(texName, srcBlp)
+-- 填充自定义预览 Tooltip（全局单例控件表 m_textureViewerTooltip，每次悬停先重设纹理防残留）：
+-- TTImage StretchMode=Auto 按真实比例渲染，SetTexture 后 auto 尺寸即贴图真实像素；
+-- 读尺寸失败隐藏尺寸行；原图超屏幕可用区域时等比缩小防 Tooltip 溢出屏幕（移植原作逻辑）。
+-- ============================================================================
+local function TextureViewerFillTooltip(texName : string, srcBlp : string)
+	m_textureViewerTooltip.TTImage:SetTexture(texName);
+	local pixelW : number = m_textureViewerTooltip.TTImage:GetSizeX();
+	local pixelH : number = m_textureViewerTooltip.TTImage:GetSizeY();
+	if pixelW ~= nil and pixelH ~= nil and pixelW > 0 and pixelH > 0 then
+		m_textureViewerTooltip.TTSizeLabel:SetText(pixelW .. " × " .. pixelH);
+		m_textureViewerTooltip.TTSizeLabel:SetHide(false);
+		local screenW, screenH : number = UIManager:GetScreenSizeVal();
+		local scale : number = math.min(math.max(screenW - TEXTUREVIEWER_TT_SCREEN_MARGIN, 1) / pixelW,
+			math.max(screenH - TEXTUREVIEWER_TT_SCREEN_MARGIN, 1) / pixelH, 1);
+		if scale < 1 then
+			m_textureViewerTooltip.TTImage:SetSize(math.floor(pixelW * scale), math.floor(pixelH * scale));
+		end
+	else
+		m_textureViewerTooltip.TTSizeLabel:SetHide(true);
+	end
+	m_textureViewerTooltip.TTNameLabel:SetText(texName);
+	m_textureViewerTooltip.TTSourceLabel:SetText(TextureViewerTTSourceStr .. srcBlp);
+end
+
+-- ============================================================================
+-- 内部：MPT_TextureViewer_StartBuild()
+-- 重新计算构建列表并一次性同步构建全部实例（同条目4.5 加载方式）。
+-- 实例池释放复用（ResetInstances）；每格 SetTexture 贴图 + 注册自定义预览 Tooltip + 点击复制。
+-- ============================================================================
+function MPT_TextureViewer_StartBuild()
+	g_TextureViewerShownList = TextureViewerComputeBuildList();
+	m_textureViewerIM:ResetInstances();
+	for i, data in ipairs(g_TextureViewerShownList) do
+		local tileInstance : table = m_textureViewerIM:GetInstance();
+		-- 格子贴图：StretchMode=Uniform + 固定 128 边界（XML 定义）→ 引擎按纹理真实比例等比适配
+		tileInstance.TextureImage:SetTexture(data.TextureName);
+		-- 局部快照：避免闭包共享循环变量（Lua 经典陷阱）
+		local texName : string = data.TextureName;
+		local srcBlp  : string = data.SourceBlp;
+		-- 自定义 TooltipType：悬停显示贴图预览 + 像素尺寸 + 名字 + 来源包
+		tileInstance.TileButton:SetToolTipType("MPT_TextureViewerTooltip");
+		tileInstance.TileButton:SetToolTipCallback(function()
+			TextureViewerFillTooltip(texName, srcBlp);
+		end);
+		tileInstance.TileButton:SetVoid1(i);
+		tileInstance.TileButton:RegisterCallback(Mouse.eLClick, MPT_TextureViewer_OnTileClick);
+	end
+	Controls.TextureViewerStack:CalculateSize();
+	Controls.TextureViewerScrollPanel:CalculateInternalSize();
+	TextureViewerUpdateStatus();
+end
+
+-- ============================================================================
+-- 条目4.6 公开：MPT_TextureViewer_RequestRebuild()
+-- 搜索串/排序开关变化时立即同步重建；面板从未构建过（从未打开）时不启动，避免隐藏态白建实例。
+-- ============================================================================
+function MPT_TextureViewer_RequestRebuild()
+	if g_TextureViewerShownList == nil then
+		return;
+	end
+	MPT_TextureViewer_StartBuild();
+end
+
+-- ============================================================================
+-- 条目4.6 公开：MPT_TextureViewer_Open() / MPT_TextureViewer_Close()
+-- 打开 / 关闭贴图查看器面板（含全屏点击拦截层）；首次打开才同步构建全部实例，
+-- 之后重开直接复用已建实例；Close 幂等；ESC 拦截见 KeyUpHandler，退房关闭见 OnHandleExitRequest。
+-- ============================================================================
+function MPT_TextureViewer_Open()
+	Controls.TextureViewerModalBlocker:SetHide(false);
+	Controls.TextureViewerPanel:SetHide(false);
+	UI.PlaySound("UI_Screen_Open");
+	TextureViewerUpdateStatus();
+	if g_TextureViewerShownList == nil then
+		MPT_TextureViewer_StartBuild();
+	end
+end
+
+function MPT_TextureViewer_Close()
+	if Controls.TextureViewerPanel:IsHidden() then
+		return;
+	end
+	Controls.TextureViewerPanel:SetHide(true);
+	Controls.TextureViewerModalBlocker:SetHide(true);
+	UI.PlaySound("UI_Screen_Close");
+end
+
+-- ============================================================================
+-- 条目4.6：控件注册（分区自包含初始化；本文件每前端状态只执行一次，无需守卫）
+-- ============================================================================
+TTManager:GetTypeControlTable("MPT_TextureViewerTooltip", m_textureViewerTooltip);
+
+Controls.TextureViewerButton:RegisterCallback(Mouse.eLClick, MPT_TextureViewer_Open);
+Controls.TextureViewerButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+Controls.TextureViewerCloseButton:RegisterCallback(Mouse.eLClick, MPT_TextureViewer_Close);
+Controls.TextureViewerCloseButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+Controls.TextureViewerModalBlocker:RegisterCallback(Mouse.eLClick, MPT_TextureViewer_Close);
+
+-- 搜索框：内容变化即重建过滤；占位文本按焦点/内容显隐（同 4.4 搜索框惯例）
+Controls.TextureViewerSearchEditBox:RegisterStringChangedCallback(function()
+	g_TextureViewerSearchStr = string.lower(Controls.TextureViewerSearchEditBox:GetText() or "");
+	Controls.TextureViewerSearchPlaceholder:SetHide(g_TextureViewerSearchStr ~= "");
+	MPT_TextureViewer_RequestRebuild();
+end);
+Controls.TextureViewerSearchEditBox:RegisterHasFocusCallback(function()
+	Controls.TextureViewerSearchPlaceholder:SetHide(true);
+end);
+Controls.TextureViewerSearchEditBox:RegisterLostFocusCallback(function()
+	Controls.TextureViewerSearchPlaceholder:SetHide((Controls.TextureViewerSearchEditBox:GetText() or "") ~= "");
+end);
+
+-- 「按来源包分组」开关（复选框 NoStateChange=1 点击不自动翻转，回调内自管状态并手动 SetCheck，同条目4.5 做法）
+Controls.TextureViewerToggleSortCheck:RegisterCallback(Mouse.eLClick, function()
+	g_TextureViewerSortBySource = not g_TextureViewerSortBySource;
+	Controls.TextureViewerToggleSortCheck:SetCheck(g_TextureViewerSortBySource);
+	UI.PlaySound("Tech_Tray_Slide_Open");
+	MPT_TextureViewer_RequestRebuild();
+end);
+end	-- 条目4.6 do 块结束（寄存器上限适配）
