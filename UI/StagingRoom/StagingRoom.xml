@@ -914,12 +914,12 @@
 			</GridButton>
 		</Container>
 	</Instance>
-	<!-- 条目4.6：贴图格子实例（移植 TextureViewer TextureInstance：188 格 + 128 边界内 StretchMode=Uniform 按纹理真实比例等比缩放；
-	     悬停显示 MPT_TextureViewerTooltip 预览，点击复制贴图名） -->
+	<!-- 条目4.6：贴图格子实例（移植 TextureViewer TextureInstance：格子尺寸 128 同条目4.5 图标查看器；
+	     100 边界内 StretchMode=Uniform 按纹理真实比例等比缩放；悬停显示 MPT_TextureViewerTooltip 预览，点击复制贴图名） -->
 	<Instance Name="TextureViewerTileInstance">
-		<Container ID="ButtonRoot" Size="188,188" Anchor="L,C">
+		<Container ID="ButtonRoot" Size="128,128" Anchor="L,C">
 			<GridButton ID="TileButton" Anchor="C,C" Offset="0,0" Size="parent,parent" Texture="Controls_ButtonControl" SliceCorner="12,12" SliceTextureSize="24,24" StateOffsetIncrement="0,24">
-				<Image ID="TextureImage" Anchor="C,C" Size="128,128" StretchMode="Uniform"/>
+				<Image ID="TextureImage" Anchor="C,C" Size="100,100" StretchMode="Uniform"/>
 			</GridButton>
 		</Container>
 	</Instance>

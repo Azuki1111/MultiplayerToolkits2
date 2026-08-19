@@ -6228,7 +6228,7 @@ function MPT_TextureViewer_StartBuild()
 	m_textureViewerIM:ResetInstances();
 	for i, data in ipairs(g_TextureViewerShownList) do
 		local tileInstance : table = m_textureViewerIM:GetInstance();
-		-- 格子贴图：StretchMode=Uniform + 固定 128 边界（XML 定义）→ 引擎按纹理真实比例等比适配
+		-- 格子贴图：StretchMode=Uniform + 固定 100 边界（XML 定义）→ 引擎按纹理真实比例等比适配
 		tileInstance.TextureImage:SetTexture(data.TextureName);
 		-- 局部快照：避免闭包共享循环变量（Lua 经典陷阱）
 		local texName : string = data.TextureName;
