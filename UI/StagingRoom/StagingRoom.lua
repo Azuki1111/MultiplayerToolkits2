@@ -236,19 +236,11 @@ function KeyUpHandler( key:number )
 		return true;
 	end
 	-- ============================================================================
-	-- 联机工具箱2.0：图标查看器面板打开时 ESC 优先关闭面板（条目4.5；
-	-- 函数定义在本文件末尾条目4.5分区，全局函数运行时解析）
+	-- 联机工具箱2.0：查看器面板打开时 ESC 优先关闭面板（条目4.5/4.6 融合：图标/贴图双页签
+	-- 共用一个 IconViewerPanel 根容器；函数定义在本文件末尾条目4.6分区，全局函数运行时解析）
 	-- ============================================================================
 	if not Controls.IconViewerPanel:IsHidden() then
-		MPT_IconViewer_Close();
-		return true;
-	end
-	-- ============================================================================
-	-- 联机工具箱2.0：贴图查看器面板打开时 ESC 优先关闭面板（条目4.6；
-	-- 函数定义在本文件末尾条目4.6分区，全局函数运行时解析）
-	-- ============================================================================
-	if not Controls.TextureViewerPanel:IsHidden() then
-		MPT_TextureViewer_Close();
+		MPT_Viewer_Close();
 		return true;
 	end
 	-- ============================================================================
@@ -1371,14 +1363,9 @@ function OnHandleExitRequest()
 	CloseModListPanel(true);
 	-- ----------------------------------------------------------------------------
 	-- ============================================================================
-	-- 联机工具箱2.0：退出房间时关闭图标查看器面板（条目4.5，幂等防跨房残留）
+	-- 联机工具箱2.0：退出房间时关闭查看器面板（条目4.5/4.6 融合面板，幂等防跨房残留）
 	-- ============================================================================
-	MPT_IconViewer_Close();
-	-- ----------------------------------------------------------------------------
-	-- ============================================================================
-	-- 联机工具箱2.0：退出房间时关闭贴图查看器面板（条目4.6，幂等防跨房残留）
-	-- ============================================================================
-	MPT_TextureViewer_Close();
+	MPT_Viewer_Close();
 	-- ----------------------------------------------------------------------------
 
 	Controls.CountdownTimerAnim:ClearAnimCallback();
@@ -5863,8 +5850,9 @@ end	-- 条目4.4 do 块结束（寄存器上限适配）
 -- ############################################################################
 -- 条目4.5：图标查看器（移植 Easy Icon Viewer 工坊 3173843667，本作者旧作，并优化）
 -- ============================================================================
--- 用法：左下角 BottomLeftButtonStack「图标查看器」按钮打开面板；点击图标复制 [ICON_x]
---   文本到剪贴板；搜索框按图标名子串过滤（大小写不敏感）；「按尺寸排序」开关按图标宽度重排。
+-- 用法：左下角 BottomLeftButtonStack「图标查看器」按钮打开融合面板（图标页，页签切换
+--   见条目4.6 分区末尾融合块）；点击图标复制 [ICON_x] 文本到剪贴板；搜索框按图标名子串
+--   过滤（大小写不敏感）；「按尺寸排序」开关按图标宽度重排。
 --   关闭：X 按钮 / 点击面板外 / ESC；退出房间自动关闭（OnHandleExitRequest）。
 -- 数据源：前端配置库 MPT_IconCollection 表（FrontEnd/IconViewer/IconViewer_Data.sql，
 --   5056 行；DB.ConfigurationQuery 为前端配置库句柄，同条目3.5 公告读取先例），
@@ -6020,37 +6008,22 @@ function MPT_IconViewer_RequestRebuild()
 end
 
 -- ============================================================================
--- 条目4.5 公开：MPT_IconViewer_Open() / MPT_IconViewer_Close()
--- 打开 / 关闭图标查看器面板（含全屏点击拦截层）；首次打开才同步构建全部实例，
--- 之后重开直接复用已建实例；Close 幂等；ESC 拦截见 KeyUpHandler，退房关闭见 OnHandleExitRequest。
+-- 条目4.5/4.6 融合说明：面板打开/关闭/页签切换已并入条目4.6 分区末尾的
+-- MPT_Viewer_OpenTab / MPT_Viewer_Close / MPT_Viewer_SelectTab（两查看器共用
+-- IconViewerPanel 根容器）；图标页懒构建由 SelectTab 在首次切到时触发（本分区
+-- MPT_IconViewer_StartBuild 不变）。
 -- ============================================================================
-function MPT_IconViewer_Open()
-	Controls.IconViewerModalBlocker:SetHide(false);
-	Controls.IconViewerPanel:SetHide(false);
-	UI.PlaySound("UI_Screen_Open");
-	IconViewerUpdateStatus();
-	if g_IconViewerShownList == nil then
-		MPT_IconViewer_StartBuild();
-	end
-end
-
-function MPT_IconViewer_Close()
-	if Controls.IconViewerPanel:IsHidden() then
-		return;
-	end
-	Controls.IconViewerPanel:SetHide(true);
-	Controls.IconViewerModalBlocker:SetHide(true);
-	UI.PlaySound("UI_Screen_Close");
-end
 
 -- ============================================================================
 -- 条目4.5：控件注册（分区自包含初始化；本文件每前端状态只执行一次，无需守卫）
+-- 融合面板的 MPT_Viewer_* 函数定义在条目4.6 分区（本行执行时全局函数尚未定义），
+-- 故注册一律用匿名闭包，运行时解析全局。
 -- ============================================================================
-Controls.IconViewerButton:RegisterCallback(Mouse.eLClick, MPT_IconViewer_Open);
+Controls.IconViewerButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_OpenTab("icon"); end);
 Controls.IconViewerButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
-Controls.IconViewerCloseButton:RegisterCallback(Mouse.eLClick, MPT_IconViewer_Close);
+Controls.IconViewerCloseButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_Close(); end);
 Controls.IconViewerCloseButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
-Controls.IconViewerModalBlocker:RegisterCallback(Mouse.eLClick, MPT_IconViewer_Close);
+Controls.IconViewerModalBlocker:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_Close(); end);
 
 -- 搜索框：内容变化即重建过滤；占位文本按焦点/内容显隐（同 4.4 搜索框惯例）
 Controls.IconViewerSearchEditBox:RegisterStringChangedCallback(function()
@@ -6078,9 +6051,10 @@ end	-- 条目4.5 do 块结束（寄存器上限适配）
 -- ############################################################################
 -- 条目4.6：贴图查看器（移植 TextureViewer「Texture查看器」mod，本作者旧作，并适配优化）
 -- ============================================================================
--- 用法：左下角 BottomLeftButtonStack「贴图查看器」按钮打开面板；悬停格子显示自定义预览
---   Tooltip（贴图真实比例 + 像素尺寸 + 贴图名 + 来源 blp 包），点击格子复制贴图名到剪贴板；
---   搜索框按贴图名子串过滤（大小写不敏感）；「按来源包分组」开关按 SourceBlp 分组排序。
+-- 用法：左下角 BottomLeftButtonStack「贴图查看器」按钮打开融合面板（贴图页，页签切换
+--   见本分区末尾融合块）；悬停格子显示自定义预览 Tooltip（贴图真实比例 + 像素尺寸 +
+--   贴图名 + 来源 blp 包），点击格子复制贴图名到剪贴板；搜索框按贴图名子串过滤
+--   （大小写不敏感）；「按来源包分组」开关按 SourceBlp 分组排序。
 --   关闭：X 按钮 / 点击面板外 / ESC；退出房间自动关闭（OnHandleExitRequest）。
 -- 数据源：前端配置库 MPT_TextureCollection 表（FrontEnd/TextureViewer/TextureViewer_Data.sql，
 --   5017 行；DB.ConfigurationQuery 为前端配置库句柄，同条目4.5 先例），本分区顶层一次性
@@ -6258,39 +6232,14 @@ function MPT_TextureViewer_RequestRebuild()
 end
 
 -- ============================================================================
--- 条目4.6 公开：MPT_TextureViewer_Open() / MPT_TextureViewer_Close()
--- 打开 / 关闭贴图查看器面板（含全屏点击拦截层）；首次打开才同步构建全部实例，
--- 之后重开直接复用已建实例；Close 幂等；ESC 拦截见 KeyUpHandler，退房关闭见 OnHandleExitRequest。
--- ============================================================================
-function MPT_TextureViewer_Open()
-	Controls.TextureViewerModalBlocker:SetHide(false);
-	Controls.TextureViewerPanel:SetHide(false);
-	UI.PlaySound("UI_Screen_Open");
-	TextureViewerUpdateStatus();
-	if g_TextureViewerShownList == nil then
-		MPT_TextureViewer_StartBuild();
-	end
-end
-
-function MPT_TextureViewer_Close()
-	if Controls.TextureViewerPanel:IsHidden() then
-		return;
-	end
-	Controls.TextureViewerPanel:SetHide(true);
-	Controls.TextureViewerModalBlocker:SetHide(true);
-	UI.PlaySound("UI_Screen_Close");
-end
-
--- ============================================================================
 -- 条目4.6：控件注册（分区自包含初始化；本文件每前端状态只执行一次，无需守卫）
+-- 贴图页无独立关闭钮/遮挡层（融合面板共用图标页的），其注册见末尾融合页签块；
+-- MPT_Viewer_* 全局函数定义在本分区末尾，入口按钮注册用匿名闭包运行时解析。
 -- ============================================================================
 TTManager:GetTypeControlTable("MPT_TextureViewerTooltip", m_textureViewerTooltip);
 
-Controls.TextureViewerButton:RegisterCallback(Mouse.eLClick, MPT_TextureViewer_Open);
+Controls.TextureViewerButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_OpenTab("texture"); end);
 Controls.TextureViewerButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
-Controls.TextureViewerCloseButton:RegisterCallback(Mouse.eLClick, MPT_TextureViewer_Close);
-Controls.TextureViewerCloseButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
-Controls.TextureViewerModalBlocker:RegisterCallback(Mouse.eLClick, MPT_TextureViewer_Close);
 
 -- 搜索框：内容变化即重建过滤；占位文本按焦点/内容显隐（同 4.4 搜索框惯例）
 Controls.TextureViewerSearchEditBox:RegisterStringChangedCallback(function()
@@ -6312,4 +6261,61 @@ Controls.TextureViewerToggleSortCheck:RegisterCallback(Mouse.eLClick, function()
 	UI.PlaySound("Tech_Tray_Slide_Open");
 	MPT_TextureViewer_RequestRebuild();
 end);
+
+-- ############################################################################
+-- 条目4.5/4.6 融合：页签切换与统一开关
+-- ============================================================================
+-- 两查看器共用 IconViewerPanel 根容器 + 单一 IconViewerModalBlocker 遮挡层（XML 融合面板注释），
+-- 页签台/按钮样式仿 ClimateScreen.xml（TabLedge2 + TabButton/TabButtonSelected）。
+-- 本块函数为全局（KeyUpHandler/OnHandleExitRequest 与两条目入口按钮闭包都要调用）。
+-- ############################################################################
+g_ViewerCurrentTab = "icon";	-- 当前页签："icon" 图标页 / "texture" 贴图页
+
+-- ============================================================================
+-- 条目4.5/4.6 公开：MPT_Viewer_SelectTab(tab)
+-- 切换页签：显隐两个内容容器 + 页签按钮选中态（TabButtonSelected 子钮显隐 + SetSelected，
+-- 仿 ClimateScreen RefreshTabs 写法）；目标页从未构建过则顺带懒构建（首开该页才建实例）。
+-- ============================================================================
+function MPT_Viewer_SelectTab(tab : string)
+	g_ViewerCurrentTab = tab;
+	local isIcon : boolean = (tab == "icon");
+	Controls.ViewerIconContent:SetHide(not isIcon);
+	Controls.ViewerTextureContent:SetHide(isIcon);
+	Controls.IconTabSelected:SetHide(not isIcon);
+	Controls.IconTabButton:SetSelected(isIcon);
+	Controls.TextureTabSelected:SetHide(isIcon);
+	Controls.TextureTabButton:SetSelected(not isIcon);
+	if isIcon then
+		if g_IconViewerShownList == nil then
+			MPT_IconViewer_StartBuild();
+		end
+	elseif g_TextureViewerShownList == nil then
+		MPT_TextureViewer_StartBuild();
+	end
+end
+
+-- ============================================================================
+-- 条目4.5/4.6 公开：MPT_Viewer_OpenTab(tab) / MPT_Viewer_Close()
+-- 打开融合面板并切到指定页签 / 关闭融合面板（含全屏点击拦截层）；Close 幂等；
+-- ESC 拦截见 KeyUpHandler，退房关闭见 OnHandleExitRequest。
+-- ============================================================================
+function MPT_Viewer_OpenTab(tab : string)
+	Controls.IconViewerModalBlocker:SetHide(false);
+	Controls.IconViewerPanel:SetHide(false);
+	UI.PlaySound("UI_Screen_Open");
+	MPT_Viewer_SelectTab(tab);
+end
+
+function MPT_Viewer_Close()
+	if Controls.IconViewerPanel:IsHidden() then
+		return;
+	end
+	Controls.IconViewerPanel:SetHide(true);
+	Controls.IconViewerModalBlocker:SetHide(true);
+	UI.PlaySound("UI_Screen_Close");
+end
+
+-- 页签按钮注册（点击切换页签，不重建已构建内容）
+Controls.IconTabButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_SelectTab("icon"); end);
+Controls.TextureTabButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_SelectTab("texture"); end);
 end	-- 条目4.6 do 块结束（寄存器上限适配）
