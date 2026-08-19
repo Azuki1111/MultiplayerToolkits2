@@ -5,9 +5,7 @@
 --       带数字的文本不用参数化 Tag，拆无参数前缀/后缀由 Lua 拼接（见 4.6 分区缓存块）。
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
--- 入口按钮/面板标题
-('LOC_MPT_TEXTUREVIEWER_NAME', 'en_US', 'Texture Viewer'),
-('LOC_MPT_TEXTUREVIEWER_TOOLTIP', 'en_US', 'Open Texture Viewer (5017 UI textures from base game and all DLCs; hover a tile to preview, click a tile to copy its texture name to clipboard)'),
+-- 页签标题（融合面板入口按钮文本在 IconViewer 文本文件 LOC_MPT_VIEWER_*）
 ('LOC_MPT_TEXTUREVIEWER_TITLE', 'en_US', 'Texture Viewer'),
 -- 搜索框（占位文本/提示）
 ('LOC_MPT_TEXTUREVIEWER_SEARCH_NAME', 'en_US', 'Search texture name'),

@@ -5850,9 +5850,9 @@ end	-- 条目4.4 do 块结束（寄存器上限适配）
 -- ############################################################################
 -- 条目4.5：图标查看器（移植 Easy Icon Viewer 工坊 3173843667，本作者旧作，并优化）
 -- ============================================================================
--- 用法：左下角 BottomLeftButtonStack「图标查看器」按钮打开融合面板（图标页，页签切换
---   见条目4.6 分区末尾融合块）；点击图标复制 [ICON_x] 文本到剪贴板；搜索框按图标名子串
---   过滤（大小写不敏感）；「按尺寸排序」开关按图标宽度重排。
+-- 用法：左下角 BottomLeftButtonStack「查看器」单按钮打开融合面板（回到上次停留页签，
+-- 页签切换见条目4.6 分区末尾融合块）；点击图标复制 [ICON_x] 文本到剪贴板；搜索框按图标名
+--   子串过滤（大小写不敏感）；「按尺寸排序」开关按图标宽度重排。
 --   关闭：X 按钮 / 点击面板外 / ESC；退出房间自动关闭（OnHandleExitRequest）。
 -- 数据源：前端配置库 MPT_IconCollection 表（FrontEnd/IconViewer/IconViewer_Data.sql，
 --   5056 行；DB.ConfigurationQuery 为前端配置库句柄，同条目3.5 公告读取先例），
@@ -6019,7 +6019,7 @@ end
 -- 融合面板的 MPT_Viewer_* 函数定义在条目4.6 分区（本行执行时全局函数尚未定义），
 -- 故注册一律用匿名闭包，运行时解析全局。
 -- ============================================================================
-Controls.IconViewerButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_OpenTab("icon"); end);
+Controls.IconViewerButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_OpenTab(g_ViewerCurrentTab); end);	-- 单入口按钮：打开融合面板并回到上次停留的页签
 Controls.IconViewerButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 Controls.IconViewerCloseButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_Close(); end);
 Controls.IconViewerCloseButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
@@ -6051,10 +6051,10 @@ end	-- 条目4.5 do 块结束（寄存器上限适配）
 -- ############################################################################
 -- 条目4.6：贴图查看器（移植 TextureViewer「Texture查看器」mod，本作者旧作，并适配优化）
 -- ============================================================================
--- 用法：左下角 BottomLeftButtonStack「贴图查看器」按钮打开融合面板（贴图页，页签切换
---   见本分区末尾融合块）；悬停格子显示自定义预览 Tooltip（贴图真实比例 + 像素尺寸 +
---   贴图名 + 来源 blp 包），点击格子复制贴图名到剪贴板；搜索框按贴图名子串过滤
---   （大小写不敏感）；「按来源包分组」开关按 SourceBlp 分组排序。
+-- 用法：左下角 BottomLeftButtonStack「查看器」单按钮打开融合面板（同条目4.5），面板顶部
+--   页签切到贴图页（页签切换见本分区末尾融合块）；悬停格子显示自定义预览 Tooltip（贴图真实
+--   比例 + 像素尺寸 + 贴图名 + 来源 blp 包），点击格子复制贴图名到剪贴板；搜索框按贴图名
+--   子串过滤（大小写不敏感）；「按来源包分组」开关按 SourceBlp 分组排序。
 --   关闭：X 按钮 / 点击面板外 / ESC；退出房间自动关闭（OnHandleExitRequest）。
 -- 数据源：前端配置库 MPT_TextureCollection 表（FrontEnd/TextureViewer/TextureViewer_Data.sql，
 --   5017 行；DB.ConfigurationQuery 为前端配置库句柄，同条目4.5 先例），本分区顶层一次性
@@ -6233,13 +6233,10 @@ end
 
 -- ============================================================================
 -- 条目4.6：控件注册（分区自包含初始化；本文件每前端状态只执行一次，无需守卫）
--- 贴图页无独立关闭钮/遮挡层（融合面板共用图标页的），其注册见末尾融合页签块；
--- MPT_Viewer_* 全局函数定义在本分区末尾，入口按钮注册用匿名闭包运行时解析。
+-- 贴图页无独立关闭钮/遮挡层与入口按钮（条目4.5/4.6 融合：单入口按钮为图标页的
+-- IconViewerButton，注册见条目4.5 分区），页签按钮注册见本分区末尾融合块。
 -- ============================================================================
 TTManager:GetTypeControlTable("MPT_TextureViewerTooltip", m_textureViewerTooltip);
-
-Controls.TextureViewerButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_OpenTab("texture"); end);
-Controls.TextureViewerButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
 -- 搜索框：内容变化即重建过滤；占位文本按焦点/内容显隐（同 4.4 搜索框惯例）
 Controls.TextureViewerSearchEditBox:RegisterStringChangedCallback(function()
@@ -6267,7 +6264,7 @@ end);
 -- ============================================================================
 -- 两查看器共用 IconViewerPanel 根容器 + 单一 IconViewerModalBlocker 遮挡层（XML 融合面板注释），
 -- 页签台/按钮样式仿 ClimateScreen.xml（TabLedge2 + TabButton/TabButtonSelected）。
--- 本块函数为全局（KeyUpHandler/OnHandleExitRequest 与两条目入口按钮闭包都要调用）。
+-- 本块函数为全局（KeyUpHandler/OnHandleExitRequest 与单入口按钮闭包都要调用）。
 -- ############################################################################
 g_ViewerCurrentTab = "icon";	-- 当前页签："icon" 图标页 / "texture" 贴图页
 

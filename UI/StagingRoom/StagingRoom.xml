@@ -259,15 +259,11 @@
 			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_PLAYER_DETAILS"/>
 			<Label Anchor="L,C" String="LOC_MPT_PLAYERMARK_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
 		</Button>
-		<!-- 条目4.5：图标查看器唤起按钮（仿 ChangelogButton；打开图标查看面板，5056 图标点击复制，图标用 WB 可见性工具图标） -->
-		<Button ID="IconViewerButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_ICONVIEWER_TOOLTIP">
+		<!-- 条目4.5/4.6：查看器融合面板唤起按钮（仿 ChangelogButton；单按钮打开融合面板并回到上次停留的
+		     图标/贴图页签，页签台在面板顶部；图标用 WB 资源工具图标） -->
+		<Button ID="IconViewerButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_VIEWER_TOOLTIP">
 			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_RESOURCES"/>
-			<Label Anchor="L,C" String="LOC_MPT_ICONVIEWER_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
-		</Button>
-		<!-- 条目4.6：贴图查看器唤起按钮（仿 ChangelogButton；打开贴图查看面板，悬停预览/点击复制贴图名，图标用 WB 笔刷工具图标） -->
-		<Button ID="TextureViewerButton" Anchor="L,C" Size="49,49" Offset="0,0" Style="ButtonNormalText" StateOffsetIncrement="0,49" ToolTip="LOC_MPT_TEXTUREVIEWER_TOOLTIP">
-			<Image Anchor="C,C" Offset="0,0" Size="32,32" Icon="ICON_WB_TOOL_BRUSH_MEDIUM"/>
-			<Label Anchor="L,C" String="LOC_MPT_TEXTUREVIEWER_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
+			<Label Anchor="L,C" String="LOC_MPT_VIEWER_NAME" Align="Center" Offset="50,0" Style="FontNormal20" Color0="133,205,235,255" Color1="203,215,225,100" Color2="254,254,254,255"/>
 		</Button>
 
 		<!-- 条目3.6：广告轮播（仿原版主菜单 ChallengeContainer，数据驱动 MPT_Ads 表；StackGrowth Up 使本控件位于公告按钮正上方；右偏 24 避免外框贴住屏幕左缘） -->
@@ -323,7 +319,6 @@
 		<!-- 页签台（仿 ClimateScreen：TabLedge2 纹理；台 61 高跨过分隔线，页签按钮 170x34 Style=TabButton，
 		     内嵌 TabButtonSelected 子钮作选中态显隐；默认选中「图标查看器」页） -->
 		<Container Anchor="C,T" Offset="0,0" Size="439,61">
-			<Image Anchor="C,C" Size="439,27" Texture="Controls_TabLedge2_Fill" StretchMode="Tile"/>
 			<Grid Anchor="C,T" Size="439,61" Texture="Controls_TabLedge2" SliceCorner="194,18" SliceSize="52,26" SliceTextureSize="438,61">
 				<Stack ID="ViewerTabStack" Anchor="C,C" StackGrowth="Right" Padding="0" Size="340,34">
 					<GridButton ID="IconTabButton" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2" String="LOC_MPT_ICONVIEWER_TITLE">

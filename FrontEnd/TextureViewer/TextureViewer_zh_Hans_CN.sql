@@ -5,9 +5,7 @@
 --       带数字的文本不用参数化 Tag，拆无参数前缀/后缀由 Lua 拼接（见 4.6 分区缓存块）。
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
--- 入口按钮/面板标题
-('LOC_MPT_TEXTUREVIEWER_NAME', 'zh_Hans_CN', '贴图查看器'),
-('LOC_MPT_TEXTUREVIEWER_TOOLTIP', 'zh_Hans_CN', '打开贴图查看器（5017 个游戏本体与全部 DLC 的 UI 贴图，悬停格子预览贴图，点击格子复制贴图名到剪贴板）'),
+-- 页签标题（融合面板入口按钮文本在 IconViewer 文本文件 LOC_MPT_VIEWER_*）
 ('LOC_MPT_TEXTUREVIEWER_TITLE', 'zh_Hans_CN', '贴图查看器'),
 -- 搜索框（占位文本/提示）
 ('LOC_MPT_TEXTUREVIEWER_SEARCH_NAME', 'zh_Hans_CN', '搜索贴图名'),
