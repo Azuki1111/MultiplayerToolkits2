@@ -6183,7 +6183,8 @@ local function TextureViewerFillTooltip(texName : string, srcBlp : string)
 		local scale : number = math.min(math.max(screenW - TEXTUREVIEWER_TT_SCREEN_MARGIN, 1) / pixelW,
 			math.max(screenH - TEXTUREVIEWER_TT_SCREEN_MARGIN, 1) / pixelH, 1);
 		if scale < 1 then
-			m_textureViewerTooltip.TTImage:SetSize(math.floor(pixelW * scale), math.floor(pixelH * scale));
+			-- 两数值设尺寸用 SetSizeVal（ControlBase::SetSize 只收 1 参，原作此处为潜伏 bug，超大贴图悬停即报错）
+			m_textureViewerTooltip.TTImage:SetSizeVal(math.floor(pixelW * scale), math.floor(pixelH * scale));
 		end
 	else
 		m_textureViewerTooltip.TTSizeLabel:SetHide(true);
