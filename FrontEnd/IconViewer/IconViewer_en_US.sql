@@ -6,8 +6,8 @@
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 融合面板入口按钮（条目4.5/4.6 融合：单按钮打开，面板顶部页签切换）
-('LOC_MPT_VIEWER_NAME', 'en_US', 'Viewer'),
-('LOC_MPT_VIEWER_TOOLTIP', 'en_US', 'Open Viewer (4975 icons / 5017 textures, switch tabs at the top of the panel; click a tile to copy its name to clipboard)'),
+('LOC_MPT_VIEWER_NAME', 'en_US', 'Atlas List'),
+('LOC_MPT_VIEWER_TOOLTIP', 'en_US', 'Open Atlas List (4975 icons / 5017 textures, switch tabs at the top of the panel; click a tile to copy its name to clipboard)'),
 -- 页签标题
 ('LOC_MPT_ICONVIEWER_TITLE', 'en_US', 'Icon Viewer'),
 -- 搜索框（占位文本/提示）

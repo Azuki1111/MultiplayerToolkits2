@@ -6,8 +6,8 @@
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 融合面板入口按钮（条目4.5/4.6 融合：单按钮打开，面板顶部页签切换）
-('LOC_MPT_VIEWER_NAME', 'zh_Hans_CN', '查看器'),
-('LOC_MPT_VIEWER_TOOLTIP', 'zh_Hans_CN', '打开查看器（4975 个图标 / 5017 个贴图，面板顶部页签切换；点击格子复制名称到剪贴板）'),
+('LOC_MPT_VIEWER_NAME', 'zh_Hans_CN', '画册列表'),
+('LOC_MPT_VIEWER_TOOLTIP', 'zh_Hans_CN', '打开画册列表（4975 个图标 / 5017 个贴图，面板顶部页签切换；点击格子复制名称到剪贴板）'),
 -- 页签标题
 ('LOC_MPT_ICONVIEWER_TITLE', 'zh_Hans_CN', '图标查看器'),
 -- 搜索框（占位文本/提示）
