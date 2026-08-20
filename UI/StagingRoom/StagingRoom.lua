@@ -2598,6 +2598,11 @@ function OnShow()
 		-- This is a fresh session.
 		m_sessionID = networkSessionID;
 		MPT_ResetModCheckSession();	-- 联机工具箱2.0：新房间重置模组校验生命周期（条目4.1）
+		-- ============================================================================
+		-- 联机工具箱2.0：新房间自动更新本局已启用的非官方创意工坊mod（条目4.7，移植1.67 UpdateAllMods；
+		-- 触发点由 1.67 的 RealizeGameSetup 改为新会话分支，每进房只触发一次；函数定义在文件末尾条目4.7分区）
+		-- ----------------------------------------------------------------------------
+		MPT_UpdateEnabledMods();
 
 		StopCountdown();
 
@@ -6317,3 +6322,69 @@ end
 Controls.IconTabButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_SelectTab("icon"); end);
 Controls.TextureTabButton:RegisterCallback(Mouse.eLClick, function() MPT_Viewer_SelectTab("texture"); end);
 end	-- 条目4.6 do 块结束（寄存器上限适配）
+
+
+-- ############################################################################
+-- 条目4.7：进房自动更新已启用的非官方创意工坊mod（移植联机工具箱1.67 BSR UpdateAllMods 并优化）
+-- ============================================================================
+-- 用法：加入/创建准备房间（OnShow 新会话分支）时自动对本局已启用的非官方创意工坊 mod
+--      逐一调用 Modding.UpdateSubscription 触发工坊更新检查；静默执行，无界面反馈，
+--      仅 print 到 Lua.log 留痕。
+-- 相对 1.67 的优化：
+--   1. 触发时机：1.67 挂在 RealizeGameSetup（每次房间配置刷新都重复触发），改为新会话
+--      分支每进房只触发一次；
+--   2. 查找复杂度 O(n²)→O(n)：1.67 为启用×安装双重循环按 Id 匹配，改为单次遍历已安装
+--      mod 建 [modId]=SubscriptionId 局部映射（每会话只跑一次，无需跨调用缓存）；
+--   3. 会话幂等守卫：s_lastUpdateSessionID 记录上次触发会话，同会话重复调用直接返回
+--      （本文件 Lua 状态跨房间存续，靠 sessionID 变化自然放行下次进房）；
+--   4. nil 防御：GetEnabledMods/GetInstalledMods 返回 nil 安全跳过；SubscriptionId
+--      空串跳过（自动排除 Epic/非工坊 mod）；
+--   5. 日志留痕：print 触发更新的数量与 mod 标题（1.67 完全无日志）。
+-- 寄存器上限适配：本分区块级 do...end 包裹（同条目4.3预备注释）
+-- ############################################################################
+do
+local s_lastUpdateSessionID : number = -1;	-- 上次触发更新检查的会话 ID（幂等守卫）
+
+-- ============================================================================
+-- 条目4.7 公开：MPT_UpdateEnabledMods()
+-- 对本局已启用（GameConfiguration.GetEnabledMods）的非官方创意工坊 mod 触发工坊更新检查。
+-- 同会话幂等；调用点：OnShow 新会话分支（本文件 :2600 附近）。
+-- ============================================================================
+function MPT_UpdateEnabledMods()
+	local sessionID : number = Network.GetSessionID();
+	if sessionID == s_lastUpdateSessionID then
+		return;		-- 同会话已触发过，直接返回
+	end
+	s_lastUpdateSessionID = sessionID;
+
+	-- 单次遍历已安装 mod 建 [modId]=SubscriptionId 映射（替代 1.67 双重循环）
+	local subscriptionMap : table = {};
+	local installedMods = Modding.GetInstalledMods();
+	if installedMods == nil then
+		return;
+	end
+	for _, mod in ipairs(installedMods) do
+		if mod.SubscriptionId ~= nil and mod.SubscriptionId ~= "" then
+			subscriptionMap[mod.Id] = mod.SubscriptionId;
+		end
+	end
+
+	-- 遍历本局已启用 mod：非官方且有工坊订阅的触发更新
+	local updateCount : number = 0;
+	local enabledMods = GameConfiguration.GetEnabledMods();
+	if enabledMods == nil then
+		return;
+	end
+	for _, curMod in ipairs(enabledMods) do
+		if not curMod.Official then
+			local subscriptionId = subscriptionMap[curMod.Id];
+			if subscriptionId ~= nil then
+				Modding.UpdateSubscription(subscriptionId);		-- 触发工坊更新检查
+				updateCount = updateCount + 1;
+				print("MPT 条目4.7：检查工坊更新 " .. tostring(curMod.Title) .. " (SubscriptionId=" .. tostring(subscriptionId) .. ")");
+			end
+		end
+	end
+	print("MPT 条目4.7：进房自动更新检查完成，共触发 " .. updateCount .. " 个非官方创意工坊mod");
+end
+end	-- 条目4.7 do 块结束（寄存器上限适配）
