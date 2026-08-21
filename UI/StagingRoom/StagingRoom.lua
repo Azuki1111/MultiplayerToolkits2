@@ -1429,6 +1429,11 @@ function GetPlayerEntry(playerID)
 		--]]
 		playerEntry.ReadyImage:RegisterCallback( Mouse.eLClick, OnPlayerEntryReady );
 		playerEntry.ReadyImage:SetVoid1(playerID);
+		-- ============================================================================
+		-- 联机工具箱2.0 条目4.4：玩家名按钮——点击打开玩家标记「添加玩家」弹窗并预填该槽位网络ID/昵称
+		playerEntry.PlayerName:RegisterCallback( Mouse.eLClick, MPT_PlayerMark_OnSlotNameClick );
+		playerEntry.PlayerName:SetVoid1(playerID);
+		-- ----------------------------------------------------------------------------
 
 		g_PlayerEntries[playerID] = playerEntry;
 		g_PlayerRootToPlayerID[tostring(playerEntry.Root)] = playerID;
@@ -5683,9 +5688,10 @@ end
 -- 添加弹窗：打开（清空并默认「一般」标签）/ 关闭 / 字段改动实时校验 / 创建。
 -- 创建时重复 ID 不建新档：转为选中已有记录并弹提示。
 -- ============================================================================
-function MPT_PlayerMark_OpenAddPopup()
-	Controls.PlayerMarkPopupIdEdit:SetText("");
-	Controls.PlayerMarkPopupNameEdit:SetText("");
+-- 可选 presetId/presetName：预填网络ID与昵称（准备房间玩家名按钮联动，回调 MPT_PlayerMark_OnSlotNameClick 在 GetPlayerEntry 内注册）
+function MPT_PlayerMark_OpenAddPopup(presetId, presetName)
+	Controls.PlayerMarkPopupIdEdit:SetText(presetId or "");
+	Controls.PlayerMarkPopupNameEdit:SetText(presetName or "");
 	Controls.PlayerMarkPopupBriefEdit:SetText("");
 	g_PlayerMarkPopupTag = 2;
 	PlayerMarkRefreshPopupTagPullDown();
@@ -5693,7 +5699,20 @@ function MPT_PlayerMark_OpenAddPopup()
 	Controls.PlayerMarkPopupCreateButton:SetDisabled(true);
 	Controls.PlayerMarkEditPopup:SetHide(false);
 	Controls.PlayerMarkPopupIdEdit:TakeFocus();
+	MPT_PlayerMark_OnPopupFieldChanged();	-- 预填后按内容刷新创建按钮可用态（SetText 不一定触发 StringChanged 回调，手动兜底）
 	UI.PlaySound("Play_UI_Click");
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_OnSlotNameClick(playerID)：准备房间玩家槽位「玩家名」按钮点击——
+--   取该槽位网络ID与昵称，打开添加弹窗并预填；AI/开放等无网络ID槽位忽略。
+-- ============================================================================
+function MPT_PlayerMark_OnSlotNameClick(playerID : number)
+	local pConfig = PlayerConfigurations[playerID];
+	if pConfig == nil then return; end
+	local nid = pConfig:GetNetworkIdentifer();
+	if nid == nil or nid == "" then return; end
+	MPT_PlayerMark_OpenAddPopup(nid, Locale.Lookup(pConfig:GetPlayerName()));
 end
 
 function MPT_PlayerMark_CloseAddPopup()

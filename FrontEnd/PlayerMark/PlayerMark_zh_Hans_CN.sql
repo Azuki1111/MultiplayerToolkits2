@@ -24,6 +24,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_SORT_TT', 'zh_Hans_CN', '按最近修改日期排序，点击切换升/降序'),
 -- 添加按钮与弹窗
 ('LOC_MPT_PLAYERMARK_ADD', 'zh_Hans_CN', '添加玩家'),
+('LOC_MPT_PLAYERMARK_MARK_THIS_TT', 'zh_Hans_CN', '点击将该玩家加入玩家标记（自动填充网络ID与昵称）'),
 ('LOC_MPT_PLAYERMARK_POPUP_TITLE', 'zh_Hans_CN', '添加玩家'),
 ('LOC_MPT_PLAYERMARK_POPUP_ID_TT', 'zh_Hans_CN', '玩家的网络标识：Steam 为 17 位纯数字，Epic 为 32 位字符'),
 ('LOC_MPT_PLAYERMARK_POPUP_NAME_TT', 'zh_Hans_CN', '备注用昵称，仅作显示，可随时修改'),

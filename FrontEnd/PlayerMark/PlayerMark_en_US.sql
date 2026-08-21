@@ -24,6 +24,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_SORT_TT', 'en_US', 'Sort by last modified date; click to switch ascending / descending'),
 -- Add button and popup
 ('LOC_MPT_PLAYERMARK_ADD', 'en_US', 'Add Player'),
+('LOC_MPT_PLAYERMARK_MARK_THIS_TT', 'en_US', 'Click to add this player to Player Marks (auto-fills network ID and nickname)'),
 ('LOC_MPT_PLAYERMARK_POPUP_TITLE', 'en_US', 'Add Player'),
 ('LOC_MPT_PLAYERMARK_POPUP_ID_TT', 'en_US', 'Player network identifier: 17 digits for Steam, 32 characters for Epic'),
 ('LOC_MPT_PLAYERMARK_POPUP_NAME_TT', 'en_US', 'Nickname for your notes, display only, editable anytime'),

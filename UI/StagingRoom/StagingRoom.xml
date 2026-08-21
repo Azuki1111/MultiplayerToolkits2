@@ -644,7 +644,8 @@
 				<!-- Overlapping slot type pulldown for when the entry isn't occupied by an active civ. -->
 				<PullDown ID="SlotTypePulldown" Style="PullDownPlayerSlot" ScrollThreshold="110" Hidden="0">
 					<Label ID="ConnectionStatus" Anchor="L,T" Offset="4,3" String="[ICON_OnlinePip]" Style="FontNormal22"/>
-					<Label ID="PlayerName" Anchor="C,T" Offset="0,7" Style="WhiteSemiBold14" String="PlayerName" TruncateWidth="210"/>
+					<!-- 联机工具箱2.0 条目4.4：玩家名 Label 改按钮（无底纹、字体同 WhiteSemiBold14）；点击打开玩家标记「添加玩家」弹窗并预填该槽位网络ID/昵称（回调在 GetPlayerEntry 内注册）；槽位类型下拉改由卡片其余区域点击展开 -->
+					<Button ID="PlayerName" Anchor="C,T" Offset="0,4" Size="218,22" Style="WhiteSemiBold14" String="PlayerName" TruncateWidth="210" ToolTip="LOC_MPT_PLAYERMARK_MARK_THIS_TT"/>
 					<Label ID="PlayerStatus" Anchor="L,B" Offset="10,7" Style="WhiteSemiBold12" String="PlayerStatus"/>
 					<!-- 联机工具箱2.0 条目3.7：常驻 ping 数值，玩家名框右下角（与左下状态文字同行对称，右缘留 30px 避开下拉箭头），由 StagingRoom.lua 条目3.7 分区内联覆盖的 UpdateNetConnectionIcon 按绿黄红分档着色 -->
 					<Label ID="PingLabel" Anchor="R,B" Offset="30,7" Style="WhiteSemiBold12" Hidden="1"/>
