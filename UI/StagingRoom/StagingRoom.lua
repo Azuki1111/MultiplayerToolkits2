@@ -5418,6 +5418,13 @@ function MPT_PlayerMark_IsValidId(id)
 end
 
 -- ============================================================================
+-- MPT_PlayerMark_IsSteamId(id)：是否 17 位纯数字 SteamID64（Steam 主页按钮可用性判定；Epic 32 位 ID 无 Steam 主页）。
+-- ============================================================================
+function MPT_PlayerMark_IsSteamId(id)
+	return type(id) == "string" and #id == 17 and string.match(id, "^%d+$") ~= nil;
+end
+
+-- ============================================================================
 -- MPT_PlayerMark_FindIndex(id)：按主键查记录下标，未找到返回 nil。
 -- ============================================================================
 function MPT_PlayerMark_FindIndex(id)
@@ -5555,7 +5562,7 @@ function MPT_PlayerMark_RefreshEditor()
 	Controls.PlayerMarkHeaderName:SetText(rec.Name or "");
 	Controls.PlayerMarkHeaderId:SetText(rec.Id);
 	-- Steam 主页按钮仅对 17 位纯数字 ID（SteamID64）可用；Epic 32 位 ID 禁用
-	Controls.PlayerMarkSteamButton:SetDisabled(not (rec.Id ~= nil and string.len(rec.Id) == 17 and string.match(rec.Id, "^%d+$") ~= nil));
+	Controls.PlayerMarkSteamButton:SetDisabled(not MPT_PlayerMark_IsSteamId(rec.Id));
 	g_PlayerMarkEditTag = rec.Tag or 2;
 	PlayerMarkRefreshTagPullDown();
 	Controls.PlayerMarkBriefEdit:SetText(rec.Brief or "");
@@ -5729,6 +5736,8 @@ function MPT_PlayerMark_OnPopupFieldChanged()
 	local name = Controls.PlayerMarkPopupNameEdit:GetText();
 	local idValid : boolean = MPT_PlayerMark_IsValidId(id);
 	Controls.PlayerMarkPopupCreateButton:SetDisabled(not idValid or name == nil or name == "");
+	-- Steam 主页按钮仅对 17 位纯数字 ID 可用（Epic 32 位禁用），随输入实时刷新
+	Controls.PlayerMarkPopupSteamButton:SetDisabled(not MPT_PlayerMark_IsSteamId(id));
 	if id ~= nil and id ~= "" and not idValid then
 		Controls.PlayerMarkPopupHint:SetText(PlayerMarkIdInvalidStr);
 		Controls.PlayerMarkPopupHint:SetHide(false);
@@ -5848,6 +5857,13 @@ end);
 Controls.PlayerMarkAddButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_OpenAddPopup(); end);
 Controls.PlayerMarkPopupCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CloseAddPopup);
 Controls.PlayerMarkPopupCreateButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CreateFromPopup);
+-- 弹窗 Steam 主页按钮：以输入框当前 ID 打开 Steam 个人主页（禁用态由 OnPopupFieldChanged 控制，此处再防御一次）
+Controls.PlayerMarkPopupSteamButton:RegisterCallback(Mouse.eLClick, function()
+	local id = Controls.PlayerMarkPopupIdEdit:GetText();
+	if MPT_PlayerMark_IsSteamId(id) then
+		Steam.ActivateGameOverlayToUrl("https://steamcommunity.com/profiles/" .. id);
+	end
+end);
 Controls.PlayerMarkPopupIdEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
 Controls.PlayerMarkPopupNameEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
 -- 添加弹窗标签下拉：构建三项（图标+名称，同右侧下拉范式），选中即暂存 g_PlayerMarkPopupTag

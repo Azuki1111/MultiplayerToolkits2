@@ -534,7 +534,11 @@
 						<EditBox ID="PlayerMarkPopupNameEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="45" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_NAME_TT" CallOnChar="1"/>
 					</Grid>
 					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
-					<PullDown ID="PlayerMarkPopupTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,T" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
+					<Container Size="parent,24">
+						<PullDown ID="PlayerMarkPopupTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,C" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
+						<!-- Steam 主页按钮：以当前输入框 ID 打开 Steam 个人主页；仅 17 位纯数字 ID 可用（Epic 32 位禁用），禁用态随字段校验实时刷新 -->
+						<GridButton ID="PlayerMarkPopupSteamButton" Style="MainButtonSmall" Anchor="R,C" Size="110,24" String="LOC_MPT_PLAYERMARK_STEAM_PROFILE" ToolTip="LOC_MPT_PLAYERMARK_STEAM_PROFILE_TT"/>
+					</Container>
 					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
 					<Grid Style="EditTextButton" Size="parent,26">
 						<EditBox ID="PlayerMarkPopupBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" CallOnChar="1"/>
@@ -644,7 +648,7 @@
 				<!-- Overlapping slot type pulldown for when the entry isn't occupied by an active civ. -->
 				<PullDown ID="SlotTypePulldown" Style="PullDownPlayerSlot" ScrollThreshold="110" Hidden="0">
 					<Label ID="ConnectionStatus" Anchor="L,T" Offset="4,3" String="[ICON_OnlinePip]" Style="FontNormal22"/>
-					<Label ID="PlayerName" Anchor="C,T" Offset="0,4" Style="WhiteSemiBold14" String="PlayerName" TruncateWidth="210"/>
+					<Label ID="PlayerName" Anchor="C,T" Offset="0,8" Style="WhiteSemiBold14" String="PlayerName" TruncateWidth="210"/>
 					<Label ID="PlayerStatus" Anchor="L,B" Offset="10,7" Style="WhiteSemiBold12" String="PlayerStatus"/>
 					<!-- 联机工具箱2.0 条目3.7：常驻 ping 数值，玩家名框右下角（与左下状态文字同行对称，右缘留 30px 避开下拉箭头），由 StagingRoom.lua 条目3.7 分区内联覆盖的 UpdateNetConnectionIcon 按绿黄红分档着色 -->
 					<Label ID="PingLabel" Anchor="R,B" Offset="30,7" Style="WhiteSemiBold12" Hidden="1"/>
