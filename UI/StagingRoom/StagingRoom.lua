@@ -1757,8 +1757,8 @@ function UpdatePlayerEntry(playerID)
 		local showHotseatEdit:boolean = isHotSeat and slotStatus == SlotStatus.SS_TAKEN;
 		playerEntry.SlotTypePulldown:SetHide(hidePlayerCard);
 		-- ============================================================================
-		-- 联机工具箱2.0 条目4.4：玩家名热区按钮显隐随 SlotTypePulldown（仅人类玩家槽位可点）
-		playerEntry.PlayerNameButton:SetHide(hidePlayerCard);
+		-- 联机工具箱2.0 条目4.4：玩家名热区按钮显隐随 SlotTypePulldown（仅其他人类玩家槽位可点，自己除外）
+		playerEntry.PlayerNameButton:SetHide(hidePlayerCard or playerID == localPlayerID);
 		-- ----------------------------------------------------------------------------
 		playerEntry.HotseatEditButton:SetHide(not showHotseatEdit);
 		playerEntry.AlternateEditButton:SetHide(not hidePlayerCard);
@@ -5708,10 +5708,11 @@ function MPT_PlayerMark_OpenAddPopup(presetId, presetName)
 end
 
 -- ============================================================================
--- MPT_PlayerMark_OnSlotNameClick(playerID)：准备房间玩家槽位「玩家名」按钮点击——
---   取该槽位网络ID与昵称，打开添加弹窗并预填；AI/开放等无网络ID槽位忽略。
+-- MPT_PlayerMark_OnSlotNameClick(playerID)：准备房间玩家槽位「玩家名」热区按钮点击——
+--   取该槽位网络ID与昵称，打开添加弹窗并预填；自己、AI/开放等无网络ID槽位忽略。
 -- ============================================================================
 function MPT_PlayerMark_OnSlotNameClick(playerID : number)
+	if playerID == Network.GetLocalPlayerID() then return; end	-- 不标记自己
 	local pConfig = PlayerConfigurations[playerID];
 	if pConfig == nil then return; end
 	local nid = pConfig:GetNetworkIdentifer();
