@@ -5327,7 +5327,8 @@ local PlayerMarkTagNameStrs			: table = {	-- 下标即 Tag：标签下拉项/按
 -- ============================================================================
 local PLAYERMARK_STORAGE_FILE : string = "MPT_PlayerInfo";	-- 专属玩家信息存档文件名（字母数字下划线）
 local PLAYERMARK_STORAGE_KEY  : string = "Players";			-- 存档内键名
-local PLAYERMARK_TAG_ICONS : table = { "[ICON_OnlineGreenPingPip]", "[ICON_OnlineYellowPingPig]", "[ICON_OnlineRedPingPig]" };	-- 下标即 Tag：1好友 2一般 3黑名单（游戏真实图标名黄/红为 PingPig，已核实）
+local PLAYERMARK_TAG_ICONS : table = { "[ICON_OnlineGreenPingPip]", "[ICON_OnlineYellowPingPig]", "[ICON_OnlineRedPingPig]" };	-- 下标即 Tag：1好友 2一般 3黑名单（游戏真实图标名黄/红为 PingPig，已核实）；带方括号文本 tag，下拉按钮文本用
+local PLAYERMARK_TAG_ICON_NAMES : table = { "ICON_OnlineGreenPingPip", "ICON_OnlineYellowPingPig", "ICON_OnlineRedPingPig" };	-- 下标即 Tag；列表行 Image:SetIcon 用（不带方括号，FontIcons.xml 的 Name 加 ICON_ 前缀）
 
 g_PlayerMarkList        = {};		-- 玩家记录数组（磁盘内容的工作副本）
 g_PlayerMarkSelectedId  = nil;		-- 当前选中玩家 Id（nil=未选中）
@@ -5508,7 +5509,7 @@ function MPT_PlayerMark_RebuildList()
 	for i, rec in ipairs(filtered) do
 		local inst = m_playerMarkEntryIM:GetInstance();
 		g_playerMarkEntryIds[i] = rec.Id;
-		inst.TagIconLabel:SetText(PLAYERMARK_TAG_ICONS[rec.Tag or 2] or "");
+		inst.TagIconLabel:SetIcon(PLAYERMARK_TAG_ICON_NAMES[rec.Tag or 2], 22);
 		inst.NameLabel:SetText(rec.Name or "");
 		-- 行按钮 tooltip：[ICON_YOU]+网络ID，空两行后接简要描述（无简要描述时只显示 ID）
 		local tip : string = "[ICON_YOU]" .. (rec.Id or "");

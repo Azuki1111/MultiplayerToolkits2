@@ -886,11 +886,11 @@
 		</Container>
 	</Instance>
 
-	<!-- 条目4.4：玩家标记列表行实例（整行按钮；标签图标+居中昵称，悬停 tooltip 显示 [ICON_YOU]+网络ID 与简要描述；点击右侧载入该记录；SelectedFrame 为选中态金色外框，仿准备房间本地玩家行 GoldFrame/Controls_OptionFrame，Lua 按 g_PlayerMarkSelectedId 控制显隐） -->
+	<!-- 条目4.4：玩家标记列表行实例（整行按钮；标签图标(Image, Lua SetIcon 按 Tag 切换)+居中昵称，悬停 tooltip 显示 [ICON_YOU]+网络ID 与简要描述；点击右侧载入该记录；SelectedFrame 为选中态金色外框，仿准备房间本地玩家行 GoldFrame/Controls_OptionFrame，Lua 按 g_PlayerMarkSelectedId 控制显隐） -->
 	<Instance Name="PlayerMarkEntryInstance">
 		<Container ID="EntryRoot" Size="parent,52" Anchor="L,C">
 			<GridButton ID="RowButton" Style="ButtonControl" Size="parent,parent" Offset="-4,0">
-				<Label ID="TagIconLabel" Anchor="L,C" Offset="15,2" Style="FontNormal16" String=""/>
+				<Image ID="TagIconLabel" Anchor="L,C" Offset="15,0" Size="22,22" Icon="ICON_OnlineYellowPingPig"/>
 				<ScrollTextField ID="NameLabel" Size="300,16" Anchor="C,C" Style="FontNormal19" FontStyle="stroke" String="Name"/>
 			</GridButton>
 			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
