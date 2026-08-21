@@ -516,30 +516,22 @@
 		</Container>
 	</Container>
 
-	<!-- 条目4.4：添加玩家弹窗（仿 1.67 NameModGroupPopup / 原版 Mods.xml 组名弹窗；创建按钮仅在 ID 合法且昵称非空时可用，重复 ID 自动转为编辑已有记录） -->
+	<!-- 条目4.4：添加玩家弹窗（仿 1.67 NameModGroupPopup / 原版 Mods.xml 组名弹窗；创建按钮仅在 ID 合法且昵称非空时可用，重复 ID 自动转为编辑已有记录；标签选择为 PullDownBlue 下拉，同右侧面板） -->
 	<Box ID="PlayerMarkEditPopup" Color="0,0,0,150" Size="parent,parent" ConsumeMouseOver="1" Hidden="1" IgnoreTutorial="1">
-		<Grid Size="480,420" Anchor="C,C" Style="DropShadow2" Color="255,255,255,200">
+		<Grid Size="480,370" Anchor="C,C" Style="DropShadow2" Color="255,255,255,200">
 			<Grid ID="PlayerMarkEditPopupWindow" Size="parent-40,parent-20" Anchor="C,C" Style="WindowFrameTitle">
-				<Label Anchor="C,T" String="LOC_MPT_PLAYERMARK_POPUP_TITLE" Align="Center" Style="BlueGlow" Offset="0,15"/>
-				<Stack Offset="0,50" Size="parent-60,0" StackGrowth="Down" Anchor="C,T" Padding="8">
-					<Label Style="FontNormal16" String="LOC_MPT_PLAYERMARK_FIELD_ID"/>
+				<Stack Offset="0,22" Size="parent-60,0" StackGrowth="Down" Anchor="C,T" Padding="8">
+					<Label Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_ID"/>
 					<Grid Style="EditTextButton" Size="parent,26">
 						<EditBox ID="PlayerMarkPopupIdEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="32" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_ID_TT" CallOnChar="1"/>
 					</Grid>
-					<Label Style="FontNormal16" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
+					<Label Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
 					<Grid Style="EditTextButton" Size="parent,26">
 						<EditBox ID="PlayerMarkPopupNameEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="45" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_NAME_TT" CallOnChar="1"/>
 					</Grid>
-					<Label Style="FontNormal16" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
-					<Container Size="parent,34">
-						<GridButton ID="PlayerMarkPopupTagButton1" Style="MainButtonSmall" Anchor="L,T" Offset="0,0" Size="40,30" String="[ICON_OnlineGreenPingPip]" ToolTip="LOC_MPT_PLAYERMARK_TAG_FRIEND_TT"/>
-						<GridButton ID="PlayerMarkPopupTagButton2" Style="MainButtonSmall" Anchor="L,T" Offset="48,0" Size="40,30" String="[ICON_OnlineYellowPingPig]" ToolTip="LOC_MPT_PLAYERMARK_TAG_NORMAL_TT"/>
-						<GridButton ID="PlayerMarkPopupTagButton3" Style="MainButtonSmall" Anchor="L,T" Offset="96,0" Size="40,30" String="[ICON_OnlineRedPingPig]" ToolTip="LOC_MPT_PLAYERMARK_TAG_BLACK_TT"/>
-						<Box ID="PlayerMarkPopupTagLine1" Anchor="L,B" Offset="0,0" Size="40,3" Color="90,200,90,255" Hidden="1"/>
-						<Box ID="PlayerMarkPopupTagLine2" Anchor="L,B" Offset="48,0" Size="40,3" Color="220,200,90,255"/>
-						<Box ID="PlayerMarkPopupTagLine3" Anchor="L,B" Offset="96,0" Size="40,3" Color="220,90,90,255" Hidden="1"/>
-					</Container>
-					<Label Style="FontNormal16" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
+					<Label Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
+					<PullDown ID="PlayerMarkPopupTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,T" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
+					<Label Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
 					<Grid Style="EditTextButton" Size="parent,26">
 						<EditBox ID="PlayerMarkPopupBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" CallOnChar="1"/>
 					</Grid>

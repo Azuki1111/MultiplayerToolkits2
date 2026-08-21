@@ -5347,22 +5347,23 @@ local m_kPlayerMarkDialog  = PopupDialog:new("MPT_PlayerMark");	-- 本功能专�
 local g_playerMarkEntryIds : table = {};	-- 左列实例序号 -> 玩家 Id（点击行时反查，列表过滤/排序后下标不稳定）
 
 -- ============================================================================
--- 内部：PlayerMarkSetTagLines(tag)
--- 刷新添加弹窗三标签按钮的选中下划线（右侧编辑区已改下拉选择，见 PlayerMarkRefreshTagPullDown）。
+-- 内部：PlayerMarkSetTagPullDownText(pd, tag)
+-- 设置标签下拉按钮文本（图标+名称）；右侧编辑区与添加弹窗两个下拉共用。
 -- ============================================================================
-local function PlayerMarkSetTagLines(tag : number)
-	Controls.PlayerMarkPopupTagLine1:SetHide(tag ~= 1);
-	Controls.PlayerMarkPopupTagLine2:SetHide(tag ~= 2);
-	Controls.PlayerMarkPopupTagLine3:SetHide(tag ~= 3);
+local function PlayerMarkSetTagPullDownText(pd, tag : number)
+	tag = tag or 2;
+	pd:GetButton():SetText(PLAYERMARK_TAG_ICONS[tag] .. " " .. PlayerMarkTagNameStrs[tag]);
 end
 
 -- ============================================================================
--- 内部：PlayerMarkRefreshTagPullDown()
--- 按 g_PlayerMarkEditTag 刷新右侧标签下拉按钮文本（图标+名称）。
+-- 内部：PlayerMarkRefreshTagPullDown() / PlayerMarkRefreshPopupTagPullDown()
+-- 按当前暂存标签刷新右侧编辑区 / 添加弹窗的标签下拉按钮文本。
 -- ============================================================================
 local function PlayerMarkRefreshTagPullDown()
-	local tag : number = g_PlayerMarkEditTag or 2;
-	Controls.PlayerMarkTagPullDown:GetButton():SetText(PLAYERMARK_TAG_ICONS[tag] .. " " .. PlayerMarkTagNameStrs[tag]);
+	PlayerMarkSetTagPullDownText(Controls.PlayerMarkTagPullDown, g_PlayerMarkEditTag);
+end
+local function PlayerMarkRefreshPopupTagPullDown()
+	PlayerMarkSetTagPullDownText(Controls.PlayerMarkPopupTagPullDown, g_PlayerMarkPopupTag);
 end
 
 -- ============================================================================
@@ -5685,7 +5686,7 @@ function MPT_PlayerMark_OpenAddPopup()
 	Controls.PlayerMarkPopupNameEdit:SetText("");
 	Controls.PlayerMarkPopupBriefEdit:SetText("");
 	g_PlayerMarkPopupTag = 2;
-	PlayerMarkSetTagLines(2);
+	PlayerMarkRefreshPopupTagPullDown();
 	Controls.PlayerMarkPopupHint:SetHide(true);
 	Controls.PlayerMarkPopupCreateButton:SetDisabled(true);
 	Controls.PlayerMarkEditPopup:SetHide(false);
@@ -5823,9 +5824,18 @@ Controls.PlayerMarkPopupCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerM
 Controls.PlayerMarkPopupCreateButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CreateFromPopup);
 Controls.PlayerMarkPopupIdEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
 Controls.PlayerMarkPopupNameEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
-Controls.PlayerMarkPopupTagButton1:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 1; PlayerMarkSetTagLines(1); end);
-Controls.PlayerMarkPopupTagButton2:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 2; PlayerMarkSetTagLines(2); end);
-Controls.PlayerMarkPopupTagButton3:RegisterCallback(Mouse.eLClick, function() g_PlayerMarkPopupTag = 3; PlayerMarkSetTagLines(3); end);
+-- 添加弹窗标签下拉：构建三项（图标+名称，同右侧下拉范式），选中即暂存 g_PlayerMarkPopupTag
+Controls.PlayerMarkPopupTagPullDown:ClearEntries();
+for tag = 1, 3 do
+	local entry : table = {};
+	Controls.PlayerMarkPopupTagPullDown:BuildEntry("InstanceOne", entry);
+	entry.Button:SetText(PLAYERMARK_TAG_ICONS[tag] .. " " .. PlayerMarkTagNameStrs[tag]);
+	entry.Button:RegisterCallback(Mouse.eLClick, function()
+		g_PlayerMarkPopupTag = tag;
+		PlayerMarkRefreshPopupTagPullDown();
+	end);
+end
+Controls.PlayerMarkPopupTagPullDown:CalculateInternals();
 
 -- 右列编辑区：文本改动标 dirty（装载期屏蔽）；标签类型下拉；详情输入回车=添加；保存/取消/删除
 Controls.PlayerMarkNameEdit:RegisterStringChangedCallback(PlayerMarkOnEditorFieldChanged);
