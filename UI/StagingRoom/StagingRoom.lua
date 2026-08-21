@@ -5706,7 +5706,6 @@ function MPT_PlayerMark_OpenAddPopup(presetId, presetName)
 	Controls.PlayerMarkPopupBriefEdit:SetText("");
 	g_PlayerMarkPopupTag = 2;
 	PlayerMarkRefreshPopupTagPullDown();
-	Controls.PlayerMarkPopupHint:SetHide(true);
 	Controls.PlayerMarkPopupCreateButton:SetDisabled(true);
 	Controls.PlayerMarkEditPopup:SetHide(false);
 	Controls.PlayerMarkPopupIdEdit:TakeFocus();
@@ -5738,11 +5737,13 @@ function MPT_PlayerMark_OnPopupFieldChanged()
 	Controls.PlayerMarkPopupCreateButton:SetDisabled(not idValid or name == nil or name == "");
 	-- Steam 主页按钮仅对 17 位纯数字 ID 可用（Epic 32 位禁用），随输入实时刷新
 	Controls.PlayerMarkPopupSteamButton:SetDisabled(not MPT_PlayerMark_IsSteamId(id));
+	-- 校验提示改为「创建」按钮 tooltip（禁用态按钮悬停仍显示）
 	if id ~= nil and id ~= "" and not idValid then
-		Controls.PlayerMarkPopupHint:SetText(PlayerMarkIdInvalidStr);
-		Controls.PlayerMarkPopupHint:SetHide(false);
+		Controls.PlayerMarkPopupCreateButton:SetToolTipString(PlayerMarkIdInvalidStr);
+	elseif name == nil or name == "" then
+		Controls.PlayerMarkPopupCreateButton:SetToolTipString(PlayerMarkNameEmptyStr);
 	else
-		Controls.PlayerMarkPopupHint:SetHide(true);
+		Controls.PlayerMarkPopupCreateButton:SetToolTipString("");
 	end
 end
 

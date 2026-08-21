@@ -519,7 +519,7 @@
 		</Container>
 	</Container>
 
-	<!-- 条目4.4：添加玩家弹窗（仿 1.67 NameModGroupPopup / 原版 Mods.xml 组名弹窗；创建按钮仅在 ID 合法且昵称非空时可用，重复 ID 自动转为编辑已有记录；标签选择为 PullDownBlue 下拉，同右侧面板） -->
+	<!-- 条目4.4：添加玩家弹窗（仿 1.67 NameModGroupPopup / 原版 Mods.xml 组名弹窗；创建按钮仅在 ID 合法且昵称非空时可用，校验提示显示在其 tooltip 上，重复 ID 自动转为编辑已有记录；标签选择为 PullDownBlue 下拉，同右侧面板） -->
 	<Box ID="PlayerMarkEditPopup" Color="0,0,0,150" Size="parent,parent" ConsumeMouseOver="1" Hidden="1" IgnoreTutorial="1">
 		<Grid Size="480,370" Anchor="C,C" Style="DropShadow2" Color="255,255,255,200">
 			<Grid ID="PlayerMarkEditPopupWindow" Size="parent-40,parent-20" Anchor="C,C" Style="WindowFrameTitle">
@@ -543,7 +543,6 @@
 					<Grid Style="EditTextButton" Size="parent,26">
 						<EditBox ID="PlayerMarkPopupBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" CallOnChar="1"/>
 					</Grid>
-					<Label ID="PlayerMarkPopupHint" Style="FontNormal14" Size="parent,18" String="" Hidden="1"/>
 					<Container Size="parent,50">
 						<GridButton ID="PlayerMarkPopupCancelButton" Style="ButtonRed" Size="180,41" Offset="0,0" Anchor="L,T" String="LOC_CANCEL"/>
 						<GridButton ID="PlayerMarkPopupCreateButton" Style="MainButton" Size="180,41" Offset="0,0" Anchor="R,T" String="LOC_MPT_PLAYERMARK_CREATE"/>
