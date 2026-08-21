@@ -1430,9 +1430,9 @@ function GetPlayerEntry(playerID)
 		playerEntry.ReadyImage:RegisterCallback( Mouse.eLClick, OnPlayerEntryReady );
 		playerEntry.ReadyImage:SetVoid1(playerID);
 		-- ============================================================================
-		-- 联机工具箱2.0 条目4.4：玩家名按钮——点击打开玩家标记「添加玩家」弹窗并预填该槽位网络ID/昵称
-		playerEntry.PlayerName:RegisterCallback( Mouse.eLClick, MPT_PlayerMark_OnSlotNameClick );
-		playerEntry.PlayerName:SetVoid1(playerID);
+		-- 联机工具箱2.0 条目4.4：玩家名热区按钮——点击打开玩家标记「添加玩家」弹窗并预填该槽位网络ID/昵称
+		playerEntry.PlayerNameButton:RegisterCallback( Mouse.eLClick, MPT_PlayerMark_OnSlotNameClick );
+		playerEntry.PlayerNameButton:SetVoid1(playerID);
 		-- ----------------------------------------------------------------------------
 
 		g_PlayerEntries[playerID] = playerEntry;
@@ -1756,6 +1756,10 @@ function UpdatePlayerEntry(playerID)
 		local hidePlayerCard:boolean = isHotSeat or slotStatus ~= SlotStatus.SS_TAKEN;
 		local showHotseatEdit:boolean = isHotSeat and slotStatus == SlotStatus.SS_TAKEN;
 		playerEntry.SlotTypePulldown:SetHide(hidePlayerCard);
+		-- ============================================================================
+		-- 联机工具箱2.0 条目4.4：玩家名热区按钮显隐随 SlotTypePulldown（仅人类玩家槽位可点）
+		playerEntry.PlayerNameButton:SetHide(hidePlayerCard);
+		-- ----------------------------------------------------------------------------
 		playerEntry.HotseatEditButton:SetHide(not showHotseatEdit);
 		playerEntry.AlternateEditButton:SetHide(not hidePlayerCard);
 		playerEntry.AlternateSlotTypePulldown:SetHide(not hidePlayerCard);
@@ -5839,8 +5843,8 @@ Controls.PlayerMarkSearchEditBox:RegisterLostFocusCallback(function()
 	Controls.PlayerMarkSearchPlaceholder:SetHide((Controls.PlayerMarkSearchEditBox:GetText() or "") ~= "");
 end);
 
--- 左列底部添加按钮与添加弹窗
-Controls.PlayerMarkAddButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OpenAddPopup);
+-- 左列底部添加按钮与添加弹窗（包一层匿名函数：RegisterCallback 会以 void1/void2 默认 0,0 作参数直调，会把两个 0 预填进输入框）
+Controls.PlayerMarkAddButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_OpenAddPopup(); end);
 Controls.PlayerMarkPopupCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CloseAddPopup);
 Controls.PlayerMarkPopupCreateButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CreateFromPopup);
 Controls.PlayerMarkPopupIdEdit:RegisterStringChangedCallback(MPT_PlayerMark_OnPopupFieldChanged);
