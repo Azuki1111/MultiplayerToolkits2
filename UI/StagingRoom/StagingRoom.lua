@@ -1367,6 +1367,12 @@ function OnHandleExitRequest()
 	-- ============================================================================
 	MPT_Viewer_Close();
 	-- ----------------------------------------------------------------------------
+	-- ============================================================================
+	-- 联机工具箱2.0：退出房间时重置玩家标记管理面板显示状态（条目4.4，硬重置防跨房残留：
+	-- 丢弃未保存改动、硬关面板/添加弹窗/对话框，选中/搜索/过滤/排序回默认）
+	-- ============================================================================
+	MPT_PlayerMark_ResetOnExit();
+	-- ----------------------------------------------------------------------------
 
 	Controls.CountdownTimerAnim:ClearAnimCallback();
 	
@@ -5812,6 +5818,35 @@ function MPT_PlayerMark_Close()
 	Controls.PlayerMarkPanel:SetHide(true);
 	Controls.PlayerMarkModalBlocker:SetHide(true);
 	UI.PlaySound("UI_Screen_Close");
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_ResetOnExit()：退出准备房间时硬重置本功能显示状态（供 OnHandleExitRequest 调用）。
+--   Lua 状态跨房间存续，不重置会残留进新房间。不弹任何确认：未保存改动直接丢弃；
+--   面板/添加弹窗/确认对话框硬关闭；选中、搜索、过滤、排序、编辑暂存全部回到初始默认。
+--   控件勾选/文案同步复位（控件状态同样跨房间存续）；列表与编辑区不必重建，下次打开
+--   MPT_PlayerMark_Open 会 LoadFromDisk 后重建。
+-- ============================================================================
+function MPT_PlayerMark_ResetOnExit()
+	g_PlayerMarkDirty = false;				-- 丢弃未保存改动（退房不再弹放弃确认）
+	m_kPlayerMarkDialog:Close();			-- 确认/提示对话框一并硬关闭
+	Controls.PlayerMarkEditPopup:SetHide(true);
+	Controls.PlayerMarkPanel:SetHide(true);
+	Controls.PlayerMarkModalBlocker:SetHide(true);
+	-- 显示状态归位：取消选中、清空搜索、过滤全勾选、排序回默认（最新修改在前）
+	g_PlayerMarkSelectedId = nil;
+	g_PlayerMarkSearchStr = "";
+	g_PlayerMarkFilterTag = { true, true, true };
+	g_PlayerMarkSortAsc = false;
+	g_PlayerMarkEditTag = 2;
+	g_PlayerMarkWorkDetails = {};
+	g_PlayerMarkPopupTag = 2;
+	Controls.PlayerMarkSearchEditBox:SetText("");
+	Controls.PlayerMarkSearchPlaceholder:SetHide(false);
+	Controls.PlayerMarkFilterFriend:SetCheck(true);
+	Controls.PlayerMarkFilterNormal:SetCheck(true);
+	Controls.PlayerMarkFilterBlack:SetCheck(true);
+	Controls.PlayerMarkSortButton:SetText(PlayerMarkSortDescStr);
 end
 
 -- ============================================================================
