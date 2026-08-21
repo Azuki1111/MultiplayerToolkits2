@@ -520,25 +520,26 @@
 	<Box ID="PlayerMarkEditPopup" Color="0,0,0,150" Size="parent,parent" ConsumeMouseOver="1" Hidden="1" IgnoreTutorial="1">
 		<Grid Size="480,370" Anchor="C,C" Style="DropShadow2" Color="255,255,255,200">
 			<Grid ID="PlayerMarkEditPopupWindow" Size="parent-40,parent-20" Anchor="C,C" Style="WindowFrameTitle">
-				<Stack Offset="0,22" Size="parent-60,0" StackGrowth="Down" Anchor="C,T" Padding="8">
-					<Label Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_ID"/>
+				<Label Style="BlueGlow" Offset="0,16" Anchor="C,T" String="LOC_MPT_PLAYERMARK_ADD"/>
+				<Stack Offset="0,52" Size="parent-60,0" StackGrowth="Down" Anchor="C,T" Padding="8">
+					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_ID"/>
 					<Grid Style="EditTextButton" Size="parent,26">
 						<EditBox ID="PlayerMarkPopupIdEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="32" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_ID_TT" CallOnChar="1"/>
 					</Grid>
-					<Label Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
+					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
 					<Grid Style="EditTextButton" Size="parent,26">
 						<EditBox ID="PlayerMarkPopupNameEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="45" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_NAME_TT" CallOnChar="1"/>
 					</Grid>
-					<Label Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
+					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
 					<PullDown ID="PlayerMarkPopupTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,T" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
-					<Label Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
+					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
 					<Grid Style="EditTextButton" Size="parent,26">
 						<EditBox ID="PlayerMarkPopupBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" CallOnChar="1"/>
 					</Grid>
 					<Label ID="PlayerMarkPopupHint" Style="FontNormal14" Size="parent,18" String="" Hidden="1"/>
 					<Container Size="parent,50">
-						<GridButton ID="PlayerMarkPopupCancelButton" Style="ButtonRed" Size="160,41" Offset="10,0" Anchor="L,T" String="LOC_CANCEL"/>
-						<GridButton ID="PlayerMarkPopupCreateButton" Style="MainButton" Size="160,41" Offset="10,0" Anchor="R,T" String="LOC_MPT_PLAYERMARK_CREATE"/>
+						<GridButton ID="PlayerMarkPopupCancelButton" Style="ButtonRed" Size="180,41" Offset="0,0" Anchor="L,T" String="LOC_CANCEL"/>
+						<GridButton ID="PlayerMarkPopupCreateButton" Style="MainButton" Size="180,41" Offset="0,0" Anchor="R,T" String="LOC_MPT_PLAYERMARK_CREATE"/>
 					</Container>
 				</Stack>
 			</Grid>
@@ -891,8 +892,8 @@
 
 	<!-- 条目4.4：详细描述行实例（卡片仿更新公告 ChangelogEntryInstance：SubContainer2 底，日期左上、删除钮右上、文本换行显示，行高由 Lua 按文本高自适应；删除为暂存改动，保存生效/取消还原，不弹确认） -->
 	<Instance Name="PlayerMarkDetailEntryInstance">
-		<Grid ID="DetailRoot" Size="parent,60" Color="GreatPeopleRowUnOwned" Style="SubContainer2">
-			<Label ID="DetailDateLabel" Anchor="L,T" Offset="10,6" Style="FontNormal14" Color="GreatPeopleRow" String=""/>
+		<Grid ID="DetailRoot" Size="parent,60" Color="100,100,100,100" Style="SubContainer2">
+			<Label ID="DetailDateLabel" Anchor="L,T" Offset="10,4" Style="FontNormal14" Color="GreatPeopleRow" String=""/>
 			<Button ID="DetailDeleteButton" Anchor="R,C" Offset="8,0" Size="32,32" Texture="Controls_CloseButtonAlt" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_DELETE_TT"/>
 			<Container Size="parent-60,parent" Offset="10,0">
 				<Label ID="DetailTextLabel" Anchor="L,T" Offset="0,26" Style="FontNormal16" WrapWidth="parent" String=""/>
