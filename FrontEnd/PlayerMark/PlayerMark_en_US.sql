@@ -37,6 +37,8 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_MODIFIED_PREFIX', 'en_US', 'Last modified: '),
 -- Right-side action buttons
 ('LOC_MPT_PLAYERMARK_SAVE', 'en_US', 'Save'),
+('LOC_MPT_PLAYERMARK_STEAM_PROFILE', 'en_US', 'Steam Profile'),
+('LOC_MPT_PLAYERMARK_STEAM_PROFILE_TT', 'en_US', "Open this player's Steam profile (only available for Steam players with 17-digit numeric ID)"),
 ('LOC_MPT_PLAYERMARK_DELETE', 'en_US', 'Delete Player'),
 ('LOC_MPT_PLAYERMARK_DELETE_TT', 'en_US', 'Permanently delete all records of this player (takes effect immediately, cannot be undone)'),
 ('LOC_MPT_PLAYERMARK_ADD_DETAIL', 'en_US', 'Add'),

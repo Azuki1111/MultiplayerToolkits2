@@ -483,8 +483,11 @@
 								<EditBox ID="PlayerMarkNameEdit" Style="FontNormal20" Anchor="L,C" Offset="28,0" Size="parent-40,20" MaxLength="45" String="" CallOnChar="1"/>
 							</Grid>
 							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
-							<!-- 标签类型下拉（PullDownBlue，同 Mods.xml 排序下拉；Lua 构建三项「图标+名称」并维护按钮文本，选择即暂存标 dirty） -->
-							<PullDown ID="PlayerMarkTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,T" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
+							<!-- 标签类型下拉 + Steam 主页按钮同一行（PullDownBlue 同 Mods.xml 排序下拉；容器高 24 与原下拉行一致，不影响详情 ScrollPanel parent-235 高度链；Steam 按钮仅 17 位纯数字 ID 可用，Lua 控制禁用态） -->
+							<Container Size="parent,24">
+								<PullDown ID="PlayerMarkTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,C" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
+								<GridButton ID="PlayerMarkSteamButton" Style="MainButtonSmall" Anchor="R,C" Size="110,24" String="LOC_MPT_PLAYERMARK_STEAM_PROFILE" ToolTip="LOC_MPT_PLAYERMARK_STEAM_PROFILE_TT"/>
+							</Container>
 							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
 							<Grid Style="EditTextButton" Size="parent,36">
 								<EditBox ID="PlayerMarkBriefEdit" Style="FontNormal20" Anchor="L,C" Offset="24,0" Size="parent-40,20" MaxLength="128" String="" CallOnChar="1"/>

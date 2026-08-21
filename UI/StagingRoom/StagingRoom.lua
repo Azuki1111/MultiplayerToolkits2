@@ -5545,6 +5545,8 @@ function MPT_PlayerMark_RefreshEditor()
 	Controls.PlayerMarkNameEdit:SetText(rec.Name or "");
 	Controls.PlayerMarkHeaderName:SetText(rec.Name or "");
 	Controls.PlayerMarkHeaderId:SetText(rec.Id);
+	-- Steam 主页按钮仅对 17 位纯数字 ID（SteamID64）可用；Epic 32 位 ID 禁用
+	Controls.PlayerMarkSteamButton:SetDisabled(not (rec.Id ~= nil and string.len(rec.Id) == 17 and string.match(rec.Id, "^%d+$") ~= nil));
 	g_PlayerMarkEditTag = rec.Tag or 2;
 	PlayerMarkRefreshTagPullDown();
 	Controls.PlayerMarkBriefEdit:SetText(rec.Brief or "");
@@ -5860,6 +5862,13 @@ Controls.PlayerMarkAddDetailButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMar
 Controls.PlayerMarkSaveButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_ApplySave);
 Controls.PlayerMarkCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_CancelEdit);
 Controls.PlayerMarkDeleteButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_DeleteSelected);
+-- Steam 主页按钮：打开选中玩家的 Steam 个人主页（Overlay 内置浏览器，同条目4.2 跳工坊）；禁用态由 RefreshEditor 按 ID 格式控制
+Controls.PlayerMarkSteamButton:RegisterCallback(Mouse.eLClick, function()
+	local rec = MPT_PlayerMark_GetSelected();
+	if rec ~= nil and rec.Id ~= nil then
+		Steam.ActivateGameOverlayToUrl("https://steamcommunity.com/profiles/" .. rec.Id);
+	end
+end);
 end	-- 条目4.4 do 块结束（寄存器上限适配）
 
 

@@ -37,6 +37,8 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_MODIFIED_PREFIX', 'zh_Hans_CN', '最近修改：'),
 -- 右侧操作按钮
 ('LOC_MPT_PLAYERMARK_SAVE', 'zh_Hans_CN', '保存'),
+('LOC_MPT_PLAYERMARK_STEAM_PROFILE', 'zh_Hans_CN', 'Steam 主页'),
+('LOC_MPT_PLAYERMARK_STEAM_PROFILE_TT', 'zh_Hans_CN', '打开该玩家的 Steam 个人主页（仅 17 位纯数字 ID 的 Steam 玩家可用）'),
 ('LOC_MPT_PLAYERMARK_DELETE', 'zh_Hans_CN', '删除玩家'),
 ('LOC_MPT_PLAYERMARK_DELETE_TT', 'zh_Hans_CN', '永久删除该玩家的全部记录（立即生效，不可撤销）'),
 ('LOC_MPT_PLAYERMARK_ADD_DETAIL', 'zh_Hans_CN', '添加'),
