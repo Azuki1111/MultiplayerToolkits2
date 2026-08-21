@@ -890,7 +890,7 @@
 	<Instance Name="PlayerMarkEntryInstance">
 		<Container ID="EntryRoot" Size="parent,52" Anchor="L,C">
 			<GridButton ID="RowButton" Style="ButtonControl" Size="parent,parent" Offset="-4,0">
-				<Image ID="TagIconLabel" Anchor="L,C" Offset="15,0" Size="22,22" Icon="ICON_OnlineYellowPingPig"/>
+				<Image ID="TagIconLabel" Anchor="L,C" Offset="15,0" Size="22,22" Icon="OnlineYellowPingPig"/>
 				<ScrollTextField ID="NameLabel" Size="300,16" Anchor="C,C" Style="FontNormal19" FontStyle="stroke" String="Name"/>
 			</GridButton>
 			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
