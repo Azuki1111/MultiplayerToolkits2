@@ -12,7 +12,7 @@
 ### Mod 清单
 
 - Mod id：`00000000-7369-4685-ab5f-bf77bc22b54e`（规约：GUID 前 8 位为 0）
-- `<Version>14</Version>` 是模组版本一致性校验指纹，**结构性更新必须递增**
+- `<Version>16</Version>` 是模组版本一致性校验指纹，**结构性更新必须递增**
 - `AffectsSavedGames=0`，`CompatibleVersions=1.2,2.0`
 - 本 mod 前端功能全部走 FrontEndActions；InGameActions 仅注册同一份通用文本文件（`IG_Import_Storage` 存储双环境注册已移除，原因见踩坑记录 include 缺陷）。
 
@@ -86,7 +86,7 @@ g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 20);
 
 ## 关键实现细节（踩坑记录，改动前先读）
 
-- **MPT_ModCheck 校验协议**（StagingRoom.lua 条目4.1 区）：房主经 `PlayerConfigurations value` + `BroadcastPlayerInfo` 三通道（`MPT_MC_LIST` / `MPT_MC_HOSTV` / `MPT_MC_VERS`）广播 modId 清单与 Version 指纹；第三方 mod 用 `CREATE TABLE IF NOT EXISTS MPT_ModCheck` + `INSERT OR REPLACE` 自我登记即可接入，加载顺序无关。
+- **MPT_ModCheck 校验协议**（StagingRoom.lua 条目4.1 区）：房主经 `PlayerConfigurations value` + `BroadcastPlayerInfo` 三通道（`MPT_MC_LIST` / `MPT_MC_HOSTV` / `MPT_MC_VERS`）广播 modId 清单与 Version 指纹；第三方 mod 用 `CREATE TABLE IF NOT EXISTS MPT_ModCheck` + `INSERT OR REPLACE` 自我登记即可接入，加载顺序无关（ModId 大小写须与 `GameConfiguration.GetEnabledMods()` 的 Id 完全一致）。条目4.1修复批次新增：进房 3 秒沉淀门后才读 SQL 清单/首发首报；客机回报经统一通道 `MPT_RequestReport` 按 `playerID%4` 秒抖动摊平、VERS 值未变不广播；「未回报」超时按 `max(清单发布时刻, 该玩家进房 JoinTime)` 起算（迟到进房/换槽有自己的 10 秒窗口）；校验通过/失败迁移时房主回调 `CheckGameAutoStart`（倒计时自动恢复/压停），`MPT_PublishCheckList` 末尾也直调一次（倒计时中重新校验立即压停）；本机 mod 下载终态（`OnModStatusUpdated` 非 DOWNLOADING 且为本机）静默 3 秒后房主重发清单/客机重报；发布即复位「放弃验证」（放弃仅对当轮 rev 有效）；断线重连/换槽致本机状态条目新建时经统一通道兜底补报（rev 未变时正常路径不重报）。
 - 校验发布/回报必须限定准备房间可见窗口，否则隐藏期 BroadcastPlayerInfo 会触发槽位漂移风暴（详见 git 历史条目4.1修复）。
 - Lua 状态跨房间存续：新会话必须调用 `MPT_ResetModCheckSession()` 重置校验生命周期。
 - 声明点之前引用的 `local` 会解析为全局（g_mpt_checkSkipped 等曾因误用 local 失效），新增全局状态注意声明顺序。

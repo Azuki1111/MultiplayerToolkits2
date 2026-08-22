@@ -737,6 +737,10 @@ function OnModStatusUpdated(playerID: number, modState : number, bytesDownloaded
 		g_PlayerModStatus[playerID] = modStatusString;
 	else
 		g_PlayerModStatus[playerID] = nil;
+		-- 联机工具箱2.0：本机 mod 下载/更新到达终态 → 置脏标记，tick 静默期满后重发（房主）/重报（客机）版本指纹（条目4.1修复 A3）
+		if playerID == Network.GetLocalPlayerID() then
+			g_mpt_modListDirtyTime = os.time();
+		end
 	end
 	UpdatePlayerEntry(playerID);
 
@@ -4236,9 +4240,12 @@ local g_mpt_enabledModMap : table = {};	-- 已启用 mod 映射 [modId]=rawTitle
 local g_mpt_listRev : number = 0;			-- 本机已知的最新清单 rev（房主=已发布值，客户端=读到的值）
 local g_mpt_publishTime : number = 0;		-- 当前清单生效时刻（os.time，超时判定用）
 local g_mpt_knownHostID : number = -1;		-- 已知房主槽位（检测房主迁移）
-g_mpt_checkSkipped = false;	-- 房主已选择「放弃验证」（增员时自动复位）。不用 local：CheckGameAutoStart（本文件 :1261 前部）引用本变量，Lua local 词法作用域不覆盖声明点之前的函数
+g_mpt_checkSkipped = false;	-- 房主已选择「放弃验证」（增员时自动复位；条目4.1修复：新 rev 发布时也复位——放弃仅对当轮验证有效）。不用 local：CheckGameAutoStart（本文件 :1261 前部）引用本变量，Lua local 词法作用域不覆盖声明点之前的函数
 local g_mpt_popupShownRev : number = -1;	-- 已弹过窗的清单 rev（同一 rev 只弹一次）
 local g_mpt_lastTickTime : number = 0;		-- tick 节流（os.time 秒级）
+g_mpt_roomEnterTime = 0;	-- 本房间进入时刻（os.time；沉淀门用，0=未记录时以首个可见 tick 兜底）。条目4.1修复新增，用全局不占寄存器
+g_mpt_reportDueTime = 0;	-- 待执行回报的到期时刻（os.time，0=无待报；按 playerID 抖动摊平全员同 tick 广播）。条目4.1修复新增
+g_mpt_modListDirtyTime = 0;	-- 本机 mod 下载/更新到终态的时刻（os.time，0=干净；静默期满后重发/重报指纹）。不用 local：OnModStatusUpdated（本文件 :693 前部）写本变量。条目4.1修复新增
 g_mpt_installedVerCache = nil;	-- 已安装 mod 版本缓存 [modId]=version字符串（nil=未构建；失效点：ModStatusUpdated / 新会话）。不用 local：OnModStatusUpdated（本文件 :693 前部）引用本变量，local 词法作用域不覆盖声明点之前的函数
 
 -------------------------------------------------
@@ -4392,7 +4399,8 @@ end
 -------------------------------------------------
 -- MPT_ResetModCheckSession
 -- 新会话（新房间）重置校验生命周期：rev 归零（触发首次发布）、已知房主复位、
--- 玩家状态表清空（reconcile 重建）、「放弃验证」与弹窗记录复位。
+-- 玩家状态表清空（reconcile 重建）、「放弃验证」与弹窗记录复位、
+-- 进房沉淀门重新计时、待报/脏标记清零（条目4.1修复新增后三项）。
 -- 调用点：OnShow 检测到 fresh session 时；Lua 状态跨房间存续，不重置则后续房间校验静默失效。
 -------------------------------------------------
 function MPT_ResetModCheckSession()
@@ -4403,6 +4411,9 @@ function MPT_ResetModCheckSession()
 	g_mpt_popupShownRev = -1;
 	g_mpt_playerModStatus = {};
 	g_mpt_installedVerCache = nil;	-- 版本缓存一并失效（新会话保险，下次用到时一次枚举重建）
+	g_mpt_roomEnterTime = os.time();	-- 进房沉淀门起点（完整进房稳定后才读 SQL 清单/首发首报）
+	g_mpt_reportDueTime = 0;			-- 清掉上一房间可能挂着的待报
+	g_mpt_modListDirtyTime = 0;
 end
 
 -------------------------------------------------
@@ -4432,13 +4443,35 @@ function MPT_PublishCheckList()
 	pConfig:SetValue(MPT_MC_HOSTV_KEY, table.concat(verList, ";"));
 	Network.BroadcastPlayerInfo(hostID);
 	g_mpt_publishTime = os.time();
+	g_mpt_checkSkipped = false;	-- 条目4.1修复 A4：新 rev = 新一轮验证，「放弃验证」仅对当轮有效
 	MPT_ResetPlayerStatusForNewRev();
+	-- 条目4.1修复 A1：发布即作废当轮校验结果（全员回 PENDING）；若启动倒计时正在运行（房主倒计时中点了「重新校验」），立即重评估压停
+	CheckGameAutoStart();
 	print("MPT_PublishCheckList rev=", g_mpt_listRev, "mods=", #idList);
+end
+
+-------------------------------------------------
+-- MPT_RequestReport（非房主，条目4.1修复 C3 新增）
+-- 统一回报请求通道：只登记到期时刻，由 tick 到期后统一执行 MPT_ReportVersions。
+-- 背景：rev 变化那一秒所有客机在同一 tick 窗口 SetValue+BroadcastPlayerInfo，20 人房并发
+--      20 份全量玩家信息，易网络卡顿；调用方传入按 playerID 的确定性抖动把回报摊平。
+-- 用法：MPT_RequestReport(delaySeconds)；多次请求取最早到期时刻，到期只执行一次。
+-------------------------------------------------
+function MPT_RequestReport(delaySeconds : number)
+	if Network.IsGameHost() then
+		return;	-- 房主指纹走 HOSTV，无回报通道
+	end
+	local dueTime : number = os.time() + (delaySeconds or 0);
+	if g_mpt_reportDueTime == 0 or dueTime < g_mpt_reportDueTime then
+		g_mpt_reportDueTime = dueTime;
+	end
 end
 
 -------------------------------------------------
 -- MPT_ReportVersions（非房主）
 -- 按房主清单顺序计算本机 Version 指纹，带上清单 rev 回报（广播）。
+-- 条目4.1修复 C3：算出的 VERS 与槽位现值相同则直接返回，不重复广播（消除无效网络流量）。
+-- 调用点：tick 中 g_mpt_reportDueTime 到期（统一回报通道，勿直接调用以免绕过抖动）。
 -------------------------------------------------
 function MPT_ReportVersions()
 	if Network.IsGameHost() then
@@ -4454,7 +4487,11 @@ function MPT_ReportVersions()
 	end
 	local localPlayerID : number = Network.GetLocalPlayerID();
 	local pConfig = PlayerConfigurations[localPlayerID];
-	pConfig:SetValue(MPT_MC_VERS_KEY, tostring(rev) .. "_" .. table.concat(verList, ";"));
+	local newValue : string = tostring(rev) .. "_" .. table.concat(verList, ";");
+	if pConfig:GetValue(MPT_MC_VERS_KEY) == newValue then
+		return;	-- 与槽位现值相同：不重复 SetValue/广播（断线重连后旧值仍在等场景）
+	end
+	pConfig:SetValue(MPT_MC_VERS_KEY, newValue);
 	Network.BroadcastPlayerInfo(localPlayerID);
 end
 
@@ -4463,10 +4500,15 @@ end
 -- 对账玩家状态表（加入/退出/换槽重新计算）：
 --   键 = playerID+玩家名，换槽/换人即重置（防读取旧占槽者残留 value 误报，用户指定）；
 --   退出删除；增员复位「放弃验证」；房主自身恒为 HOST。
+--   JoinTime 记录进房/换人时刻（条目4.1修复 C1：超时宽限按各玩家自己的进房时刻起算）；
+--   本机玩家条目新建时经统一回报通道兜底补报（条目4.1修复 A2：断线重连/换槽后 rev 未变，
+--   正常路径只在 rev 变化时回报一次，不补报会被判「未回报」卡死）。
 -------------------------------------------------
 function MPT_ReconcilePlayers()
 	local seen : table = {};
 	local added : boolean = false;
+	local addedLocal : boolean = false;	-- 新增条目是否含本机玩家（条目4.1修复 A2）
+	local localPlayerID : number = Network.GetLocalPlayerID();
 	local playerIDs : table = GameConfiguration.GetMultiplayerPlayerIDs();
 	for _, playerID in ipairs(playerIDs) do
 		local pConfig = PlayerConfigurations[playerID];
@@ -4475,13 +4517,17 @@ function MPT_ReconcilePlayers()
 			local name : string = tostring(pConfig:GetPlayerName());
 			local info = g_mpt_playerModStatus[playerID];
 			if info == nil then
-				g_mpt_playerModStatus[playerID] = { Status = MPT_CHECK.PENDING, Name = name, Mismatch = {}, NoReport = false };
+				g_mpt_playerModStatus[playerID] = { Status = MPT_CHECK.PENDING, Name = name, Mismatch = {}, NoReport = false, JoinTime = os.time() };
 				added = true;
+				if playerID == localPlayerID then
+					addedLocal = true;
+				end
 			elseif info.Name ~= name then
 				info.Status = MPT_CHECK.PENDING;
 				info.Name = name;
 				info.Mismatch = {};
 				info.NoReport = false;
+				info.JoinTime = os.time();	-- 换人进槽：宽限期重新起算（条目4.1修复 C1）
 			end
 		end
 	end
@@ -4503,6 +4549,11 @@ function MPT_ReconcilePlayers()
 	end
 	if added then
 		g_mpt_checkSkipped = false;	-- 新玩家未经验证，不继承「放弃验证」
+	end
+	-- 条目4.1修复 A2：本机条目新建（断线重连/换槽/首次进房）且清单已发布 → 兜底补报
+	-- （抖动 1 秒走统一通道；正常 rev 跟踪路径也会在 rev 变化时请求，通道内取最早到期时刻）
+	if addedLocal and g_mpt_listRev > 0 then
+		MPT_RequestReport(1);
 	end
 end
 
@@ -4529,7 +4580,11 @@ function MPT_EvaluateAll()
 		return;
 	end
 	local hostID : number = Network.GetGameHostPlayerID();
-	local hostVersStr = PlayerConfigurations[hostID]:GetValue(MPT_MC_HOSTV_KEY);
+	local pHostConfig = PlayerConfigurations[hostID];
+	if pHostConfig == nil then
+		return;	-- 条目4.1修复 B5：房主迁移切换帧槽位瞬态无效，防御
+	end
+	local hostVersStr = pHostConfig:GetValue(MPT_MC_HOSTV_KEY);
 	local hostVers : table = MPT_SplitString(hostVersStr or "", ";");
 	local now : number = os.time();
 	for playerID, info in pairs(g_mpt_playerModStatus) do
@@ -4553,7 +4608,8 @@ function MPT_EvaluateAll()
 				end
 			end
 			if not reported then
-				if now - g_mpt_publishTime >= MPT_REPORT_TIMEOUT then
+				-- 条目4.1修复 C1：宽限按「清单发布时刻与该玩家进房时刻的较晚者」起算，迟到进房/换槽的玩家也有自己的 10 秒回报窗口，不再被立即误判「未回报」
+				if now - math.max(g_mpt_publishTime, info.JoinTime or 0) >= MPT_REPORT_TIMEOUT then
 					info.Status = MPT_CHECK.FAILED;
 					info.NoReport = true;
 					info.Mismatch = {};
@@ -4604,8 +4660,13 @@ end
 
 -------------------------------------------------
 -- MPT_ModCheckTick（Events.GameCoreEventPublishComplete，Initialize 注册）
--- 1s 节流驱动全部校验逻辑：房主首发/迁移重发清单 → 客户端 rev 跟踪与回报 →
--- reconcile（加入/退出/换槽）→ 本地比对 → 红行。统一兜底，不依赖单次事件。
+-- 1s 节流驱动全部校验逻辑：进房沉淀门 → 房主首发/迁移重发清单 → 客户端 rev 跟踪与抖动回报 →
+-- reconcile（加入/退出/换槽）→ 本地比对 → 红行 → 到期回报/脏重发 → 状态迁移回调。
+-- 统一兜底，不依赖单次事件。条目4.1修复新增：
+--   C2 沉淀门：进房 3 秒内不动作（等前端 Configuration 库切换到本房间启用 mod 集再读 SQL 清单）；
+--   C3 回报经统一通道按 playerID%4 秒抖动摊平，避免 rev 变化时全员同 tick 广播；
+--   A1 校验通过/失败迁移时房主端回调 CheckGameAutoStart（倒计时自动恢复/压停）；
+--   A3 本机 mod 下载/更新终态静默 3 秒后房主重发清单 / 客机重报。
 -------------------------------------------------
 function MPT_ModCheckTick()
 	if not MPT_IsCheckActive() then
@@ -4622,6 +4683,14 @@ function MPT_ModCheckTick()
 		return;
 	end
 	g_mpt_lastTickTime = now;
+
+	-- 进房沉淀门（条目4.1修复 C2）：完整进房稳定后才读 SQL 清单/首发首报
+	if g_mpt_roomEnterTime == 0 then
+		g_mpt_roomEnterTime = now;	-- 兜底：未经过新会话重置时以首个可见 tick 为进房时刻
+	end
+	if now - g_mpt_roomEnterTime < 3 then
+		return;
+	end
 
 	MPT_CacheEnabledMods();
 
@@ -4640,17 +4709,43 @@ function MPT_ModCheckTick()
 		MPT_PublishCheckList();
 	end
 
-	-- 跟踪清单 rev：变化 → 重报 + 状态重置（房主读到自己发布的同 rev 不会进入）
+	-- 跟踪清单 rev：变化 → 抖动重报 + 状态重置（房主读到自己发布的同 rev 不会进入）
 	local rev = MPT_GetHostCheckList();
 	if rev ~= nil and rev ~= g_mpt_listRev then
 		g_mpt_listRev = rev;
 		g_mpt_publishTime = now;
-		MPT_ReportVersions();
+		-- 条目4.1修复 C3：按 playerID 确定性抖动 0-3 秒摊平全员回报，避免同 tick 广播风暴
+		local localID : number = Network.GetLocalPlayerID();
+		MPT_RequestReport(localID ~= nil and (localID % 4) or 0);
 		MPT_ResetPlayerStatusForNewRev();
 	end
 
+	-- 条目4.1修复 A1：记录比对前状态，尾部迁移时回调（EvaluateAll 只在 tick 改状态，事件驱动的 CheckGameAutoStart 读到的是迁移前状态）
+	local wasFailing : boolean = MPT_IsModCheckFailing();
+
 	MPT_ReconcilePlayers();
 	MPT_EvaluateAll();
+
+	-- 条目4.1修复 C3：到期执行统一回报请求（抖动摊平）
+	if g_mpt_reportDueTime ~= 0 and now >= g_mpt_reportDueTime then
+		g_mpt_reportDueTime = 0;
+		MPT_ReportVersions();
+	end
+
+	-- 条目4.1修复 A3：本机 mod 下载/更新终态静默期满 → 房主重发清单（rev++ 全员重报）/ 客机重报
+	if g_mpt_modListDirtyTime ~= 0 and now - g_mpt_modListDirtyTime >= 3 then
+		g_mpt_modListDirtyTime = 0;
+		if Network.IsGameHost() then
+			MPT_PublishCheckList();
+		else
+			MPT_RequestReport(0);
+		end
+	end
+
+	-- 条目4.1修复 A1：校验通过/失败状态迁移 → 房主端重评估启动（全绿自动恢复倒计时；转失败压停并弹窗）
+	if Network.IsGameHost() and wasFailing ~= MPT_IsModCheckFailing() then
+		CheckGameAutoStart();
+	end
 end
 
 -------------------------------------------------
