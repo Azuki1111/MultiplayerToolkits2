@@ -1918,8 +1918,6 @@ function UpdatePlayerEntry(playerID)
 		end
 		playerEntry.StatusLabel:SetHide(not showStatusLabel);
 
-		-- 条目4.8：清除上次残留的标记 ToolTipType（如已设 ""；有标记的玩家由 ApplyStatusLabel 重新 SetToolTipType）
-		playerEntry.StatusLabel:SetToolTipType("");
 		-- 条目4.8：SQL 玩家标记 / 本地玩家标记显示（仅就绪/未就绪/已连接态替换；定义见文件末尾条目4.8分区）
 		MPT_PlayerMark_ApplyStatusLabel(playerID);
 
