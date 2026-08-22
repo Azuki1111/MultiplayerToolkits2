@@ -131,6 +131,12 @@ local g_slotTypeData =
 	{ name ="LOC_SLOTTYPE_CLOSED",		tooltip = "LOC_SLOTTYPE_CLOSED_TT",		hotseatOnly=false,	slotStatus=SlotStatus.SS_CLOSED,	hotseatInProgress = false,		hotseatAllowed=true },		
 	{ name ="LOC_SLOTTYPE_HUMAN",		tooltip = "LOC_SLOTTYPE_HUMAN_TT",		hotseatOnly=true,	slotStatus=SlotStatus.SS_TAKEN,		hotseatInProgress = true,		hotseatAllowed=true },		
 	{ name ="LOC_MP_SWAP_PLAYER",		tooltip = "TXT_KEY_MP_SWAP_BUTTON_TT",	hotseatOnly=false,	slotStatus=-1,						hotseatInProgress = true,		hotseatAllowed=true },		
+	-- ============================================================================
+	-- 联机工具箱2.0 条目3.8：新增「移除玩家」下拉选项（替代原玩家条目行右侧 X 按钮，仅房主可见）。
+	-- slotStatus=-2 为哨兵值 + kickOption 标记：PopulateSlotTypePulldown 按 IsPlayerKickable 判定显隐，
+	-- OnSlotType 命中后转 OnKickButton 走原确认弹窗流程；文本复用原版 LOC_MP_KICK_PLAYER，无需新增本地化。
+	{ name ="LOC_MP_KICK_PLAYER",		tooltip = "LOC_MP_KICK_PLAYER",			hotseatOnly=false,	slotStatus=-2,	kickOption=true,	hotseatInProgress = false,	hotseatAllowed=false },
+	-- ----------------------------------------------------------------------------
 };
 
 -- ============================================================================
@@ -885,6 +891,13 @@ end
 -------------------------------------------------
 function OnSlotType( playerID, id )
 	--print("playerID: " .. playerID .. " id: " .. id);
+	-- ============================================================================
+	-- 联机工具箱2.0 条目3.8：命中「移除玩家」选项（kickOption 标记）时转原踢出确认弹窗流程，不改动槽位状态
+	if g_slotTypeData[id].kickOption then
+		OnKickButton(playerID);
+		return;
+	end
+	-- ----------------------------------------------------------------------------
 	-- NOTE:  This function assumes that the given player slot is not occupied by a player.  We
 	--				assume that players having to be kicked before the slot's type can be manually changed.
 	local pPlayerConfig = PlayerConfigurations[playerID];
@@ -934,6 +947,23 @@ function OnSwapButton(playerID)
 	end
 	Network.RequestPlayerIDChange(newDesiredPlayerID);
 end
+
+-- ============================================================================
+-- 联机工具箱2.0 条目3.8：移除玩家 X 按钮移除，功能改入槽位类型下拉框选项（仅房主可见）。
+-- IsPlayerKickable(playerID)：判定本机是否可对指定槽位执行移除（逻辑抽取自原 UpdatePlayerEntry 内 isKickable，
+-- 条件不变：本机为房主 && 槽位状态为占用/观察者 && 非本机自己 && 非热座）。
+-- 用法：PopulateSlotTypePulldown 对 g_slotTypeData 中 kickOption 项按此显隐；OnSlotType 命中后转 OnKickButton。
+-- ============================================================================
+function IsPlayerKickable(playerID)
+	local localPlayerID = Network.GetLocalPlayerID();
+	local pPlayerConfig = PlayerConfigurations[playerID];
+	local slotStatus = pPlayerConfig:GetSlotStatus();
+	return Network.IsGameHost()			-- Only the game host may kick
+		and (slotStatus == SlotStatus.SS_TAKEN or slotStatus == SlotStatus.SS_OBSERVER)
+		and playerID ~= localPlayerID	-- Can't kick yourself
+		and not GameConfiguration.IsHotseat();	-- Can't kick in hotseat, players use the slot type pulldowns instead.
+end
+-- ----------------------------------------------------------------------------
 
 -------------------------------------------------
 -- OnKickButton
@@ -1436,8 +1466,11 @@ function GetPlayerEntry(playerID)
 
 		--playerEntry.PlayerCard:RegisterCallback( Mouse.eLClick, OnSwapButton );
 		--playerEntry.PlayerCard:SetVoid1(playerID);
-		playerEntry.KickButton:RegisterCallback( Mouse.eLClick, OnKickButton );
-		playerEntry.KickButton:SetVoid1(playerID);
+		-- ============================================================================
+		-- 联机工具箱2.0 条目3.8：KickButton 已移除（XML 同步删除），踢出改由槽位类型下拉框 kickOption 项触发 OnKickButton
+		-- playerEntry.KickButton:RegisterCallback( Mouse.eLClick, OnKickButton );
+		-- playerEntry.KickButton:SetVoid1(playerID);
+		-- ----------------------------------------------------------------------------
 		playerEntry.AddPlayerButton:RegisterCallback( Mouse.eLClick, OnAddPlayer );
 		playerEntry.AddPlayerButton:SetVoid1(playerID);
 		--[[ Prototype Mod Status Progress Bars
@@ -1496,13 +1529,23 @@ function PopulateSlotTypePulldown( pullDown, playerID, slotTypeOptions )
 			and playerID ~= Network.GetLocalPlayerID();
 
 		-- This option is a valid slot type option.
-		local showSlotButton = CheckShowSlotButton(pair, playerID);
+		-- ============================================================================
+		-- 联机工具箱2.0 条目3.8：kickOption（移除玩家）项不走通用槽位逻辑（slotStatus=-2 哨兵防止在开放槽等处误显示），按 IsPlayerKickable 显隐，仅房主可见
+		-- local showSlotButton = CheckShowSlotButton(pair, playerID);
+		local showSlotButton = not pair.kickOption and CheckShowSlotButton(pair, playerID);
+		local showKickButton = pair.kickOption == true and IsPlayerKickable(playerID);
+		-- ----------------------------------------------------------------------------
 
 		-- Valid state for hotseatOnly flag
 		local hotseatOnlyCheck = (GameConfiguration.IsHotseat() and pair.hotseatAllowed) or (not GameConfiguration.IsHotseat() and not pair.hotseatOnly);
 
-		if(	hotseatOnlyCheck 
-			and (showSwapButton or showSlotButton))then
+		-- ============================================================================
+		-- 联机工具箱2.0 条目3.8：显示条件并入 showKickButton
+		-- if(	hotseatOnlyCheck
+		-- 	and (showSwapButton or showSlotButton))then
+		if(	hotseatOnlyCheck
+			and (showSwapButton or showSlotButton or showKickButton))then
+		-- ----------------------------------------------------------------------------
 
 			pullDown.ItemCount = pullDown.ItemCount + 1;
 			local instance = instanceManager:GetInstance();
@@ -1763,10 +1806,13 @@ function UpdatePlayerEntry(playerID)
 		
 
 			
-		local isKickable:boolean = Network.IsGameHost()			-- Only the game host may kick
-			and (slotStatus == SlotStatus.SS_TAKEN or slotStatus == SlotStatus.SS_OBSERVER)
-			and playerID ~= localPlayerID			-- Can't kick yourself
-			and not isHotSeat;	-- Can't kick in hotseat, players use the slot type pulldowns instead.
+		-- ============================================================================
+		-- 联机工具箱2.0 条目3.8：KickButton 已移除，原 isKickable 判定抽取为 IsPlayerKickable（供 PopulateSlotTypePulldown 的 kickOption 项显隐）
+		-- local isKickable:boolean = Network.IsGameHost()			-- Only the game host may kick
+		-- 	and (slotStatus == SlotStatus.SS_TAKEN or slotStatus == SlotStatus.SS_OBSERVER)
+		-- 	and playerID ~= localPlayerID			-- Can't kick yourself
+		-- 	and not isHotSeat;	-- Can't kick in hotseat, players use the slot type pulldowns instead.
+		-- ----------------------------------------------------------------------------
 
 		-- Show player card for human players only during online matches
 		local hidePlayerCard:boolean = isHotSeat or slotStatus ~= SlotStatus.SS_TAKEN;
@@ -1881,7 +1927,8 @@ function UpdatePlayerEntry(playerID)
 			playerEntry.ReadyImage:SetHide(isHotSeat);
 			playerEntry.TeamPullDown:SetHide(false);
 			playerEntry.HandicapPullDown:SetHide(false);
-			playerEntry.KickButton:SetHide(not isKickable);
+			-- 联机工具箱2.0 条目3.8：KickButton 已移除（踢出改入槽位类型下拉框，仅房主可见）
+			-- playerEntry.KickButton:SetHide(not isKickable);
 		else
 			if(playerID >= g_currentMaxPlayers) then
 				-- inactive slot is invalid for the current map size, hide it.
@@ -1906,7 +1953,8 @@ function UpdatePlayerEntry(playerID)
 				playerEntry.TeamPullDown:SetHide(true);
 				playerEntry.ReadyImage:SetHide(false);
 				playerEntry.HandicapPullDown:SetHide(true);
-				playerEntry.KickButton:SetHide(not isKickable);
+				-- 联机工具箱2.0 条目3.8：KickButton 已移除（观察者槽位踢出经 AlternateSlotTypePulldown 的 kickOption 项，仅房主可见）
+				-- playerEntry.KickButton:SetHide(not isKickable);
 			else 
 				if(gameInProgress
 					-- Explicitedly always hide city states.  
@@ -1922,7 +1970,8 @@ function UpdatePlayerEntry(playerID)
 					playerEntry.TeamPullDown:SetHide(true);
 					playerEntry.ReadyImage:SetHide(true);
 					playerEntry.HandicapPullDown:SetHide(true);
-					playerEntry.KickButton:SetHide(true);
+					-- 联机工具箱2.0 条目3.8：KickButton 已移除（踢出改入槽位类型下拉框，仅房主可见）
+					-- playerEntry.KickButton:SetHide(true);
 				end
 			end
 		end
@@ -2122,7 +2171,8 @@ function UpdatePlayerEntry_Hotseat(playerID)
 				UpdateAllDefaultPlayerNames();
 			end
 
-			playerEntry.KickButton:SetHide(true);
+			-- 联机工具箱2.0 条目3.8：KickButton 已移除（热座踢出本就走槽位类型下拉，kickOption 项热座不显示）
+			-- playerEntry.KickButton:SetHide(true);
 			--[[ Prototype Mod Status Progress Bars
 			playerEntry.PlayerModProgressStack:SetHide(true);
 			--]]
