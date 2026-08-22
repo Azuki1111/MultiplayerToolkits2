@@ -6627,6 +6627,12 @@ function MPT_PlayerMark_RefreshLocalCache()
 				end
 			end
 		end
+		-- 条目4.8：缓存就绪后重刷房间内所有玩家条目（4.4 面板保存/删除后立即生效）。
+		-- 走 UpdatePlayerEntry 而非直接 ApplyStatusLabel：Apply 仅替换就绪/未就绪/已连接态文本，
+		-- 已显示标记的条目 curText 不匹配会跳过；重算 statusString 置回就绪文本后再应用可正确刷新。
+		for mptPlayerID in pairs(g_PlayerEntries) do
+			UpdatePlayerEntry(mptPlayerID);
+		end
 	end);
 end
 MPT_PlayerMark_RefreshLocalCache();	-- 顶层先读一次（进房后 UpdatePlayerEntry 消费缓存）
