@@ -6672,6 +6672,8 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 	-- 仅在就绪/未就绪/已连接态替换；其他状态（mod 校验、错误、空态等）不动
 	local curText = entry.StatusLabel:GetText();
 	if curText ~= NotReadyStatusStr and curText ~= ReadyStatusStr and curText ~= PlayerConnectedSummaryStr then
+		-- 条目4.8：清残留 ToolTipType（玩家此前可能显示过带类型的标记；回退到 UpdatePlayerEntry 已设的状态文本 Tooltip）
+		entry.StatusLabel:SetToolTipType(nil);
 		return;
 	end
 	local cfg = PlayerConfigurations[playerID];
@@ -6688,7 +6690,7 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 		if localRec.Brief ~= nil and localRec.Brief ~= "" then
 			ttStr = (ttStr ~= "" and ttStr .. "[NEWLINE]" or "") .. localRec.Brief;
 		end
-		entry.StatusLabel:SetToolTipType("");	-- 条目4.8：清除残留 ToolTipType（本地标记为字符串 Tooltip）
+		entry.StatusLabel:SetToolTipType(nil);	-- 条目4.8：清残留 ToolTipType（本地标记为字符串 Tooltip）
 		entry.StatusLabel:SetToolTipString(ttStr);
 		return;
 	end
@@ -6703,7 +6705,7 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 			if sqlRec.ToolTipType ~= nil and sqlRec.ToolTipType ~= "" then
 				entry.StatusLabel:SetToolTipType(sqlRec.ToolTipType);
 			else
-				entry.StatusLabel:SetToolTipType("");	-- 条目4.8：清除残留 ToolTipType（SQL 标记无类型时用字符串 Tooltip）
+				entry.StatusLabel:SetToolTipType(nil);	-- 条目4.8：清残留 ToolTipType（SQL 标记无类型时用字符串 Tooltip）
 				entry.StatusLabel:SetToolTipString(sqlRec.Desc or sqlRec.Name or sqlRec.Icon or "");
 			end
 		end
