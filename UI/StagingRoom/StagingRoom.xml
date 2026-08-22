@@ -39,7 +39,9 @@
 							<Box ID="GridLine_2" Anchor="L,T" Offset="287,0" Size="2,parent" Color="20,55,70,255"/>
 							<Box ID="GridLine_3" Anchor="L,T" Offset="616,0" Size="2,parent" Color="20,55,70,255"/>
 							<Box ID="GridLine_4" Anchor="L,T" Offset="760,0" Size="2,parent" Color="20,55,70,255"/>
+							<!-- 联机工具箱2.0 条目3.8：移除玩家列已移除，其与就绪列间的竖线 GridLine_5 一并移除
 							<Box ID="GridLine_5" Anchor="L,T" Offset="928,0" Size="2,parent" Color="20,55,70,255"/>
+							-->
 						</Container>
 						<!-- Scroll Controls -->
 						<ScrollBar Style="Slider_Blue" Length="parent" Offset="-3,0" Anchor="R,T" AnchorSide="O,I" />
@@ -68,7 +70,7 @@
 					<Label Anchor="L,C" Offset="7,1" String="LOC_MULTIPLAYER_DIFFICULTY_HEADER" Style="FontNormal14" FontStyle="Shadow" ColorSet="ServerColumnHeader" />
 				</Grid>
 
-				<Grid  Anchor="L,T" Size="168,28"  Style="ShellHeaderButton" ID="SortbyReady">
+				<Grid  Anchor="L,T" Size="248,28"  Style="ShellHeaderButton" ID="SortbyReady">
 					<Label ID="ReadyColumnLabel" Anchor="L,C" Offset="7,1" String="LOC_MULTIPLAYER_READY_HEADER" Style="FontNormal14" FontStyle="Shadow" ColorSet="ServerColumnHeader" />
 				</Grid>
 
