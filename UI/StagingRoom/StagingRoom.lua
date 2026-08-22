@@ -952,13 +952,19 @@ end
 -------------------------------------------------
 function OnAddPlayer(playerID)
 	-- Add Player was clicked for the given player slot.
-	-- Set this slot to open	
-	
+	-- ============================================================================
+	-- 联机工具箱2.0 条目3.2改版：「添加玩家」按钮改为直接添加AI玩家（原为设为空缺槽位）；
+	-- SetMajorCiv 对齐 OnSlotType 选 AI 槽位分支（AI 槽位必须设为 major civ）
+	-- Set this slot to open
+	-- pPlayerConfig:SetSlotStatus(SlotStatus.SS_OPEN);
+	-- ============================================================================
 	local pPlayerConfig = PlayerConfigurations[playerID];
 	local playerName = pPlayerConfig:GetPlayerName();
 	m_iFirstClosedSlot = -1;
-	
-	pPlayerConfig:SetSlotStatus(SlotStatus.SS_OPEN);
+
+	pPlayerConfig:SetSlotStatus(SlotStatus.SS_COMPUTER);
+	pPlayerConfig:SetMajorCiv();
+	-- ----------------------------------------------------------------------------
 	Network.BroadcastPlayerInfo(playerID); -- Network the slot status change.
 
 	Controls.PlayerListStack:SortChildren(SortPlayerListStack);
