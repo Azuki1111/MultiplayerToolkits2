@@ -187,7 +187,12 @@ local PLAYER_LIST_SIZE_DEFAULT	:number = 325;
 local PLAYER_LIST_SIZE_HOTSEAT	:number = 535;
 local GRID_LINE_WIDTH			:number = 1020;
 local GRID_LINE_HEIGHT			:number = 51;
-local NUM_COLUMNS				:number = 5;
+-- ============================================================================
+-- 联机工具箱2.0 条目3.8：移除玩家列移除，竖线 GridLine_5 一并删除（XML），网格竖线列数 5 -> 4
+-- （RealizeGridSize 按此数动态索引 GridLine_1..N，列数与 XML 不符会因索引 nil 中断主 chunk）
+-- local NUM_COLUMNS				:number = 5;
+local NUM_COLUMNS				:number = 4;
+-- ----------------------------------------------------------------------------
 
 local TEAM_ICON_SIZE			:number = 38;
 local TEAM_ICON_PREFIX			:string = "ICON_TEAM_ICON_";
