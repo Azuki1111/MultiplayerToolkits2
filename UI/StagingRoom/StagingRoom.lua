@@ -1918,6 +1918,8 @@ function UpdatePlayerEntry(playerID)
 		end
 		playerEntry.StatusLabel:SetHide(not showStatusLabel);
 
+		-- 条目4.8：清除上次残留的标记 ToolTipType（如已设 ""；有标记的玩家由 ApplyStatusLabel 重新 SetToolTipType）
+		playerEntry.StatusLabel:SetToolTipType("");
 		-- 条目4.8：SQL 玩家标记 / 本地玩家标记显示（仅就绪/未就绪/已连接态替换；定义见文件末尾条目4.8分区）
 		MPT_PlayerMark_ApplyStatusLabel(playerID);
 
@@ -6688,6 +6690,7 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 		if localRec.Brief ~= nil and localRec.Brief ~= "" then
 			ttStr = (ttStr ~= "" and ttStr .. "[NEWLINE]" or "") .. localRec.Brief;
 		end
+		entry.StatusLabel:SetToolTipType("");	-- 条目4.8：清除残留 ToolTipType（本地标记为字符串 Tooltip）
 		entry.StatusLabel:SetToolTipString(ttStr);
 		return;
 	end
@@ -6702,6 +6705,7 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 			if sqlRec.ToolTipType ~= nil and sqlRec.ToolTipType ~= "" then
 				entry.StatusLabel:SetToolTipType(sqlRec.ToolTipType);
 			else
+				entry.StatusLabel:SetToolTipType("");	-- 条目4.8：清除残留 ToolTipType（SQL 标记无类型时用字符串 Tooltip）
 				entry.StatusLabel:SetToolTipString(sqlRec.Desc or sqlRec.Name or sqlRec.Icon or "");
 			end
 		end
