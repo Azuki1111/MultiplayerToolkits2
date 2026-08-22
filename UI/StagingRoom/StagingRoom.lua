@@ -1918,6 +1918,9 @@ function UpdatePlayerEntry(playerID)
 		end
 		playerEntry.StatusLabel:SetHide(not showStatusLabel);
 
+		-- 条目4.8：SQL 玩家标记 / 本地玩家标记显示（仅就绪/未就绪/已连接态替换；定义见文件末尾条目4.8分区）
+		MPT_PlayerMark_ApplyStatusLabel(playerID);
+
 		if playerID == localPlayerID then
 			playerEntry.YouIndicatorLine:SetHide(false);
 		else
@@ -5548,7 +5551,12 @@ function MPT_PlayerMark_LoadFromDisk(callback)
 end
 
 function MPT_PlayerMark_SaveToDisk(callback)
-	MPT_Storage_SaveData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_KEY, g_PlayerMarkList, callback);
+	MPT_Storage_SaveData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_KEY, g_PlayerMarkList, function(ok)
+		if ok then
+			MPT_PlayerMark_RefreshLocalCache();	-- 条目4.8：面板保存后同步房间标记缓存（定义见文件末尾条目4.8分区）
+		end
+		if callback ~= nil then callback(ok); end
+	end);
 end
 
 -- ============================================================================
@@ -6558,3 +6566,140 @@ function MPT_UpdateEnabledMods()
 	print("MPT 条目4.7：进房自动更新检查完成，共触发 " .. updateCount .. " 个非官方创意工坊mod");
 end
 end	-- 条目4.7 do 块结束（寄存器上限适配）
+
+-- ############################################################################
+-- 条目4.8：房间内玩家标记显示（移植联机工具箱1.67 玩家标记显示层，仅显示不移植管理面板）
+-- ============================================================================
+-- 用法：UpdatePlayerEntry 内调用 MPT_PlayerMark_ApplyStatusLabel(playerID)（插入点见该函数
+--   StatusLabel:SetHide 之后）。仅在就绪文本为「尚未就绪/已就绪/已连接」态时替换为标记：
+--   1) 本地标记优先（条目4.4 玩家标记管理面板的存档，数据格式同 g_PlayerMarkList：
+--      {Id=SteamID/网络ID, Name, Tag=1好友/2一般/3黑名单, Brief, ...}）——玩家自设提醒，
+--      不受隐身影响；显示 [ICON_x] + 标签名，Tooltip 为昵称+简要描述（[NEWLINE] 换行）。
+--   2) SQL 标记（前端配置库 TPT_PlayerData，FrontEnd/PlayerMark/PlayerMark_Data.sql）——
+--      按 Type 区分：Admin/Normal/Honor 为公共标记（玩家开隐身时不显示），Ban 始终显示；
+--      日期时效校验（Start_Date 未来/End_Date 已过不显示）；Tooltip 优先 ToolTipType（定义见
+--      StagingRoom.xml ContextDefaults 条目4.8），否则 Desc，空则 Name/Icon 兜底。
+-- 效率：数据预加载时一次性构建 [SteamID]=记录 哈希表（SQL 顶层同步、本地档案异步读盘），
+--   运行时 O(1) 直查，替代 1.67 的每次刷新线性遍历；零新增事件，刷新全由 UpdatePlayerEntry 驱动。
+-- 隐身判定（HiddenPkayerInfo）仅保留显示层逻辑；隐身设置按钮后续条目另加。
+-- ############################################################################
+do	-- 寄存器上限适配：分区整体块级 do...end 包裹（同条目4.3预备/4.4）
+-- ============================================================================
+-- 条目4.8：本地化文本预加载缓存（规范：分区头后集中预加载；XML String=/ToolTip= 不预加载）
+-- ============================================================================
+-- 本地标记标签名（StatusLabel 与 Tooltip 用；tag 与 4.4 过滤复选框一致，直接复用其文本）
+local MPT_LOCAL_MARK_NAMES : table = {
+	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_FRIEND"),
+	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_NORMAL"),
+	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_BLACK") };
+-- 本地标记图标文本（带方括号，StatusLabel 直接 SetText；与 4.4 PLAYERMARK_TAG_ICONS 同值，需同步）
+local MPT_LOCAL_MARK_ICONS : table = { "[ICON_OnlineGreenPingPip]", "[ICON_OnlineYellowPingPig]", "[ICON_OnlineRedPingPig]" };
+
+-- ============================================================================
+-- 常量与全局状态（全局而非 local：本文件前部 UpdatePlayerEntry 要调用本分区函数）
+-- ============================================================================
+g_MPT_MarkSql    = {};	-- SQL 标记哈希表：[SteamID] = {Name,Type,Icon,Desc,ToolTipType,Start_Date,End_Date}（顶层预加载）
+g_MPT_MarkLocal  = {};	-- 本地标记哈希表：[Id] = {Name,Tag,Brief,...}（条目4.4 存档，进房读盘填充）
+
+-- ============================================================================
+-- 条目4.8：SQL 标记预加载（前端 Context 脚本加载即执行 = UI 初始化时加载好；
+--   仿 4.5/4.6 顶层 DB.ConfigurationQuery 预加载纯数据范式，一次遍历建哈希表）
+-- ============================================================================
+local mptMarkSqlRows = DB.ConfigurationQuery("SELECT * FROM TPT_PlayerData") or {};
+for _, mptMarkRow in ipairs(mptMarkSqlRows) do
+	if mptMarkRow.SteamID ~= nil then
+		g_MPT_MarkSql[mptMarkRow.SteamID] = mptMarkRow;
+	end
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_RefreshLocalCache()：从条目4.3 存储管线读盘刷新本地标记哈希表。
+--   键名段与 4.4（PLAYERMARK_STORAGE_FILE/KEY）一致；异步回调式，回调前消费端拿到的是旧缓存，
+--   无标记则显示 SQL 标记/就绪文本（可接受）。4.4 面板保存成功回调内也会调本函数（见 SaveToDisk）。
+-- ============================================================================
+function MPT_PlayerMark_RefreshLocalCache()
+	MPT_Storage_LoadData("MPT_PlayerInfo", "Players", function(data)
+		g_MPT_MarkLocal = {};
+		if type(data) == "table" then
+			for _, mptMarkRec in ipairs(data) do
+				if mptMarkRec.Id ~= nil then
+					g_MPT_MarkLocal[mptMarkRec.Id] = mptMarkRec;
+				end
+			end
+		end
+	end);
+end
+MPT_PlayerMark_RefreshLocalCache();	-- 顶层先读一次（进房后 UpdatePlayerEntry 消费缓存）
+
+-- ============================================================================
+-- MPT_PlayerMark_DateAllowed(rec)：SQL 标记日期时效校验（移植 1.67 DateAllow 精简版）。
+--   Start_Date 非空且晚于今日 → false；End_Date 非空且早于今日 → false；无日期立即 true。
+-- ============================================================================
+function MPT_PlayerMark_DateAllowed(rec)
+	if rec.Start_Date ~= nil and rec.Start_Date ~= "" then
+		local y = tonumber(string.sub(rec.Start_Date, 1, 4));
+		local m = tonumber(string.sub(rec.Start_Date, 6, 7));
+		local d = tonumber(string.sub(rec.Start_Date, 9, 10));
+		if y and m and d and os.time({year=y, month=m, day=d}) > os.time() then
+			return false;
+		end
+	end
+	if rec.End_Date ~= nil and rec.End_Date ~= "" then
+		local y = tonumber(string.sub(rec.End_Date, 1, 4));
+		local m = tonumber(string.sub(rec.End_Date, 6, 7));
+		local d = tonumber(string.sub(rec.End_Date, 9, 10));
+		if y and m and d and os.time({year=y, month=m, day=d}) < os.time() then
+			return false;
+		end
+	end
+	return true;
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_ApplyStatusLabel(playerID)：入口——把槽位就绪文本替换为玩家标记。
+--   只被 UpdatePlayerEntry 调用（其调用点已覆盖进房/换槽/就绪/配置变化全部刷新时机）。
+--   无标记玩家不处理：UpdatePlayerEntry 已重算 statusString 并 SetText，自然恢复就绪文本。
+-- ============================================================================
+function MPT_PlayerMark_ApplyStatusLabel(playerID)
+	local entry = g_PlayerEntries[playerID];
+	if entry == nil then return; end
+	-- 仅在就绪/未就绪/已连接态替换；其他状态（mod 校验、错误、空态等）不动
+	local curText = entry.StatusLabel:GetText();
+	if curText ~= NotReadyStatusStr and curText ~= ReadyStatusStr and curText ~= PlayerConnectedSummaryStr then
+		return;
+	end
+	local cfg = PlayerConfigurations[playerID];
+	if cfg == nil or not cfg:IsHuman() then return; end
+	local netId = cfg:GetNetworkIdentifer();
+	if not MPT_PlayerMark_IsValidId(netId) then return; end	-- 17位Steam/32位Epic（复用 4.4 全局函数）
+
+	-- 1) 本地标记优先（玩家自设提醒，不受隐身影响）
+	local localRec = g_MPT_MarkLocal[netId];
+	if localRec ~= nil then
+		local tag : number = localRec.Tag or 2;
+		entry.StatusLabel:SetText(MPT_LOCAL_MARK_ICONS[tag] .. " " .. MPT_LOCAL_MARK_NAMES[tag]);
+		local ttStr = localRec.Name or "";
+		if localRec.Brief ~= nil and localRec.Brief ~= "" then
+			ttStr = (ttStr ~= "" and ttStr .. "[NEWLINE]" or "") .. localRec.Brief;
+		end
+		entry.StatusLabel:SetToolTipString(ttStr);
+		return;
+	end
+
+	-- 2) SQL 标记 + 日期时效 + 隐身判定
+	local sqlRec = g_MPT_MarkSql[netId];
+	if sqlRec ~= nil and MPT_PlayerMark_DateAllowed(sqlRec) then
+		local isHidden : boolean = cfg:GetValue("HiddenPkayerInfo") == "T";
+		local isPublic : boolean = (sqlRec.Type == "Admin" or sqlRec.Type == "Normal" or sqlRec.Type == "Honor");
+		if not (isHidden and isPublic) then	-- 隐身隐藏公共标记；Ban 与未隐身仍显示
+			entry.StatusLabel:SetText(sqlRec.Icon or "");
+			if sqlRec.ToolTipType ~= nil and sqlRec.ToolTipType ~= "" then
+				entry.StatusLabel:SetToolTipType(sqlRec.ToolTipType);
+			else
+				entry.StatusLabel:SetToolTipString(sqlRec.Desc or sqlRec.Name or sqlRec.Icon or "");
+			end
+		end
+	end
+	-- 都未命中：不动（还原由 UpdatePlayerEntry 原生 statusString 逻辑负责）
+end
+end	-- 条目4.8 do 块结束（寄存器上限适配）

@@ -948,4 +948,117 @@
 		</Grid>
 	</ToolTipType>
 
+
+	<!-- 条目4.8：玩家标记图片 Tooltip（移植联机工具箱1.67 BSR/UI/TPT_ToolTipType.xml；供 SQL 表 TPT_PlayerData 的
+	     ToolTipType 字段引用——Bermuda_Triangle 为管理员标记内置纹理拼图，AnDe/HuaMing/QingTian_Desc 为玩家标记
+	     256x256 图片（DDS 经 ImportFiles 入 VFS，文件名与 Texture= 一致）；结构同 1.67 原样，仅加注释与缩进） -->
+	<ToolTipType Name="Bermuda_Triangle">
+		<Grid ID="BG" AutoSize="1" Anchor="C,C">
+			<Stack Anchor="L,T" StackGrowth="Down" Padding="-20">
+				<Stack Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+				</Stack>
+				<Stack Offset="17,0" Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="50,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="50,0" Texture="MayaGran_Features50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="50,0" Texture="MayaGran_Features50"/>
+				</Stack>
+				<Stack Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="150,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="50,0" Texture="MayaGran_Features50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+				</Stack>
+				<Stack Offset="17,0" Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="200,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="150,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+				</Stack>
+				<Stack Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="150,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="50,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,100" Texture="Terrain50"/>
+				</Stack>
+				<Stack Offset="17,0" Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="200,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="300,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,50" Texture="Terrain50"/>
+				</Stack>
+				<Stack Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="50,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="50,0" Texture="XP2_Features50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="300,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="300,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,0" Texture="Terrain50"/>
+				</Stack>
+				<Stack Offset="17,0" Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="200,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="150,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="350,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="300,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="300,0" Texture="Terrain50"/>
+				</Stack>
+				<Stack Anchor="L,T" StackGrowth="Right" Padding="-16">
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="200,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="0,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="300,0" Texture="Terrain50"/>
+					<Image Anchor="L,T" Offset="0,0" Size="50,50" TextureOffset="300,0" Texture="Terrain50"/>
+				</Stack>
+			</Stack>
+		</Grid>
+	</ToolTipType>
+	<!-- 玩家标记 256x256 图片 Tooltip（三张 DDS 结构一致，Texture= 指向 ImportFiles 导入的文件名） -->
+	<ToolTipType Name="AnDe_Desc">
+		<Grid ID="BG" AutoSize="1" Anchor="C,C">
+			<Image Anchor="L,C" Offset="0,0" Size="256,256" Texture="AnDe_Desc_Texture.dds"/>
+		</Grid>
+	</ToolTipType>
+	<ToolTipType Name="HuaMing_Desc">
+		<Grid ID="BG" AutoSize="1" Anchor="C,C">
+			<Image Anchor="L,C" Offset="0,0" Size="256,256" Texture="HuaMing_Desc_Texture.dds"/>
+		</Grid>
+	</ToolTipType>
+	<ToolTipType Name="QingTian_Desc">
+		<Grid ID="BG" AutoSize="1" Anchor="C,C">
+			<Image Anchor="L,C" Offset="0,0" Size="256,256" Texture="QingTian_Desc_Texture.dds"/>
+		</Grid>
+	</ToolTipType>
+
 </ContextDefaults>
