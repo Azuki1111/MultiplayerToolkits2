@@ -5072,6 +5072,10 @@ Initialize();
 --   改动必须双向同步（Storage/ 独立文件保留给未来游戏内消费方）。
 -- 【与独立文件的差异】内联副本无幂等守卫（本文件每状态只执行一次，守卫无意义；
 --   且 chunk 顶层中间的 return 会编译失败，守卫结构本也无法照搬），无 include。
+-- 【存储方式】ModGroup 组名承载数据（原 .Civ6Cfg 方案已移除）：组名格式
+--   [size_0][color:0,0,0,0][MPT_DS][fileName][key][len]数据，隐形前缀使数据组在
+--   前端 Mods 界面组列表不可见；建组走「干净组」流程（先禁用全部已启用 mod、
+--   建后恢复）。实测依据见 AGENTS.md 踩坑记录「ModGroup 组名存储实测定论」。
 -- ############################################################################
 
 -- 寄存器上限适配：本分区块级 do...end 包裹，块内顶层 local 随块结束释放寄存器
@@ -5171,257 +5175,78 @@ end
 
 -- ============================================================================
 -- 条目4.3预备：MPT_DataStorage 本地数据读写部分（同源自 Storage/MPT_DataStorage.lua）
--- 极简本地数据读写工具：无压缩/缓存/启动预载/索引键，调用方自选 .Civ6Cfg 文件名与键名，
--- 每次 LoadData 都真实读盘；内建 FIFO 作业队列（任时刻一作业在途，防并发查询互顶）。
--- 原理：GameConfiguration 键值随存档落盘；SaveGame(FileType=GAME_CONFIGURATION) 把当前
--- GameConfiguration 单独存成配置存档，LoadGame 载入后 GetValue 取回。
--- 用法（异步，结果经回调返回）：
---   MPT_Storage_SaveData("MyMod", "Blacklist", t, function(ok) end);   -- 写：序列化→落盘 MyMod.Civ6Cfg
---   MPT_Storage_LoadData("MyMod", "Blacklist", function(t) end);       -- 读：t=数据表，无存档/键损坏=nil
---   MPT_Storage_DeleteFile("MyMod", function(found) end);              -- 删：删除 MyMod.Civ6Cfg
--- 注意：LoadGame 是重置语义（把 GameConfiguration 替换为文件快照），且 GAME_CONFIGURATION 存档
---   实测含房间槽位身份（「名字@网络ID」）与 Players:* 配置——房间内裸 LoadGame 会把旧快照盖回
---   槽位（条目4.4 换槽后原槽位显示旧房客的 bug 根因）。故 LoadData 内置「快照/恢复链」：
---   先把当前实况 SaveGame 成临时档 MPT_RestoreSnapshot，读数据档取键后立即 LoadGame 临时档
---   恢复实况并删除之，准备房间内可安全调用；存档恒落 Saves\Single；fileName/key 仅限
---   字母数字下划线（要拼进 GameConfiguration 键名）。
+-- 极简本地数据读写工具：ModGroup 组名承载数据（原 .Civ6Cfg 方案已移除）。
+-- 原理：Modding.CreateModGroup 组名长度 >64MB 未触顶、创建即落库 Mods.sqlite、
+--   跨进程冷启动 GetModGroups() 读回完整（三轮实测，见 AGENTS.md「ModGroup 组名存储实测定论」）。
+-- 组名格式：[size_0][color:0,0,0,0][MPT_DS][fileName][key][len]数据
+--   [size_0][color:0,0,0,0] 隐形前缀（字号0+全透明）：数据组在前端 Mods 界面组列表不可见
+--   （1.67 [size_0] 前缀同款思路 + 透明色强化）；len=数据字符数，读时校验完整性；
+--   单组名直存不切块（实测上限 >> 实际数据量）。
+-- 干净组：建组前批量禁用全部已启用 mod（官方 DisableAllMods 模式）、建组后即恢复——
+--   数据组不含任何 mod，玩家在前端误切到数据组不会改变 mod 启用状态。
+-- 用法（同步执行，结果经回调返回）：
+--   MPT_Storage_SaveData("MyMod", "Blacklist", t, function(ok) end);   -- 写：序列化→删旧组→建组
+--   MPT_Storage_LoadData("MyMod", "Blacklist", function(t) end);       -- 读：t=数据表，无组/损坏=nil
+--   MPT_Storage_DeleteFile("MyMod", function(found) end);              -- 删：删 MyMod 全部数据组
 -- ============================================================================
 
 -- ============================================================================
 -- 常量
 -- ============================================================================
-local STORAGE_KEY_PREFIX : string = "MPT_DS_";		-- GameConfiguration 键前缀（防与其他键碰撞）
-local STORAGE_CHUNK_SIZE : number = 128000;			-- 单值切块长度（单值 512000 实测完整读写，取 1/4 留余量）
-local STORAGE_SNAPSHOT_NAME : string = "MPT_RestoreSnapshot";	-- LoadData 快照/恢复链临时档名（常量、每次覆盖、用完即删）
+local STORAGE_GROUP_PREFIX : string = "[size_0][color:0,0,0,0][MPT_DS][";	-- 数据组名公共前缀（隐形标签 + 命名空间）
 
 -- ============================================================================
--- 作业队列状态（FIFO：任时刻只有一个作业在途，回调按入队顺序到达）
--- ============================================================================
-local g_storageJobs : table = {};	-- 待执行作业队列
-local g_storageJob  = nil;			-- 在途作业（nil=空闲）
-
-local StorageRunNext, StorageFinishJob;	-- 互递归前向声明
-
--- ============================================================================
--- StorageClearKey：清除某键及其全部旧块（多块时键值为块数）。
--- 覆盖写入前必须先清：上次多块本次单块时，残留的旧块会污染拼接读取。
--- ============================================================================
-local function StorageClearKey(key : string)
-	local oldValue = GameConfiguration.GetValue(key);
-	if type(oldValue) == "number" then
-		for i = 1, oldValue do
-			GameConfiguration.SetValue(key .. "_" .. i, nil);
-		end
-	end
-	GameConfiguration.SetValue(key, nil);
-end
-
--- ============================================================================
--- StorageWriteKey：编码串切块写入（切块防单值长度上限；多块时键存块数）
--- ============================================================================
-local function StorageWriteKey(key : string, encodedStr : string)
-	StorageClearKey(key);
-	local chunkNum : number = math.ceil(#encodedStr / STORAGE_CHUNK_SIZE);
-	if chunkNum > 1 then
-		GameConfiguration.SetValue(key, chunkNum);
-		for i = 1, chunkNum do
-			GameConfiguration.SetValue(key .. "_" .. i, string.sub(encodedStr, (i - 1) * STORAGE_CHUNK_SIZE + 1, i * STORAGE_CHUNK_SIZE));
-		end
-	else
-		GameConfiguration.SetValue(key, encodedStr);
-	end
-end
-
--- ============================================================================
--- StorageReadKey：读取键并拼接反序列化（多块时键值为块数；块缺失视为损坏返回 nil）
--- ============================================================================
-local function StorageReadKey(key : string)
-	local value = GameConfiguration.GetValue(key);
-	if type(value) == "number" then
-		local chunks : table = {};
-		for i = 1, value do
-			local chunk = GameConfiguration.GetValue(key .. "_" .. i);
-			if type(chunk) ~= "string" then return nil; end
-			chunks[i] = chunk;
-		end
-		value = table.concat(chunks);
-	end
-	if type(value) ~= "string" then return nil; end
-	return MPT_Deserialize(value);
-end
-
--- ============================================================================
--- StorageValidateName：fileName/key 仅限字母数字下划线（fileName 做文件名，key 拼进键名）
+-- StorageValidateName：fileName/key 仅限字母数字下划线（要拼进组名前缀做定界解析）
 -- ============================================================================
 local function StorageValidateName(name)
 	return type(name) == "string" and string.match(name, "^[%w_]+$") ~= nil;
 end
 
 -- ============================================================================
--- 内部：发起文件列表直查（Saves\Single 的 GAME_CONFIGURATION，无弹窗）。
--- 成功置 job.step="query" 并返回 true；查询都发不出返回 false（事件不会再来，调用方负责收尾）。
+-- 内部：按前缀删除本 mod 的数据组（1.67 同款：写前清旧，防同 key 多组堆积）。
+-- 返回是否有组被删。
 -- ============================================================================
-local function StorageStartQuery(job)
-	job.queryId = nil;
-	local ok, queryId = pcall(function()
-		return UI.QuerySaveGameList(SaveLocations.LOCAL_STORAGE, SaveTypes.SINGLE_PLAYER, SaveLocationOptions.NORMAL + SaveLocationOptions.LOAD_METADATA, SaveFileTypes.GAME_CONFIGURATION, "");
+local function StorageDeleteGroupsByPrefix(prefix : string)
+	local found = false;
+	for i, v in ipairs(Modding.GetModGroups()) do
+		if string.sub(v.Name, 1, #prefix) == prefix then
+			Modding.DeleteModGroup(v.Handle);
+			found = true;
+		end
+	end
+	return found;
+end
+
+-- ============================================================================
+-- 内部：建干净组——①记录并批量禁用全部已启用 mod（官方 DisableAllMods 模式：
+-- GetInstalledMods 条目 .Enabled 筛选、DisableMod/EnableMod 表参数批量操作）
+-- → ②1.67 序列建组（GetCurrentModGroup → CreateModGroup → SetCurrentModGroup 还原）
+-- → ③批量恢复启用。pcall 包裹建组段：任何失败都保证恢复玩家的 mod 启用状态。
+-- ============================================================================
+local function StorageCreateCleanGroup(name : string)
+	local enabledHandles : table = {};
+	for i, v in ipairs(Modding.GetInstalledMods()) do
+		if v.Enabled then
+			table.insert(enabledHandles, v.Handle);
+		end
+	end
+	if #enabledHandles > 0 then
+		Modding.DisableMod(enabledHandles);
+	end
+	pcall(function()
+		local g = Modding.GetCurrentModGroup();
+		Modding.CreateModGroup(name, g);
+		Modding.SetCurrentModGroup(g);
 	end);
-	if ok and queryId ~= nil then
-		job.step = "query";
-		job.queryId = queryId;
-		return true;
-	end
-	return false;
-end
-
--- ============================================================================
--- 内部：LoadData 快照/恢复链——把 GameConfiguration 恢复为临时档 A 的实况快照（LoadComplete
--- 里 step="restore" 分支删 A 并收尾）。任何 load 失败路径都必须经此恢复，防旧快照残留盖房。
--- ============================================================================
-local function StorageRestoreSnapshot(job, result)
-	job.data = result;
-	if job.fileSnap == nil then
-		StorageFinishJob(result);	-- 无快照可恢复（正常流程到不了这里：快照保存成功才会发出 LoadGame）
-		return;
-	end
-	local ok = pcall(function() Network.LoadGame(job.fileSnap, 0); end);
-	if ok then
-		job.step = "restore";
-	else
-		print("MPT_DS: 恢复快照失败，房间配置可能停留在数据档快照");
-		pcall(function() UI.DeleteSavedGame(job.fileSnap); end);
-		StorageFinishJob(result);
+	if #enabledHandles > 0 then
+		Modding.EnableMod(enabledHandles);
 	end
 end
 
 -- ============================================================================
--- 内部：执行队首作业。save=切块写键后落盘等 SaveComplete；delete=直查文件列表；
--- load=快照/恢复链：①先把当前实况 SaveGame 成临时档 A（等 SaveComplete）→ ②直查列表
--- 拿 A 与数据档 B → ③LoadGame(B) 取键 → ④LoadGame(A) 恢复实况 → ⑤删 A 收尾。
--- ============================================================================
-StorageRunNext = function()
-	if g_storageJob ~= nil then return; end
-	local job = g_storageJobs[1];
-	if job == nil then return; end
-	table.remove(g_storageJobs, 1);
-	g_storageJob = job;
-	if job.kind == "save" then
-		StorageWriteKey(STORAGE_KEY_PREFIX .. job.key, job.encoded);
-		local ok = pcall(function()
-			Network.SaveGame({ Name = job.fileName, Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION });
-		end);
-		if not ok then
-			StorageClearKey(STORAGE_KEY_PREFIX .. job.key);
-			StorageFinishJob(false);
-		end
-	elseif job.kind == "load" then
-		-- 快照/恢复链第①步：存当前实况临时档 A，落盘完成事件里再走查询
-		job.step = "saveSnap";
-		local ok = pcall(function()
-			Network.SaveGame({ Name = STORAGE_SNAPSHOT_NAME, Type = SaveTypes.SINGLE_PLAYER, FileType = SaveFileTypes.GAME_CONFIGURATION });
-		end);
-		if not ok then
-			StorageFinishJob(nil);
-		end
-	else	-- delete 直查文件列表
-		if not StorageStartQuery(job) then
-			StorageFinishJob(false);
-		end
-	end
-end
-
--- ============================================================================
--- 内部：结束在途作业——先推进队列再回调（回调内可安全再次入队；回调异常不炸队列）
--- ============================================================================
-StorageFinishJob = function(result)
-	local job = g_storageJob;
-	if job == nil then return; end
-	g_storageJob = nil;
-	local callback = job.callback;
-	StorageRunNext();
-	if callback ~= nil then pcall(callback, result); end
-end
-
--- ============================================================================
--- 内部：SaveComplete 派发——在途 save 作业落盘完成清键收尾；load 作业则是快照 A 落盘完成，
--- 继续走直查列表（eResult 非 0 视为快照失败：尚未 LoadGame，无需恢复，直接收尾）
--- ============================================================================
-Events.SaveComplete.Add(function(eResult, eType, eOptions, eFileType)
-	local job = g_storageJob;
-	if job == nil then return; end
-	if eFileType ~= nil and eFileType ~= SaveFileTypes.GAME_CONFIGURATION then return; end
-	if job.kind == "save" then
-		StorageClearKey(STORAGE_KEY_PREFIX .. job.key);	-- 落盘后清键，防混入房间配置与真实存档（PKU 同款清理思路）
-		StorageFinishJob(eResult == nil or eResult == 0);
-	elseif job.kind == "load" and job.step == "saveSnap" then
-		if eResult ~= nil and eResult ~= 0 then StorageFinishJob(nil); return; end
-		if not StorageStartQuery(job) then
-			StorageFinishJob(nil);
-		end
-	end
-end);
-
--- ============================================================================
--- 内部：LoadComplete 派发——load 作业按 step 认领：loadData=数据档读档完成，立即取键
--- （恢复后键即被快照覆盖）再 LoadGame 恢复快照；restore=恢复完成，删临时档收尾。
--- ============================================================================
-Events.LoadComplete.Add(function(eResult, eType, eOptions, eFileType)
-	local job = g_storageJob;
-	if job == nil or job.kind ~= "load" then return; end
-	if job.step == "loadData" then
-		StorageRestoreSnapshot(job, StorageReadKey(STORAGE_KEY_PREFIX .. job.key));
-	elseif job.step == "restore" then
-		if eResult ~= nil and eResult ~= 0 then
-			print("MPT_DS: 恢复快照读档失败，房间配置可能停留在数据档快照");
-		end
-		if job.fileSnap ~= nil then pcall(function() UI.DeleteSavedGame(job.fileSnap); end); end
-		StorageFinishJob(job.data);
-	end
-end);
-
--- ============================================================================
--- 内部：文件列表派发（LuaEvents.FileListQueryResults，引擎触发）——按自身 requestID 认领；
--- load 一次查询同时拿数据档 B 与快照档 A：B 找到则 LoadGame 读档（等 LoadComplete 取键后恢复），
--- 未找到则删 A 直接收尾（未 LoadGame，配置未被碰）；delete 找到则 DeleteSavedGame。
--- ============================================================================
-LuaEvents.FileListQueryResults.Add(function(fileList : table, id : number)
-	local job = g_storageJob;
-	if job == nil or job.queryId == nil or id ~= job.queryId then return; end
-	pcall(function() UI.CloseFileListQuery(id); end);
-	job.queryId = nil;
-	local foundData = nil;
-	local foundSnap = nil;
-	for _, file in pairs(fileList or {}) do
-		if file.Name == job.fileName .. ".Civ6Cfg" then
-			foundData = file;
-		elseif job.kind == "load" and file.Name == STORAGE_SNAPSHOT_NAME .. ".Civ6Cfg" then
-			foundSnap = file;
-		end
-	end
-	if job.kind == "load" then
-		job.fileSnap = foundSnap;
-		if foundData == nil then
-			if foundSnap ~= nil then pcall(function() UI.DeleteSavedGame(foundSnap); end); end
-			StorageFinishJob(nil);
-			return;
-		end
-		local ok = pcall(function() Network.LoadGame(foundData, 0); end);
-		if ok then
-			job.step = "loadData";
-		else
-			StorageRestoreSnapshot(job, nil);	-- LoadGame 发不出去：恢复快照并收尾
-		end
-	else	-- delete
-		if foundData == nil then StorageFinishJob(false); return; end
-		pcall(function() UI.DeleteSavedGame(foundData); end);
-		StorageFinishJob(true);
-	end
-end);
-
--- ============================================================================
--- 对外：写——data 序列化后切块写入并落盘 fileName.Civ6Cfg（Saves\Single）。
+-- 对外：写——data 序列化后以组名承载（先删同 key 旧组，再建干净新组）。
 -- data 为任意纯数据（表/字符串/数字/布尔；函数/循环表序列化报错）；
--- callback(success:boolean) 可选。
+-- callback(success:boolean) 可选，同步调用。
 -- ============================================================================
 function MPT_Storage_SaveData(fileName : string, key : string, data, callback)
 	if not StorageValidateName(fileName) or not StorageValidateName(key) then
@@ -5435,15 +5260,15 @@ function MPT_Storage_SaveData(fileName : string, key : string, data, callback)
 		if callback ~= nil then pcall(callback, false); end
 		return;
 	end
-	table.insert(g_storageJobs, { kind = "save", fileName = fileName, key = key, encoded = encoded, callback = callback });
-	StorageRunNext();
+	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][" .. key .. "][";
+	StorageDeleteGroupsByPrefix(prefix);
+	StorageCreateCleanGroup(prefix .. #encoded .. "]" .. encoded);
+	if callback ~= nil then pcall(callback, true); end
 end
 
 -- ============================================================================
--- 对外：读——载入 fileName.Civ6Cfg 并读回 key 反序列化后的数据。
--- callback(data) 必填；文件不存在/键缺失/数据损坏均回调 nil。
--- 内置快照/恢复链（先 SaveGame 当前实况临时档，取键后 LoadGame 恢复并删除），
--- 联机准备房间内可安全调用，不会再把旧槽位身份快照盖回房间。
+-- 对外：读——按前缀找数据组，len 校验后反序列化读回（异常多组时取第一个完好的）。
+-- callback(data) 必填，同步调用；组不存在/长度损坏/反序列化失败均回调 nil。
 -- ============================================================================
 function MPT_Storage_LoadData(fileName : string, key : string, callback)
 	if not StorageValidateName(fileName) or not StorageValidateName(key) then
@@ -5455,12 +5280,29 @@ function MPT_Storage_LoadData(fileName : string, key : string, callback)
 		print("MPT_DS: LoadData 缺少 callback", key);
 		return;
 	end
-	table.insert(g_storageJobs, { kind = "load", fileName = fileName, key = key, callback = callback });
-	StorageRunNext();
+	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][" .. key .. "][";
+	local data = nil;
+	for i, v in ipairs(Modding.GetModGroups()) do
+		if string.sub(v.Name, 1, #prefix) == prefix then
+			local rest : string = string.sub(v.Name, #prefix + 1);
+			local closePos = string.find(rest, "]", 1, true);	-- len 定界符（plain find：] 是模式魔法字符）
+			if closePos ~= nil then
+				local len = tonumber(string.sub(rest, 1, closePos - 1));
+				local encoded : string = string.sub(rest, closePos + 1);
+				if len ~= nil and len == #encoded then
+					data = MPT_Deserialize(encoded);
+					if data ~= nil then break; end
+				else
+					print("MPT_DS: 数据组长度校验失败", key);
+				end
+			end
+		end
+	end
+	pcall(callback, data);
 end
 
 -- ============================================================================
--- 对外：删——删除 fileName.Civ6Cfg；callback(found:boolean) 可选。
+-- 对外：删——删除 fileName 下全部 key 的数据组；callback(found:boolean) 可选，同步调用。
 -- ============================================================================
 function MPT_Storage_DeleteFile(fileName : string, callback)
 	if not StorageValidateName(fileName) then
@@ -5468,8 +5310,8 @@ function MPT_Storage_DeleteFile(fileName : string, callback)
 		if callback ~= nil then pcall(callback, false); end
 		return;
 	end
-	table.insert(g_storageJobs, { kind = "delete", fileName = fileName, callback = callback });
-	StorageRunNext();
+	local found = StorageDeleteGroupsByPrefix(STORAGE_GROUP_PREFIX .. fileName .. "][");
+	if callback ~= nil then pcall(callback, found); end
 end
 end	-- 条目4.3预备 do 块结束（寄存器上限适配）
 
@@ -5480,8 +5322,8 @@ end	-- 条目4.3预备 do 块结束（寄存器上限适配）
 --   右列内联编辑选中记录（含详细描述记事本）。面板与弹窗布局见 StagingRoom.xml 条目4.4 注释区。
 -- 定位：纯本地记事本，不读取当前房间实况、不做任何房间联动/警告（与用户确认的边界）。
 -- 存储：严格走条目4.3预备内联副本的 MPT_Storage_SaveData/LoadData（MPT_DataStorage 格式），
---   专属文件 MPT_PlayerInfo.Civ6Cfg（Saves\Single）、键 "Players"；每次打开面板真实读盘，
---   仅「保存」按钮落盘；面板代码不直接碰 Network.SaveGame/GameConfiguration。
+--   ModGroup 组名 [size_0][color:0,0,0,0][MPT_DS][MPT_PlayerInfo][Players][len]... 承载；
+--   每次打开面板真实读库，仅「保存」按钮建组落库；面板代码不直接碰 Modding 组管理 API。
 -- 数据：g_PlayerMarkList = { { Id=主键(17位纯数字Steam/32位字符Epic), Name=昵称,
 --   Tag=1好友/2一般/3黑名单, Brief=简要描述, Details={ {Text,Time=os.time()}, ... },
 --   Modified=os.time() }, ... }；显示日期一律由时间戳现算（os.date），不冗余存储。
@@ -5517,8 +5359,8 @@ local PlayerMarkTagNameStrs			: table = {	-- 下标即 Tag：标签下拉项/按
 -- 常量与全局状态（全局而非 local：KeyUpHandler 等本文件前部代码要调用本分区函数；
 --   且「声明点之前引用的 local 会解析为全局」为已踩坑，统一全局避免声明顺序问题）
 -- ============================================================================
-local PLAYERMARK_STORAGE_FILE : string = "MPT_PlayerInfo";	-- 专属玩家信息存档文件名（字母数字下划线）
-local PLAYERMARK_STORAGE_KEY  : string = "Players";			-- 存档内键名
+local PLAYERMARK_STORAGE_FILE : string = "MPT_PlayerInfo";	-- 数据组命名空间段（字母数字下划线）
+local PLAYERMARK_STORAGE_KEY  : string = "Players";			-- 数据组键名段
 local PLAYERMARK_TAG_ICONS : table = { "[ICON_OnlineGreenPingPip]", "[ICON_OnlineYellowPingPig]", "[ICON_OnlineRedPingPig]" };	-- 下标即 Tag：1好友 2一般 3黑名单（游戏真实图标名黄/红为 PingPig，已核实）；带方括号文本 tag，下拉按钮文本用
 local PLAYERMARK_TAG_ICON_NAMES : table = { "OnlineGreenPingPip", "OnlineYellowPingPig", "OnlineRedPingPig" };	-- 下标即 Tag；列表行 Image:SetIcon 用（FontIcons.xml 的裸 Name——SetIcon/Icon= 内部自动拼 ICON_ 前缀，不可再带）
 
