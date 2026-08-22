@@ -13,12 +13,12 @@ include( "Civ6Common" );
 include( "TeamSupport" );
 -- ============================================================================
 -- 条目4.3预备：序列化与本地数据读写工具【已内联至本文件末尾】（条目4.3预备分区）。
--- 原设计为顶层 include Storage/ 两份独立文件。实测定论：前端 include() 本 mod 经
+-- 原设计为顶层 include Shared/ 两份独立文件。实测定论：前端 include() 本 mod 经
 -- ImportFiles 注册的 Lua 文件，在「开一局游戏再退回主菜单」后的新前端 Lua 状态下
 -- 静默不执行（pcall(include) 返回成功与 table，但文件体零执行、无任何报错——引擎缺陷，
 -- 单变量实验已排除双环境注册嫌疑，详见 git 条目4.3预备诊断与 AGENTS.md 踩坑记录）。
 -- ReplaceUIScript 投递的本文件每次前端重建都可靠重执行，故改为内联承载。
--- Storage/ 独立文件保留给未来游戏内消费方，改动存储/序列化代码必须双向同步。
+-- Shared/ 独立文件保留给未来游戏内消费方，改动存储/序列化代码必须双向同步。
 -- ----------------------------------------------------------------------------
 
 
@@ -5126,8 +5126,8 @@ Initialize();
 -- 新 Lua 状态下 include 静默不执行（pcall(include) 返回成功与 table，但文件体零执行、
 -- 无任何报错——引擎缺陷，单变量实验已排除双环境注册嫌疑，详见 git 条目4.3预备诊断）。
 -- ReplaceUIScript 投递的本文件每次前端重建都可靠重执行，故两模块内联于此。
--- 【同步义务】本区与 Storage/MPT_Serialize.lua、Storage/MPT_DataStorage.lua 同源，
---   改动必须双向同步（Storage/ 独立文件保留给未来游戏内消费方）。
+-- 【同步义务】本区与 Shared/MPT_Serialize.lua、Shared/MPT_DataStorage.lua 同源，
+--   改动必须双向同步（Shared/ 独立文件保留给未来游戏内消费方）。
 -- 【与独立文件的差异】内联副本无幂等守卫（本文件每状态只执行一次，守卫无意义；
 --   且 chunk 顶层中间的 return 会编译失败，守卫结构本也无法照搬），无 include。
 -- 【存储方式】ModGroup 组名承载数据（原 .Civ6Cfg 方案已移除）：组名格式
@@ -5141,7 +5141,7 @@ Initialize();
 --  块内全局函数/回调以 upvalue 捕获 local，功能不受影响）
 do
 -- ============================================================================
--- 条目4.3预备：MPT_Serialize 序列化部分（同源自 Storage/MPT_Serialize.lua）
+-- 条目4.3预备：MPT_Serialize 序列化部分（同源自 Shared/MPT_Serialize.lua）
 -- 移植自联机工具箱1.67 BSR serialize/deserialize（原版出自 metalua，MIT 协议），
 -- 精简重写为纯数据表单遍递归：不支持函数/循环表（报错），共享子表按值展开，
 -- 输出 return {...} 字面量（loadstring 可读 1.67 旧数据）；MPT_Deserialize 损坏返回 nil。
@@ -5232,7 +5232,7 @@ function MPT_Deserialize(s)
 end
 
 -- ============================================================================
--- 条目4.3预备：MPT_DataStorage 本地数据读写部分（同源自 Storage/MPT_DataStorage.lua）
+-- 条目4.3预备：MPT_DataStorage 本地数据读写部分（同源自 Shared/MPT_DataStorage.lua）
 -- 极简本地数据读写工具：ModGroup 组名承载数据（原 .Civ6Cfg 方案已移除）。
 -- 原理：Modding.CreateModGroup 组名长度 >64MB 未触顶、创建即落库 Mods.sqlite、
 --   跨进程冷启动 GetModGroups() 读回完整（三轮实测，见 AGENTS.md「ModGroup 组名存储实测定论」）。
@@ -6575,7 +6575,7 @@ end	-- 条目4.7 do 块结束（寄存器上限适配）
 --   1) 本地标记优先（条目4.4 玩家标记管理面板的存档，数据格式同 g_PlayerMarkList：
 --      {Id=SteamID/网络ID, Name, Tag=1好友/2一般/3黑名单, Brief, ...}）——玩家自设提醒，
 --      不受隐身影响；显示 [ICON_x] + 标签名，Tooltip 为昵称+简要描述（[NEWLINE] 换行）。
---   2) SQL 标记（前端配置库 TPT_PlayerData，FrontEnd/PlayerMark/PlayerMark_Data.sql）——
+--   2) SQL 标记（前端配置库 TPT_PlayerData，Shared/PlayerMark/PlayerMark_Data.sql）——
 --      按 Type 区分：Admin/Normal/Honor 为公共标记（玩家开隐身时不显示），Ban 始终显示；
 --      日期时效校验（Start_Date 未来/End_Date 已过不显示）；Tooltip 优先 ToolTipType（定义见
 --      StagingRoom.xml ContextDefaults 条目4.8），否则 Desc，空则 Name/Icon 兜底。

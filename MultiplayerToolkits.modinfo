@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>19</Version>
+		<Version>20</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -62,7 +62,7 @@
 			<Properties>
 				<LoadOrder>10</LoadOrder>
 			</Properties>
-			<File>Config/Config_Base.xml</File>
+			<File>FrontEnd/Config/Config_Base.xml</File>
 		</UpdateDatabase>
 		<!-- 前端通用本地化文本（每语言一个文件，同时注册进游戏内上下文；功能专属文本随功能文件夹，如 FrontEnd/Changelog/） -->
 		<UpdateText id="FE_Text">
@@ -116,21 +116,21 @@
 			<Properties>
 				<LoadOrder>99999</LoadOrder>
 			</Properties>
-			<File>Config/Config_Disaster.sql</File>
+			<File>FrontEnd/Config/Config_Disaster.sql</File>
 		</UpdateDatabase>
 		<!-- 条目1：LAN 玩家名长度 45（整文件同名覆盖原版 Options.xml，唯一改动 MaxLength 22 到 45） -->
 		<ImportFiles id="FE_Replace_Options">
 			<Properties>
 				<LoadOrder>1000</LoadOrder>
 			</Properties>
-			<File>UI/Options/Options.xml</File>
+			<File>FrontEnd/UI/Options/Options.xml</File>
 		</ImportFiles>
 		<!-- 条目3：替换准备房间界面（LoadOrder 100000 压过其他同类模组；MPH LoadOrder 9999，共存时以本 mod 为准） -->
 		<ReplaceUIScript id="FE_Replace_StagingRoom">
 			<Properties>
 				<LoadOrder>100000</LoadOrder>
 				<LuaContext>StagingRoom</LuaContext>
-				<LuaReplace>UI/StagingRoom/StagingRoom.lua</LuaReplace>
+				<LuaReplace>FrontEnd/UI/StagingRoom/StagingRoom.lua</LuaReplace>
 			</Properties>
 		</ReplaceUIScript>
 		<!-- 条目3：导入准备房间的 XML 布局与 Lua（XML 同名覆盖原版布局） -->
@@ -138,15 +138,15 @@
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>UI/StagingRoom/StagingRoom.xml</File>
-			<File>UI/StagingRoom/StagingRoom.lua</File>
+			<File>FrontEnd/UI/StagingRoom/StagingRoom.xml</File>
+			<File>FrontEnd/UI/StagingRoom/StagingRoom.lua</File>
 		</ImportFiles>
 		<!-- 单人游戏模式：替换高级设置界面，允许移除全部AI、1人开局（参考 RL_Pangaea，唯一改动 minPlayers 为 1） -->
 		<ReplaceUIScript id="FE_Replace_AdvancedSetup">
 			<Properties>
 				<LoadOrder>100000</LoadOrder>
 				<LuaContext>AdvancedSetup</LuaContext>
-				<LuaReplace>UI/AdvancedSetup/AdvancedSetup.lua</LuaReplace>
+				<LuaReplace>FrontEnd/UI/AdvancedSetup/AdvancedSetup.lua</LuaReplace>
 			</Properties>
 		</ReplaceUIScript>
 		<!-- 单人游戏模式：导入高级设置 Lua（XML 未改不导入） -->
@@ -154,7 +154,7 @@
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>UI/AdvancedSetup/AdvancedSetup.lua</File>
+			<File>FrontEnd/UI/AdvancedSetup/AdvancedSetup.lua</File>
 		</ImportFiles>
 		<!-- 条目4.1：模组校验注册表 MPT_ModCheck（各 mod 自我登记 modId 参与版本校验，仅前端配置库） -->
 		<UpdateDatabase id="FE_ModCheck_Data">
@@ -179,29 +179,29 @@
 			<File>FrontEnd/ModList/ModList_zh_Hans_CN.sql</File>
 			<File>FrontEnd/ModList/ModList_en_US.sql</File>
 		</UpdateText>
-		<!-- 条目4.4：玩家标记管理专属文本（仅前端注册；纯本地玩家档案，数据走条目4.3 存储管线，无数据表） -->
+		<!-- 条目4.4：玩家标记管理专属文本（仅前端注册；纯本地玩家档案，数据走条目4.3 存储管线，无数据表；目录 Shared/PlayerMark/ 为双环境共享，当前仅前端消费） -->
 		<UpdateText id="FE_PlayerMark_Text">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
 			</Properties>
-			<File>FrontEnd/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
-			<File>FrontEnd/PlayerMark/PlayerMark_en_US.sql</File>
+			<File>Shared/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
+			<File>Shared/PlayerMark/PlayerMark_en_US.sql</File>
 		</UpdateText>
 		<!-- 条目4.8：玩家标记 SQL 数据表 TPT_PlayerData（移植联机工具箱1.67 PlayerData.sql 有效行；显示逻辑见 StagingRoom.lua 条目4.8，仅前端配置库） -->
 		<UpdateDatabase id="FE_PlayerMark_Data">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
 			</Properties>
-			<File>FrontEnd/PlayerMark/PlayerMark_Data.sql</File>
+			<File>Shared/PlayerMark/PlayerMark_Data.sql</File>
 		</UpdateDatabase>
 		<!-- 条目4.8：玩家标记图片 Tooltip 贴图导入 VFS（供 StagingRoom.xml ToolTipType AnDe/HuaMing/QingTian_Desc 按文件名解析） -->
 		<ImportFiles id="FE_Import_PlayerMarkTT">
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>FrontEnd/PlayerMark/AnDe_Desc_Texture.dds</File>
-			<File>FrontEnd/PlayerMark/HuaMing_Desc_Texture.dds</File>
-			<File>FrontEnd/PlayerMark/QingTian_Desc_Texture.dds</File>
+			<File>Shared/PlayerMark/AnDe_Desc_Texture.dds</File>
+			<File>Shared/PlayerMark/HuaMing_Desc_Texture.dds</File>
+			<File>Shared/PlayerMark/QingTian_Desc_Texture.dds</File>
 		</ImportFiles>
 		<!-- 条目4.5：图标查看器数据表 MPT_IconCollection（移植 EasyIconViewer 5056 图标，仅前端配置库） -->
 		<UpdateDatabase id="FE_IconViewer_Data">
@@ -246,9 +246,9 @@
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
-		<File>UI/Options/Options.xml</File>
-		<File>Config/Config_Base.xml</File>
-		<File>Config/Config_Disaster.sql</File>
+		<File>FrontEnd/UI/Options/Options.xml</File>
+		<File>FrontEnd/Config/Config_Base.xml</File>
+		<File>FrontEnd/Config/Config_Disaster.sql</File>
 		<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 		<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		<File>FrontEnd/Changelog/Changelog_Data.sql</File>
@@ -265,22 +265,22 @@
 		<File>FrontEnd/ModCheck/ModCheck_Data.sql</File>
 		<File>FrontEnd/ModList/ModList_zh_Hans_CN.sql</File>
 		<File>FrontEnd/ModList/ModList_en_US.sql</File>
-		<File>FrontEnd/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
-		<File>FrontEnd/PlayerMark/PlayerMark_en_US.sql</File>
-		<File>FrontEnd/PlayerMark/PlayerMark_Data.sql</File>
-		<File>FrontEnd/PlayerMark/AnDe_Desc_Texture.dds</File>
-		<File>FrontEnd/PlayerMark/HuaMing_Desc_Texture.dds</File>
-		<File>FrontEnd/PlayerMark/QingTian_Desc_Texture.dds</File>
+		<File>Shared/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
+		<File>Shared/PlayerMark/PlayerMark_en_US.sql</File>
+		<File>Shared/PlayerMark/PlayerMark_Data.sql</File>
+		<File>Shared/PlayerMark/AnDe_Desc_Texture.dds</File>
+		<File>Shared/PlayerMark/HuaMing_Desc_Texture.dds</File>
+		<File>Shared/PlayerMark/QingTian_Desc_Texture.dds</File>
 		<File>FrontEnd/IconViewer/IconViewer_Data.sql</File>
 		<File>FrontEnd/IconViewer/IconViewer_zh_Hans_CN.sql</File>
 		<File>FrontEnd/IconViewer/IconViewer_en_US.sql</File>
 		<File>FrontEnd/TextureViewer/TextureViewer_Data.sql</File>
 		<File>FrontEnd/TextureViewer/TextureViewer_zh_Hans_CN.sql</File>
 		<File>FrontEnd/TextureViewer/TextureViewer_en_US.sql</File>
-		<File>UI/StagingRoom/StagingRoom.lua</File>
-		<File>UI/StagingRoom/StagingRoom.xml</File>
-		<File>UI/AdvancedSetup/AdvancedSetup.lua</File>
-		<File>Storage/MPT_Serialize.lua</File>
-		<File>Storage/MPT_DataStorage.lua</File>
+		<File>FrontEnd/UI/StagingRoom/StagingRoom.lua</File>
+		<File>FrontEnd/UI/StagingRoom/StagingRoom.xml</File>
+		<File>FrontEnd/UI/AdvancedSetup/AdvancedSetup.lua</File>
+		<File>Shared/MPT_Serialize.lua</File>
+		<File>Shared/MPT_DataStorage.lua</File>
 	</Files>
 </Mod>

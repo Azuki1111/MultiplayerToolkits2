@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Multiplayer Toolkits 2.0 Staging Room non-official mod list text (entry 4.2, en_US)
 -- Convention: this file holds only mod-list feature text, separated from the common text (FrontEnd/Text/);
---             button / panel / row-status tags are referenced by UI/StagingRoom/StagingRoom.xml and StagingRoom.lua.
+--             button / panel / row-status tags are referenced by FrontEnd/UI/StagingRoom/StagingRoom.xml and StagingRoom.lua.
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_MODLIST_OPEN_NAME', 'en_US', 'Mod List'),
