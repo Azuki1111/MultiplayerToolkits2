@@ -10,4 +10,10 @@ VALUES
 	('LOC_MPT_VOTE_NOT_STARTED',	'zh_Hans_CN',	'点击「投降」发起本队投降投票'),
 	('LOC_MPT_VOTE_PASSED',			'zh_Hans_CN',	'本队已投降'),
 	('LOC_MPT_VOTE_ALREADY',		'zh_Hans_CN',	'本时代已发起过投票'),
-	('LOC_MPT_SURRENDER_TEAM',		'zh_Hans_CN',	'队伍已投降');
+	('LOC_MPT_SURRENDER_TEAM',		'zh_Hans_CN',	'队伍已投降'),
+	-- 发起投降按钮 tooltip（按状态显示原因）
+	('LOC_MPT_SURRENDER_TT_DEFAULT',	'zh_Hans_CN',	'发起本队投降投票'),
+	('LOC_MPT_SURRENDER_TT_OBSERVER',	'zh_Hans_CN',	'观察者不能发起投降投票'),
+	('LOC_MPT_SURRENDER_TT_DEAD',		'zh_Hans_CN',	'已败亡，不能发起投降投票'),
+	('LOC_MPT_SURRENDER_TT_ALREADY',	'zh_Hans_CN',	'本时代本队已发起过投票，下个时代才能再次发起'),
+	('LOC_MPT_SURRENDER_TT_SURRENDERED','zh_Hans_CN',	'本队已投降');

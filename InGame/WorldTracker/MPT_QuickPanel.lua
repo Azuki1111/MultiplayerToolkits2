@@ -180,6 +180,39 @@ local function MPT_QuickVote(agree :boolean)
 end
 
 -- ============================================================================
+-- 刷新投降按钮（发起投票）状态与 tooltip：
+--   disabled + tooltip 原因（观察者/已败亡/已投降/本时代已投过）
+--   state: MPT_ReadVoteState 结果；localPlayer: 本地玩家 ID
+-- ============================================================================
+local function MPT_UpdateSurrenderButton(state, localPlayer)
+	local bObserver :boolean = MPT_IsLocalObserver();
+	local bAlive :boolean = false;
+	if localPlayer ~= nil and localPlayer >= 0 and Players[localPlayer] ~= nil then
+		bAlive = Players[localPlayer]:IsAlive();
+	end
+
+	local bDisabled :boolean = false;
+	local tooltipTag :string = "LOC_MPT_SURRENDER_TT_DEFAULT";
+
+	if bObserver then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_SURRENDER_TT_OBSERVER";
+	elseif not bAlive then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_SURRENDER_TT_DEAD";
+	elseif state.passed then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_SURRENDER_TT_SURRENDERED";
+	elseif state.started then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_SURRENDER_TT_ALREADY";
+	end
+
+	Controls.SurrenderButton:SetDisabled(bDisabled);
+	Controls.SurrenderButton:SetToolTipString(Locale.Lookup(tooltipTag));
+end
+
+-- ============================================================================
 -- 刷新投票面板显示（赋值给上面 forward 声明的 local，勿加 local 关键字）
 -- ============================================================================
 function MPT_RefreshVotePanel()
@@ -187,8 +220,8 @@ function MPT_RefreshVotePanel()
 	local localPlayer :number = Game.GetLocalPlayer();
 	local bLocalObserver :boolean = MPT_IsLocalObserver();
 
-	-- 观察者：投降按钮禁用（禁发起）、投票区整体隐藏（禁投票、不弹结算 UI）
-	Controls.SurrenderButton:SetDisabled(bLocalObserver);
+	-- 投降按钮状态 + tooltip（观察者/已败亡/已投降/本时代已投过）
+	MPT_UpdateSurrenderButton(state, localPlayer);
 
 	-- 结算通知：本队已投降 / 本队是胜队 → 通知 EndGameMenu 弹结算（只发一次）
 	-- 观察者不通知（无结算）；已通知过不再重复

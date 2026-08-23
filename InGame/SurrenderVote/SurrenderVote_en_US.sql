@@ -10,4 +10,10 @@ VALUES
 	('LOC_MPT_VOTE_NOT_STARTED',	'en_US',	'Click Surrender to start a team surrender vote'),
 	('LOC_MPT_VOTE_PASSED',			'en_US',	'Your team has surrendered'),
 	('LOC_MPT_VOTE_ALREADY',		'en_US',	'A vote was already started this era'),
-	('LOC_MPT_SURRENDER_TEAM',		'en_US',	'Team has surrendered');
+	('LOC_MPT_SURRENDER_TEAM',		'en_US',	'Team has surrendered'),
+	-- Surrender button tooltips (reason by state)
+	('LOC_MPT_SURRENDER_TT_DEFAULT',	'en_US',	'Start a team surrender vote'),
+	('LOC_MPT_SURRENDER_TT_OBSERVER',	'en_US',	'Observers cannot start a surrender vote'),
+	('LOC_MPT_SURRENDER_TT_DEAD',		'en_US',	'You have been defeated and cannot start a vote'),
+	('LOC_MPT_SURRENDER_TT_ALREADY',	'en_US',	'A vote was already started this era; the next era unlocks it'),
+	('LOC_MPT_SURRENDER_TT_SURRENDERED','en_US',	'Your team has already surrendered');
