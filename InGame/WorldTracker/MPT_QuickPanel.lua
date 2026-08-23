@@ -41,6 +41,9 @@ local m_mpt_snapshotRequested :boolean = false;	-- 客户端已请求快照（�
 local m_mpt_restartFailed :boolean = false;		-- 重开投票已失败（复用投降失败隐藏流程）
 -- 当前 VoteArea 显示的投票类型（"surrender" 投降 / "restart" 重开），投票按钮据此路由
 local m_mpt_voteType :string = "surrender";
+-- 重开投票通过后的 10 秒倒计时（倒计时结束才执行重启/快照）
+local m_mpt_restartCountdown :number = -1;	-- -1 = 未激活；10→0 递减
+local RESTART_COUNTDOWN_SEC :number = 10;
 
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
@@ -313,18 +316,13 @@ end
 
 -- ============================================================================
 -- 重开投票通过后的执行（在 MPT_RefreshVotePanel 中调用）：
---   房主：轮询到 MPT_RESTART_VOTE_PASSED → 广播配置 + 置重载标志 + RestartGame
---   客户端：轮询到通过 → RequestSnapshot 拉新游戏
+--   通过后启动 10 秒倒计时（面板显示），倒计时结束调 MPT_ExecuteRestart。
 -- 同种子重启 → 所有玩家重载后地图相同。
 -- ============================================================================
-local function MPT_HandleRestartExecution(restartState)
-	if not restartState.passed then
-		return;
-	end
+local function MPT_ExecuteRestart()
 	if m_mpt_restartExecuted and m_mpt_snapshotRequested then
 		return;
 	end
-
 	local bIsHost :boolean = Network.GetLocalPlayerID() == Network.GetGameHostPlayerID();
 
 	if bIsHost and not m_mpt_restartExecuted then
@@ -342,6 +340,28 @@ local function MPT_HandleRestartExecution(restartState)
 		print("[MPT_RestartVote] Client requesting snapshot to resync new game.");
 		Network.RequestSnapshot();
 	end
+end
+
+-- ============================================================================
+-- 重开投票通过后的倒计时启动/显示（每帧递减在 MPT_QuickOnUpdate）
+-- ============================================================================
+local function MPT_HandleRestartExecution(restartState)
+	if not restartState.passed then
+		return;
+	end
+	if m_mpt_restartExecuted and m_mpt_snapshotRequested then
+		return;
+	end
+
+	-- 通过后首次检测：启动倒计时 + 隐藏投票按钮 + 显示倒计时 Label
+	if m_mpt_restartCountdown < 0 then
+		m_mpt_restartCountdown = RESTART_COUNTDOWN_SEC;
+		Controls.VoteCountdownLabel:SetHide(false);
+		Controls.VoteAgreeButton:SetHide(true);	-- 通过后隐藏投票按钮
+		Controls.VoteDisagreeButton:SetHide(true);
+	end
+	-- 倒计时显示（整秒向上取整）
+	Controls.VoteCountdownLabel:SetText(Locale.Lookup("LOC_MPT_RESTART_COUNTDOWN", math.ceil(m_mpt_restartCountdown)));
 end
 
 -- ============================================================================
@@ -562,6 +582,7 @@ local function MPT_QuickAttach()
 		m_mpt_snapshotRequested = false;
 		m_mpt_restartFailed = false;
 		m_mpt_voteType = "surrender";
+		m_mpt_restartCountdown = -1;
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end
@@ -571,6 +592,18 @@ end
 -- 每帧刷新（投票状态轮询 + 回合结束隐藏失败投票面板）
 -- ============================================================================
 local function MPT_QuickOnUpdate()
+	-- 重开投票通过后的倒计时递减（每帧用 GetLastTimeDelta）
+	if m_mpt_restartCountdown > 0 then
+		m_mpt_restartCountdown = m_mpt_restartCountdown - UIManager:GetLastTimeDelta();
+		-- 刷新倒计时显示（整秒）
+		Controls.VoteCountdownLabel:SetText(Locale.Lookup("LOC_MPT_RESTART_COUNTDOWN", math.ceil(m_mpt_restartCountdown)));
+		if m_mpt_restartCountdown <= 0 then
+			m_mpt_restartCountdown = 0;
+			-- 倒计时结束：执行重启（房主）/ 快照（客户端）
+			MPT_ExecuteRestart();
+		end
+	end
+
 	-- 投票失败后：当前回合 >= 失败回合 + 2（= 失败回合 T 结束后的下个回合 T+1 结束）→ 隐藏
 	if m_mpt_voteFailed and not m_mpt_voteFailedHidden then
 		local currentTurn :number = Game.GetCurrentGameTurn();
