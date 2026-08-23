@@ -9,6 +9,8 @@
 <!-- 仅同队玩家可见；投票状态经 Game:SetProperty 跨端同步（见 SurrenderVote_Gameplay.lua）-->
 <!-- ============================================================================ -->
 <Context>
+	<!-- 每帧回调源：不可见 AlphaAnim（隐藏也持续 tick，原版 CountdownTimerAnim 同款；Civ6 无 SetUpdateHandler） -->
+	<AlphaAnim ID="MPT_PollAnim" Size="1,1" AlphaStart="0" AlphaEnd="0"/>
 	<Grid ID="QuickPanel" Offset="0,0" Size="296,25" Texture="Controls_DropdownPanel" Color="143,122,82,200" Anchor="L,T" ConsumeMouseOver="1" Hidden="0">
 		<Box Offset="0,0" Size="parent-5,default" Color="143,122,82,200">
 			<Image Texture="Controls_GradientSmall" Size="parent+5,20" Color="0,0,0,255" Anchor="L,T"/>

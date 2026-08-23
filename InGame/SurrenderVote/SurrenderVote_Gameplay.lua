@@ -2,18 +2,21 @@
 -- 条目8续：WorldTracker 团队投降投票（Gameplay 侧）
 --
 -- 接收 UI（MPT_QuickPanel.lua）经 UI.RequestPlayerOperation(EXECUTE_SCRIPT)
--- 发来的 OnStart="MPT_SurrenderVote" 请求，在房主端汇总投票并执行投降。
+-- 发来的 OnStart="MPT_SurrenderVote" 请求，汇总投票并执行投降。
 -- 通信完全走 EXECUTE_SCRIPT（不用 Chat 指令）；GameEvents 事件跨端同步执行，
--- 但记票/判定仅在房主分支做（localPlayerID == hostID）。
+-- 记票/判定/写属性在模拟层天然同步，无需房主分支。
 --
 -- 流程：
---   type="start"  ：房主校验（本时代本队未发起过）→ Game:SetProperty 置发起标志
---   type="vote"   ：房主校验（已发起、投票者同队未投过）→ 记票 → 达 >= 半数
+--   type="start"  ：校验（本时代本队未发起过）→ Game:SetProperty 置发起标志
+--   type="vote"   ：校验（已发起、投票者同队未投过）→ 记票 → 达 >= 半数
 --                   → 执行 MPT_SurrenderExecute（该队城市叛变自由城 + 标记判负）
 --
 -- 频率限制：每个游戏时代每队仅可发起一次投票（SetProperty 记录，跨端同步+持久化）。
 -- 自定义战败范式参考乔尔定制玩法mod（RegicideVictory.lua）：不销毁城市/单位、
 -- 不做引擎判负，只写 Game 属性 + 城市叛变自由城，由 UI 轮询属性显示状态。
+--
+-- UI 侧状态查询经 ExposedMembers.MPT.GetSurrenderVoteState（Gameplay 暴露、
+-- UI 同步调用，参考 3417070280 GameBasicSupport.lua 的 ExposedMembers.PKUI 写法）。
 -- ============================================================================
 
 -- 属性键（Game 属性：跨客户端同步、随存档持久化）
@@ -112,17 +115,14 @@ end
 
 -- ============================================================================
 -- EXECUTE_SCRIPT 入口（GameEvents 注册名 = OnStart 传入的 "MPT_SurrenderVote"）
--- 所有客户端同步执行；记票/判定仅在房主端做。
+-- 所有客户端同步执行（GameEvents 为同步事件），记票/判定/写属性天然跨端同步，
+-- 无需房主分支；Game:SetProperty 在模拟层同步并随存档持久化。
+-- 防重复靠「每投票者一键」+「本时代发起标志」的幂等校验。
 -- params: { type="start"|"vote", initiator, voter, team, agree }
 -- ============================================================================
 function OnMPT_SurrenderVoteGameEvent(localPlayerID, params)
 	if params == nil or params.type == nil then
 		return;
-	end
-
-	local hostID = Network.GetGameHostPlayerID();
-	if localPlayerID ~= hostID then
-		return; -- 仅房主处理投票状态
 	end
 
 	local teamID = params.team;
@@ -210,5 +210,13 @@ function OnMPT_SurrenderVoteGameEvent(localPlayerID, params)
 end
 
 GameEvents.MPT_SurrenderVote.Add(OnMPT_SurrenderVoteGameEvent);
+
+-- ============================================================================
+-- ExposedMembers 暴露：UI 侧同步查询投票状态（Gameplay 定义、UI 读取，
+-- 参考 3417070280 GameBasicSupport.lua 的 ExposedMembers.PKUI 写法）
+-- ============================================================================
+ExposedMembers.MPT = ExposedMembers.MPT or {};
+ExposedMembers.MPT.GetSurrenderVoteState = MPT_GetSurrenderVoteState;
+ExposedMembers.MPT.IsTeamSurrendered = MPT_IsTeamSurrendered;
 
 print("[MPT_SurrenderVote] Gameplay script initialized.");

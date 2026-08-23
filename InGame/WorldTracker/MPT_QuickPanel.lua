@@ -56,33 +56,51 @@ local function MPT_GetTeamHumanAliveCount(teamID)
 end
 
 -- ============================================================================
--- 读取投票状态（Game 属性，UI 可直接读）
+-- 读取投票状态（经 ExposedMembers.MPT（Gameplay 暴露）同步查询，
+-- Gameplay 侧见 SurrenderVote_Gameplay.lua）
 -- ============================================================================
 local function MPT_ReadVoteState()
 	local teamID = MPT_GetLocalTeam();
-	local era = -1;
-	local started = false;
-	local agreeCount = 0;
-	local totalCount = 0;
-	local passed = false;
-
-	local pGameEras = Game.GetEras();
-	if pGameEras ~= nil then
-		era = pGameEras:GetCurrentEra();
+	local state = {
+		teamID = teamID,
+		era = -1,
+		started = false,
+		agreeCount = 0,
+		totalCount = 0,
+		passed = false,
+	};
+	if teamID < 0 then
+		return state;
 	end
 
-	started = Game:GetProperty("MPT_SURRENDER_VOTE_" .. era .. "_" .. teamID) == 1;
-	local votesStr = Game:GetProperty("MPT_SURRENDER_VOTES_" .. teamID);
-	if votesStr ~= nil then
-		local slash = string.find(votesStr, "/");
-		if slash ~= nil then
-			agreeCount = tonumber(string.sub(votesStr, 1, slash - 1)) or 0;
-			totalCount = tonumber(string.sub(votesStr, slash + 1)) or 0;
+	if ExposedMembers ~= nil and ExposedMembers.MPT ~= nil and ExposedMembers.MPT.GetSurrenderVoteState ~= nil then
+		local gpState = ExposedMembers.MPT.GetSurrenderVoteState(teamID);
+		if gpState ~= nil then
+			state.era = gpState.era or -1;
+			state.started = gpState.started or false;
+			state.agreeCount = gpState.agreeCount or 0;
+			state.totalCount = gpState.totalCount or 0;
+			state.passed = gpState.passed or false;
 		end
+	else
+		-- 兜底：直接读 Game 属性（UI 侧 Game 可读属性）
+		local pGameEras = Game.GetEras();
+		if pGameEras ~= nil then
+			state.era = pGameEras:GetCurrentEra();
+		end
+		state.started = Game:GetProperty("MPT_SURRENDER_VOTE_" .. state.era .. "_" .. teamID) == 1;
+		local votesStr = Game:GetProperty("MPT_SURRENDER_VOTES_" .. teamID);
+		if votesStr ~= nil then
+			local slash = string.find(votesStr, "/");
+			if slash ~= nil then
+				state.agreeCount = tonumber(string.sub(votesStr, 1, slash - 1)) or 0;
+				state.totalCount = tonumber(string.sub(votesStr, slash + 1)) or 0;
+			end
+		end
+		state.passed = Game:GetProperty("MPT_SURRENDER_TEAM_" .. teamID) == 1;
 	end
-	passed = Game:GetProperty("MPT_SURRENDER_TEAM_" .. teamID) == 1;
 
-	return { teamID = teamID, era = era, started = started, agreeCount = agreeCount, totalCount = totalCount, passed = passed };
+	return state;
 end
 
 -- ============================================================================
@@ -270,6 +288,7 @@ local function MPT_QuickInitialize()
 	Controls.VoteDisagreeButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
 	Events.LoadGameViewStateDone.Add(MPT_QuickAttach);
-	ContextPtr:SetUpdateHandler(MPT_QuickOnUpdate);
+	-- 每帧轮询（不可见 AlphaAnim 的 RegisterAnimCallback；Civ6 无 SetUpdateHandler）
+	Controls.MPT_PollAnim:RegisterAnimCallback(MPT_QuickOnUpdate);
 end
 MPT_QuickInitialize();
