@@ -150,30 +150,44 @@
 
   <!-- ============================================================================ -->
   <!-- 条目9续：战略资源发送确认弹窗（内嵌本 Context，Anchor="C,C" 全屏居中覆盖）     -->
-  <!-- 默认 Hidden，由 TopPanelExt.lua 条目9续 分区控制显隐；内容：标题/我方持有量/   -->
-  <!-- 可接收队友列表（InstanceManager 动态行）/合计可发送量/确认取消按钮/禁止交易提示 -->
+  <!-- 默认 Hidden，由 TopPanelExt.lua 条目9续 分区控制显隐。                          -->
+  <!-- 样式照抄原版 BoostUnlockedPopup.xml 经典弹窗结构：DropShadow 阴影容器 +        -->
+  <!-- Parchment_Pattern 羊皮纸底 + BoostPopup_Frame 边框 + Controls_BannerHeaderBlue3 -->
+  <!-- 蓝色头横幅 + 底部 MainButton 主按钮。                                          -->
+  <!-- 高度由 Lua 动态 SetSizeY（内容 Stack 高度 + 固定增量），内部全部 parent 引用，  -->
+  <!-- 父高度确定后正常铺满（避免 auto 高度下 parent 引用不可靠导致的背景超界）。      -->
   <!-- ============================================================================ -->
-  <Grid ID="MPT_TPE_SendPopup" Anchor="C,C" Size="460,0" Texture="Controls_WindowFrame" SliceCorner="55,55" SliceSize="1,1" SliceTextureSize="118,118" MinSize="118,118" InnerPadding="25,25" InnerOffset="10,10" Hidden="1" ConsumeMouseOver="1">
-    <!-- 背景底图（Shell_MinimapBacking 为纯纹理，铺满 Grid 内部；声明在内容之前 → 渲染在内容下层） -->
-    <Image Texture="Shell_MinimapBacking" Anchor="C,C" Size="parent-10,parent-10" Color="255,255,255,255" StretchMode="Fill"/>
-    <Stack Anchor="C,T" Offset="0,20" StackGrowth="Down" Padding="4">
-      <Label ID="MPT_TPE_SendTitle" Anchor="C,T" Style="FontFlair18" SmallCaps="20" SmallCapsType="EveryWord" WrapWidth="410" Align="Center"/>
-      <Label ID="MPT_TPE_SendYourAmount" Anchor="C,T" Offset="0,6" Style="FontNormal18" WrapWidth="410" Align="Center"/>
-      <!-- 禁止交易模式提示（默认隐藏，Lua 检测 isStrategicsTradingAllowed==false 时显示并禁用确认） -->
-      <Label ID="MPT_TPE_SendBanned" Anchor="C,T" Offset="0,6" Style="FontNormal18" ColorSet="ResMilitaryLabelCS" WrapWidth="410" Align="Center" Hidden="1"/>
-      <Stack ID="MPT_TPE_SendList" Anchor="C,T" Offset="0,6" StackGrowth="Down" Padding="2"/>
-      <Label ID="MPT_TPE_SendTotal" Anchor="C,T" Offset="0,6" Style="FontNormal18" WrapWidth="410" Align="Center"/>
-      <Stack Anchor="C,T" Offset="0,10" StackGrowth="Right" StackPadding="10">
-        <Button ID="MPT_TPE_SendConfirm" Style="ButtonConfirmSmall" Anchor="C,T" String="LOC_MPT_TPE_SEND_CONFIRM" Size="120,28"/>
-        <Button ID="MPT_TPE_SendCancel" Style="ButtonRedSmall" Anchor="C,T" String="LOC_MPT_TPE_SEND_CANCEL" Size="120,28"/>
-      </Stack>
-    </Stack>
+  <Grid ID="MPT_TPE_SendPopup" Anchor="C,C" Size="560,0" Style="DropShadow" Hidden="1" ConsumeMouseOver="1">
+    <Container Size="parent-100,parent-100" Offset="0,0" Anchor="C,C" ConsumeMouse="1">
+      <Image Size="parent,parent" Texture="Parchment_Pattern" StretchMode="Tile">
+        <Grid Size="parent,parent" Texture="BoostPopup_Frame" SliceCorner="30,30" SliceSize="20,20">
+          <!-- Head Banner（蓝色头横幅，标题） -->
+          <Grid Size="parent+40,80" Offset="-20,0" Texture="Controls_BannerHeaderBlue3" SliceCorner="101,0" SliceSize="65,64" TextureSliceSize="267,64">
+            <Label ID="MPT_TPE_SendTitle" Anchor="C,T" Offset="0,22" Color="Black" Style="FontFlair22" SmallCaps="28" SmallCapsType="EveryWord" FontStyle="Shadow"/>
+          </Grid>
+
+          <!-- 内容列（持有量/队友列表/合计/按钮，垂直排列，整体随内容自适应高度） -->
+          <Stack ID="MPT_TPE_SendContent" Anchor="C,T" Offset="0,70" Size="420,auto" StackGrowth="Down" Padding="6">
+            <Label ID="MPT_TPE_SendYourAmount" Anchor="C,T" Color="Black" Style="FontNormal16" FontStyle="Shadow" Align="Center" WrapWidth="400"/>
+            <!-- 禁止交易模式提示（默认隐藏，Lua 检测 isStrategicsTradingAllowed==false 时显示并禁用确认） -->
+            <Label ID="MPT_TPE_SendBanned" Anchor="C,T" Color="Red" Style="FontNormal16" FontStyle="Shadow" Align="Center" WrapWidth="400" Hidden="1"/>
+            <Stack ID="MPT_TPE_SendList" Anchor="C,T" StackGrowth="Down" Padding="2"/>
+            <Label ID="MPT_TPE_SendTotal" Anchor="C,T" Color="Black" Style="FontNormal16" FontStyle="Shadow" Align="Center" WrapWidth="400"/>
+            <!-- 底部按钮（确认/取消并排） -->
+            <Stack Anchor="C,T" Offset="0,8" StackGrowth="Right" StackPadding="20">
+              <GridButton ID="MPT_TPE_SendConfirm" Style="MainButton" String="LOC_MPT_TPE_SEND_CONFIRM" Size="200,45"/>
+              <GridButton ID="MPT_TPE_SendCancel" Style="MainButton" String="LOC_MPT_TPE_SEND_CANCEL" Size="200,45"/>
+            </Stack>
+          </Stack>
+        </Grid>
+      </Image>
+    </Container>
   </Grid>
-  <!-- 条目9续：发送弹窗队友列表行实例（每行：领袖名 + 空余存储上限） -->
+  <!-- 条目9续：发送弹窗队友列表行实例（每行：领袖名 + 空余存储上限；羊皮纸底配黑色文字） -->
   <Instance Name="MPT_TPE_SendRow">
     <Grid ID="Top" Size="420,24">
-      <Label ID="LeaderName" Anchor="L,C" Style="FontNormal16"/>
-      <Label ID="SpaceText" Anchor="R,C" Style="FontNormal16" ColorSet="ResProductionLabelCS"/>
+      <Label ID="LeaderName" Anchor="L,C" Style="FontNormal16" Color="Black" FontStyle="Shadow"/>
+      <Label ID="SpaceText" Anchor="R,C" Style="FontNormal16" Color="Black" FontStyle="Shadow"/>
     </Grid>
   </Instance>
   
