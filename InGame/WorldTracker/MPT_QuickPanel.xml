@@ -22,9 +22,9 @@
 				<Stack ID="ExpandStack" Anchor="C,T" Offset="0,30" StackGrowth="Down" Padding="4" Hidden="1">
 					<GridButton ID="SurrenderButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_SURRENDER"/>
 					<GridButton ID="RestartButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_RESTART"/>
-					<!-- 条目8续：投降投票状态区（仅投票进行中/已通过时显示；texture 用原版 Emergency 贴图，尺寸对齐原版 Crisis 面板行高 44） -->
+					<!-- 条目8续：投降投票状态区（仅投票进行中/已通过时显示；背景用原版 Emergency 贴图 EMERGENCY_BACKSTAB_BG3，尺寸对齐原版 Crisis 面板 296x44） -->
 					<Container ID="VoteArea" Anchor="C,T" Size="296,44" Hidden="1">
-						<GridButton ID="VoteBacking" Size="296,44" Texture="EMERGENCY_BACKSTAB_BG3" SliceCorner="66,0" SliceSize="42,42" SliceTextureSize="110,44" Anchor="C,T" ConsumeMouseOver="1" Hidden="1"/>
+						<Grid ID="VoteBacking" Anchor="C,T" Size="296,44" Texture="EMERGENCY_BACKSTAB_BG3" SliceCorner="66,0" SliceSize="42,42" SliceTextureSize="110,44"/>
 						<Stack ID="VoteContent" Anchor="C,T" Offset="0,3" StackGrowth="Down" Padding="2">
 							<Label ID="VoteStatusLabel" Anchor="C,T" Style="FontNormal12" Color="255,255,255,255" String="LOC_MPT_VOTE_TITLE" WrapWidth="270" Align="Center"/>
 							<Label ID="VoteProgressLabel" Anchor="C,T" Style="FontNormal12" Color="208,212,217,255" WrapWidth="270" Align="Center"/>
