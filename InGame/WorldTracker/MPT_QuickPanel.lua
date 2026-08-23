@@ -91,6 +91,10 @@ end
 -- ============================================================================
 -- 发起投降投票（EXECUTE_SCRIPT → 房主）
 -- ============================================================================
+-- forward 声明：MPT_RefreshVotePanel 定义在本文件下方（Lua local 顺序限制，
+-- 声明点之前引用 local 会解析为全局 nil，见 AGENTS.md 踩坑记录）
+local MPT_RefreshVotePanel;
+
 local function MPT_QuickSurrender()
 	local localPlayer :number = Game.GetLocalPlayer();
 	if localPlayer == nil or localPlayer < 0 then
@@ -120,12 +124,15 @@ local function MPT_QuickSurrender()
 		team = state.teamID,
 	};
 	UI.RequestPlayerOperation(Network.GetGameHostPlayerID(), PlayerOperations.EXECUTE_SCRIPT, kParameters);
+	-- 请求后立即刷新一次面板（发起成功则投票区立刻显示，轮询兜底）
+	MPT_RefreshVotePanel();
 end
 
 -- ============================================================================
 -- 投同意/反对票（EXECUTE_SCRIPT → 房主）
 -- ============================================================================
 local function MPT_QuickVote(agree :boolean)
+	print("[MPT_QuickVote] clicked agree=" .. tostring(agree));
 	local localPlayer :number = Game.GetLocalPlayer();
 	if localPlayer == nil or localPlayer < 0 then
 		return;
@@ -148,19 +155,20 @@ local function MPT_QuickVote(agree :boolean)
 		agree = agree,
 	};
 	UI.RequestPlayerOperation(Network.GetGameHostPlayerID(), PlayerOperations.EXECUTE_SCRIPT, kParameters);
+	-- 请求后立即刷新一次面板（若 Gameplay 已记票则立即反映；未完成时轮询兜底）
+	MPT_RefreshVotePanel();
 end
 
 -- ============================================================================
--- 刷新投票面板显示
+-- 刷新投票面板显示（赋值给上面 forward 声明的 local，勿加 local 关键字）
 -- ============================================================================
-local function MPT_RefreshVotePanel()
-	local localPlayer :number = Game.GetLocalPlayer();
+function MPT_RefreshVotePanel()
 	local state = MPT_ReadVoteState();
 	local bShowVoteArea :boolean = false;
+	local localPlayer :number = Game.GetLocalPlayer();
 
 	-- 仅同队、多人局、本地玩家存活时参与投票判定；
 	-- 投票区整体默认隐藏，只有「本时代已发起投票」或「已通过」时才显示
-	local bShowVoteArea :boolean = false;
 	if GameConfiguration.IsAnyMultiplayer()
 		and localPlayer ~= nil and localPlayer >= 0
 		and Players[localPlayer] ~= nil and Players[localPlayer]:IsAlive()
@@ -185,6 +193,13 @@ local function MPT_RefreshVotePanel()
 		Controls.VoteProgressLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_PROGRESS", state.agreeCount, state.totalCount));
 		Controls.VoteAgreeButton:SetHide(false);
 		Controls.VoteDisagreeButton:SetHide(false);
+		-- 本机已投票则禁用按钮（Gameplay 一人一票防重复；UI 读属性给明确反馈）
+		local bLocalVoted :boolean = false;
+		if localPlayer ~= nil and localPlayer >= 0 and state.teamID >= 0 then
+			bLocalVoted = Game:GetProperty("MPT_SURRENDER_VOTED_" .. state.teamID .. "_" .. localPlayer) == 1;
+		end
+		Controls.VoteAgreeButton:SetDisabled(bLocalVoted);
+		Controls.VoteDisagreeButton:SetDisabled(bLocalVoted);
 	end
 end
 
