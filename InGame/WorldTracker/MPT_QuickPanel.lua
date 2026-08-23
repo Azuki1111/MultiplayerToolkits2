@@ -50,6 +50,8 @@ local m_mpt_snapshotArmed :boolean = false;
 local m_mpt_syncDoneSent :boolean = false;
 -- 房主：重开后等待所有客户端同步完成（全齐后取消暂停）
 local m_mpt_waitingSync :boolean = false;
+-- 非房主：已显示「等待房主重新开始」文本（防重复设置）
+local m_mpt_waitingHostShown :boolean = false;
 
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
@@ -379,7 +381,9 @@ local function MPT_ExecuteRestart()
 end
 
 -- ============================================================================
--- 重开投票通过后的倒计时启动/显示（每帧递减在 MPT_QuickOnUpdate）
+-- 重开投票通过后的显示（每帧递减在 MPT_QuickOnUpdate）：
+--   房主：10 秒倒计时（归零后执行重启）
+--   其他玩家：显示「等待房主重新开始」（不显示倒计时，等待房主重载完成信号）
 -- ============================================================================
 local function MPT_HandleRestartExecution(restartState)
 	if not restartState.passed then
@@ -389,15 +393,27 @@ local function MPT_HandleRestartExecution(restartState)
 		return;
 	end
 
-	-- 通过后首次检测：启动倒计时 + 隐藏投票按钮 + 显示倒计时 Label
+	local bIsHost :boolean = Network.GetLocalPlayerID() == Network.GetGameHostPlayerID();
+
+	-- 通过后首次检测：隐藏投票按钮 + 显示等待/倒计时 Label
 	if m_mpt_restartCountdown < 0 then
-		m_mpt_restartCountdown = RESTART_COUNTDOWN_SEC;
-		Controls.VoteCountdownLabel:SetHide(false);
 		Controls.VoteAgreeButton:SetHide(true);	-- 通过后隐藏投票按钮
 		Controls.VoteDisagreeButton:SetHide(true);
+		if bIsHost then
+			m_mpt_restartCountdown = RESTART_COUNTDOWN_SEC;
+			Controls.VoteCountdownLabel:SetHide(false);
+		elseif not m_mpt_waitingHostShown then
+			-- 非房主：不启动倒计时，显示等待文本（只设一次）
+			m_mpt_waitingHostShown = true;
+			Controls.VoteCountdownLabel:SetHide(false);
+			Controls.VoteCountdownLabel:SetText(Locale.Lookup("LOC_MPT_RESTART_WAITING"));
+		end
 	end
-	-- 倒计时显示（整秒向上取整）
-	Controls.VoteCountdownLabel:SetText(Locale.Lookup("LOC_MPT_RESTART_COUNTDOWN", math.ceil(m_mpt_restartCountdown)));
+
+	-- 房主：倒计时显示（整秒向上取整）
+	if bIsHost and m_mpt_restartCountdown > 0 then
+		Controls.VoteCountdownLabel:SetText(Locale.Lookup("LOC_MPT_RESTART_COUNTDOWN", math.ceil(m_mpt_restartCountdown)));
+	end
 end
 
 -- ============================================================================
@@ -704,6 +720,7 @@ local function MPT_QuickAttach()
 		m_mpt_snapshotArmed = false;
 		m_mpt_syncDoneSent = false;
 		m_mpt_waitingSync = false;
+		m_mpt_waitingHostShown = false;
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end

@@ -27,4 +27,5 @@ VALUES
 	('LOC_MPT_RESTART_TT_PASSED',	'zh_Hans_CN',	'重新开始已通过，游戏即将重启'),
 	('LOC_MPT_RESTART_TT_ALREADY',	'zh_Hans_CN',	'本时代已发起过重新开始投票'),
 	('LOC_MPT_RESTART_TT_HOST_ONLY','zh_Hans_CN',	'仅房主可发起重新开始投票'),
-	('LOC_MPT_RESTART_COUNTDOWN',	'zh_Hans_CN',	'重新开始倒计时：{1_Num} 秒');
+	('LOC_MPT_RESTART_COUNTDOWN',	'zh_Hans_CN',	'重新开始倒计时：{1_Num} 秒'),
+	('LOC_MPT_RESTART_WAITING',		'zh_Hans_CN',	'等待房主重新开始…');
