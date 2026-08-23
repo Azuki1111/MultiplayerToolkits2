@@ -4,14 +4,14 @@
 空 Context 经 AddUserInterfaces 注册进 InGame；同名 RevealMapCorners.lua 自动作为本 Context 脚本执行。
 WorldAnchor 把 3D 世界坐标投影到屏幕：本文件仅定义实例模板，实例由 Lua 在 LoadScreenClose 时创建，
 用 UI.GridToWorld(plotIndex) 取极地格世界坐标 SetWorldPositionVal 锚定，撑开相机包围盒使小地图全球比例。
-透明实例：极小全透明 Box 作为有效渲染节点（避免无渲染节点不被纳入包围盒，见实测记录）。
+调试：全透明 Box 实测未纳入相机包围盒（引擎剔除不可见节点），暂改用带纹理 Image 验证机制。
 -------------------------------------------------------------------------- -->
 <Context>
 	<Container ID="MPT_WorldAnchorRoot"/>
 	<Instance Name="MPT_WorldAnchorInstance">
 		<WorldAnchor ID="Anchor">
-			<!-- 透明实例：2x2 全透明 Box 撑开相机包围盒，肉眼不可见 -->
-			<Box Size="2,2" Color="0,0,0,0"/>
+			<!-- 调试：16x16 带纹理 Image 撑开相机包围盒（验证机制用，定稿后再透明化） -->
+			<Image Size="16,16" Texture="MapPinFlag"/>
 		</WorldAnchor>
 	</Instance>
 </Context>
