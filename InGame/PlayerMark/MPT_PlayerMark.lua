@@ -11,6 +11,8 @@
 -- 打开方式：QuickPanel（条目8）展开区「玩家标记」按钮 → LuaEvents.MPT_PlayerMark_Toggle。
 -- 关闭：X 按钮 / 点击面板外（ModalBlocker）/ ESC（ContextPtr:SetInputHandler，
 --   EndGameMenu.lua:1294 同款；添加弹窗在时先关弹窗）。
+-- 确认/提示弹窗：自研 MPT_PMConfirmPopup（替代引擎内置 PopupDialog——其 MakeInstance
+--   在 AddUserInterfaces 空 Context 不实例化，Controls.PopupRoot 为 nil 报错，条目11 修复）。
 -- 与前端 4.4 的差异（逐条注释横幅留痕）：
 --   1) 删 MPT_PlayerMark_OnSlotNameClick（准备房间槽位热区联动，游戏内无此入口）；
 --   2) MPT_PlayerMark_SaveToDisk 回调内删 MPT_PlayerMark_RefreshLocalCache()
@@ -24,7 +26,8 @@
 -- ============================================================================
 
 include("InstanceManager");
-include("PopupDialog");
+-- 条目11 修复：弃用引擎内置 PopupDialog（其 MakeInstance 在 AddUserInterfaces 空 Context 不实例化，
+-- Controls.PopupRoot 为 nil 会报 Runtime Error）；确认/提示改自研 MPT_PMConfirmPopup（见 XML 与文件下方函数）。
 include("MPT_DataStorage");	-- 条目4.3 存储管线（自带 include("MPT_Serialize") 与幂等守卫）
 
 -- ############################################################################
@@ -46,7 +49,6 @@ local PlayerMarkConfirmDeleteTitleStr	: string = Locale.Lookup("LOC_MPT_PLAYERMA
 local PlayerMarkConfirmDeleteTextStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONFIRM_DELETE_TEXT");
 local PlayerMarkConfirmDiscardTitleStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONFIRM_DISCARD_TITLE");
 local PlayerMarkConfirmDiscardTextStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONFIRM_DISCARD_TEXT");
-local PlayerMarkOkStr				: string = Locale.Lookup("LOC_OK");
 local PlayerMarkCancelStr			: string = Locale.Lookup("LOC_CANCEL");
 local PlayerMarkTagNameStrs			: table = {	-- 下标即 Tag：标签下拉项/按钮文本（复用过滤复选框文本 tag）
 	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_FRIEND"),
@@ -74,8 +76,13 @@ g_PlayerMarkLoading     = false;	-- 右侧编辑区装载中（屏蔽 SetText �
 
 local m_playerMarkEntryIM  = InstanceManager:new("PlayerMarkEntryInstance", "EntryRoot", Controls.PlayerMarkListStack);
 local m_playerMarkDetailIM = InstanceManager:new("PlayerMarkDetailEntryInstance", "DetailRoot", Controls.PlayerMarkDetailStack);
-local m_kPlayerMarkDialog  = PopupDialog:new("MPT_PlayerMark");	-- 本功能专用确认/提示弹窗
 local g_playerMarkEntryIds : table = {};	-- 左列实例序号 -> 玩家 Id（点击行时反查，列表过滤/排序后下标不稳定）
+
+-- ============================================================================
+-- 条目11：自研确认/提示弹窗状态（替代引擎内置 PopupDialog；控件见 MPT_PlayerMark.xml）
+--   g_PlayerMarkConfirmCallback = 「确定」按钮的回调（nil=仅提示）；确定后执行并清空，取消清空关闭。
+-- ============================================================================
+g_PlayerMarkConfirmCallback = nil;
 
 -- ============================================================================
 -- 内部：PlayerMarkSetTagPullDownText(pd, tag)
@@ -167,15 +174,44 @@ function MPT_PlayerMark_GetSelected()
 end
 
 -- ============================================================================
--- MPT_PlayerMark_Confirm(titleStr, textStr, onConfirm)：通用确认框（确定/取消）。
+-- 条目11：MPT_PlayerMark_Confirm(titleStr, textStr, onConfirm) —— 确认框（确定/取消）。
+-- 确定 → 关闭弹窗后执行 onConfirm；取消 → 仅关闭。同名前端函数为 PopupDialog 版，本函数为自研弹窗版。
 -- ============================================================================
 function MPT_PlayerMark_Confirm(titleStr : string, textStr : string, onConfirm)
-	m_kPlayerMarkDialog:Close();
-	m_kPlayerMarkDialog:AddTitle(titleStr);
-	m_kPlayerMarkDialog:AddText(textStr);
-	m_kPlayerMarkDialog:AddButton(PlayerMarkOkStr, function() if onConfirm ~= nil then onConfirm(); end end);
-	m_kPlayerMarkDialog:AddButton(PlayerMarkCancelStr);
-	m_kPlayerMarkDialog:Open();
+	g_PlayerMarkConfirmCallback = onConfirm;
+	Controls.MPT_PMConfirmTitle:SetText(titleStr);
+	Controls.MPT_PMConfirmText:SetText(textStr);
+	Controls.MPT_PMConfirmOkButton:SetHide(false);
+	Controls.MPT_PMConfirmCancelButton:SetHide(false);
+	Controls.MPT_PMConfirmPopup:SetHide(false);
+end
+
+-- ============================================================================
+-- 条目11：MPT_PlayerMark_Notify(titleStr, textStr) —— 仅提示（只有确定按钮）。
+-- 用于昵称为空/重复 ID 等提示（前端 PopupDialog 版对应 AddTitle+AddText+AddButton(OK)）。
+-- ============================================================================
+function MPT_PlayerMark_Notify(titleStr : string, textStr : string)
+	g_PlayerMarkConfirmCallback = nil;
+	Controls.MPT_PMConfirmTitle:SetText(titleStr);
+	Controls.MPT_PMConfirmText:SetText(textStr);
+	Controls.MPT_PMConfirmOkButton:SetHide(false);
+	Controls.MPT_PMConfirmCancelButton:SetHide(true);
+	Controls.MPT_PMConfirmPopup:SetHide(false);
+end
+
+-- ============================================================================
+-- 条目11：确认弹窗按钮点击（注册见文件末尾控件注册段；确定执行回调并清空，取消仅清空关闭）
+-- ============================================================================
+function MPT_PlayerMark_ConfirmOkClick()
+	Controls.MPT_PMConfirmPopup:SetHide(true);
+	local cb = g_PlayerMarkConfirmCallback;
+	g_PlayerMarkConfirmCallback = nil;
+	if cb ~= nil then cb(); end
+end
+
+function MPT_PlayerMark_ConfirmCancelClick()
+	g_PlayerMarkConfirmCallback = nil;
+	Controls.MPT_PMConfirmPopup:SetHide(true);
 end
 
 -- ============================================================================
@@ -367,11 +403,7 @@ function MPT_PlayerMark_ApplySave()
 	if rec == nil then return; end
 	local name = Controls.PlayerMarkNameEdit:GetText();
 	if name == nil or name == "" then
-		m_kPlayerMarkDialog:Close();
-		m_kPlayerMarkDialog:AddTitle(PlayerMarkNoticeTitleStr);
-		m_kPlayerMarkDialog:AddText(PlayerMarkNameEmptyStr);
-		m_kPlayerMarkDialog:AddButton(PlayerMarkOkStr);
-		m_kPlayerMarkDialog:Open();
+		MPT_PlayerMark_Notify(PlayerMarkNoticeTitleStr, PlayerMarkNameEmptyStr);
 		return;
 	end
 	rec.Name = name;
@@ -485,11 +517,7 @@ function MPT_PlayerMark_CreateFromPopup()
 	if MPT_PlayerMark_FindIndex(id) ~= nil then
 		-- 重复 ID：转为编辑已有记录并提示
 		MPT_PlayerMark_Select(id);
-		m_kPlayerMarkDialog:Close();
-		m_kPlayerMarkDialog:AddTitle(PlayerMarkExistsTitleStr);
-		m_kPlayerMarkDialog:AddText(PlayerMarkExistsTextStr);
-		m_kPlayerMarkDialog:AddButton(PlayerMarkOkStr);
-		m_kPlayerMarkDialog:Open();
+		MPT_PlayerMark_Notify(PlayerMarkExistsTitleStr, PlayerMarkExistsTextStr);
 		return;
 	end
 	table.insert(g_PlayerMarkList, {
@@ -653,6 +681,9 @@ Controls.PlayerMarkSteamButton:RegisterCallback(Mouse.eLClick, function()
 		Steam.ActivateGameOverlayToUrl("https://steamcommunity.com/profiles/" .. rec.Id);
 	end
 end);
+-- 条目11：确认/提示弹窗按钮（自研 MPT_PMConfirmPopup，定义见本分区上方）
+Controls.MPT_PMConfirmOkButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_ConfirmOkClick);
+Controls.MPT_PMConfirmCancelButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_ConfirmCancelClick);
 end	-- 条目4.4 副本 do 块结束（与前端同构）
 
 -- ############################################################################
@@ -683,6 +714,11 @@ local function MPT_PlayerMark_OnInput(pInputStruct : table)
 	if uiMsg == KeyEvents.KeyUp then
 		local key : number = pInputStruct:GetKey();
 		if key == Keys.VK_ESCAPE then
+			-- 确认/提示弹窗开 → 先关（等同取消；确认弹窗的确定回调不清，恢复面板后仍可再确认）
+			if not Controls.MPT_PMConfirmPopup:IsHidden() then
+				MPT_PlayerMark_ConfirmCancelClick();
+				return true;
+			end
 			if not Controls.PlayerMarkEditPopup:IsHidden() then
 				MPT_PlayerMark_CloseAddPopup();
 				return true;

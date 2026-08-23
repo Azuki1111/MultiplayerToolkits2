@@ -10,7 +10,9 @@
 <!--     触发（见 MPT_PlayerMark.lua）；                                              -->
 <!--   · 数据走条目4.3 ModGroup 组名管线（Modding 组存储 API 游戏内可用，用户实证），  -->
 <!--     与前端 4.4 面板同一份存档双向互通；                                          -->
-<!--   · 确认框用 MakeInstance PopupDialog（游戏内 EndGameMenu.xml:234 同款）。        -->
+<!--   · 确认框改自研 MPT_PMConfirmPopup（引擎内置 PopupDialog 模板经 MakeInstance 在 -->
+<!--     AddUserInterfaces 空 Context 不实例化——Controls.PopupRoot 为 nil 会报错，    -->
+<!--     条目11 修复；自研弹窗与 PlayerMarkEditPopup 同构，纯自家控件不依赖引擎模板）。 -->
 <!-- 注册：AddUserInterfaces(Context=InGame) + ImportFiles 同名 Lua 自动执行。        -->
 <!-- ============================================================================ -->
 <Context>
@@ -162,8 +164,21 @@
 		</Grid>
 	</Box>
 
-	<!-- 条目11：确认框模板（游戏内 EndGameMenu.xml 同款；Lua 侧 PopupDialog:new("MPT_PlayerMark") 使用） -->
-	<MakeInstance Name="PopupDialog" />
+	<!-- 条目11：自研确认/提示弹窗（替代引擎内置 PopupDialog——其 MakeInstance 在 AddUserInterfaces
+	     空 Context 不实例化会报错；本弹窗与 PlayerMarkEditPopup 同构，纯自家控件；
+	     确定/取消两按钮，Lua 侧 MPT_PlayerMark_Confirm（确认）/ MPT_PlayerMark_Notify（仅提示）控制） -->
+	<Box ID="MPT_PMConfirmPopup" Color="0,0,0,150" Size="parent,parent" ConsumeMouseOver="1" Hidden="1" IgnoreTutorial="1">
+		<Grid Size="480,240" Anchor="C,C" Style="DropShadow2" Color="255,255,255,200">
+			<Grid ID="MPT_PMConfirmWindow" Size="parent-40,parent-20" Anchor="C,C" Style="WindowFrameTitle">
+				<Label ID="MPT_PMConfirmTitle" Style="BlueGlow" Offset="0,16" Anchor="C,T"/>
+				<Label ID="MPT_PMConfirmText" Style="FontNormal16" Color="30,30,30,255" Offset="0,56" Anchor="C,T" WrapWidth="parent-80" Align="Center"/>
+				<Stack Anchor="C,B" Offset="0,16" StackGrowth="Right" Padding="8">
+					<GridButton ID="MPT_PMConfirmOkButton" Style="MainButton" Size="150,41" String="LOC_OK"/>
+					<GridButton ID="MPT_PMConfirmCancelButton" Style="ButtonRed" Size="150,41" String="LOC_CANCEL"/>
+				</Stack>
+			</Grid>
+		</Grid>
+	</Box>
 
 	<!-- Instances -->
 	<!-- 条目4.4：玩家标记列表行实例（整行按钮；标签图标(Image, Lua SetIcon 按 Tag 切换)+居中昵称，悬停 tooltip 显示 [ICON_YOU]+网络ID 与简要描述；点击右侧载入该记录；SelectedFrame 为选中态金色外框，仿准备房间本地玩家行 GoldFrame/Controls_OptionFrame，Lua 按 g_PlayerMarkSelectedId 控制显隐） -->
