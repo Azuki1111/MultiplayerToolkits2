@@ -28,9 +28,9 @@ local VOTE_POLL_INTERVAL :number = 1.0;	-- 秒
 -- 投降/胜利结算已通知 EndGameMenu（只发一次，防重入；跨房间需在进房时重置）
 local m_mpt_outcomeNotified :boolean = false;
 
--- 本时代投票已失败（全部投完未过半）：面板保留显示到回合结束再隐藏
-local m_mpt_voteFailed :boolean = false;
-local m_mpt_hideVoteAtTurnEnd :boolean = false;
+-- 本时代投票已失败（全部投完未过半）：面板保留显示到回合结束，回合结束才隐藏
+local m_mpt_voteFailed :boolean = false;		-- 本时代投票已失败
+local m_mpt_voteFailedHidden :boolean = false;	-- 失败后面板已在回合结束隐藏（隐藏后不再显示）
 
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
@@ -208,17 +208,16 @@ function MPT_RefreshVotePanel()
 		end
 	end
 
-	-- 投票失败检测：全部投完未过半 → 置位，面板保留显示到回合结束再隐藏
+	-- 投票失败检测：全部投完未过半 → 置位（面板保留显示到回合结束，按钮禁用）
 	if not m_mpt_voteFailed and state.failed then
 		m_mpt_voteFailed = true;
-		m_mpt_hideVoteAtTurnEnd = true;
 	end
 
-	-- 仅同队、多人局、本地玩家存活、非观察者、未到回合结束隐藏时参与投票判定；
+	-- 仅同队、多人局、本地玩家存活、非观察者、投票失败尚未回合结束隐藏时参与显示判定；
 	-- 投票区整体默认隐藏，只有「本时代已发起投票」或「已通过」时才显示
 	local bShowVoteArea :boolean = false;
 	if not bLocalObserver
-		and not m_mpt_hideVoteAtTurnEnd
+		and not m_mpt_voteFailedHidden
 		and GameConfiguration.IsAnyMultiplayer()
 		and localPlayer ~= nil and localPlayer >= 0
 		and Players[localPlayer] ~= nil and Players[localPlayer]:IsAlive()
@@ -303,23 +302,23 @@ local function MPT_QuickAttach()
 		-- 新会话（进房）重置结算/投票失败标志（Lua 状态跨房间存续，见 AGENTS.md）
 		m_mpt_outcomeNotified = false;
 		m_mpt_voteFailed = false;
-		m_mpt_hideVoteAtTurnEnd = false;
+		m_mpt_voteFailedHidden = false;
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end
 end
 
 -- ============================================================================
--- 每帧刷新（投票状态轮询 + 回合结束隐藏）
+-- 每帧刷新（投票状态轮询 + 回合结束隐藏失败投票面板）
 -- ============================================================================
 local function MPT_QuickOnUpdate()
-	-- 回合结束（本地回合不再活跃）：投票失败后隐藏投票面板
-	if m_mpt_hideVoteAtTurnEnd then
+	-- 投票失败后：本地回合结束（不再活跃）→ 隐藏投票面板，且不再显示
+	if m_mpt_voteFailed and not m_mpt_voteFailedHidden then
 		local localPlayer :number = Game.GetLocalPlayer();
 		local pLocalPlayer :table = localPlayer ~= nil and localPlayer >= 0 and Players[localPlayer] or nil;
 		if pLocalPlayer ~= nil and not pLocalPlayer:IsTurnActive() then
-			m_mpt_hideVoteAtTurnEnd = false;
-			MPT_RefreshVotePanel();	-- 内部根据标志隐藏 VoteArea
+			m_mpt_voteFailedHidden = true;
+			Controls.VoteArea:SetHide(true);
 		end
 	end
 
