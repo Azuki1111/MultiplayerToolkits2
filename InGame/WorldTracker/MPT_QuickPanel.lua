@@ -21,11 +21,14 @@ local function MPT_QuickToggle()
 		UI.PlaySound("Tech_Tray_Slide_Closed");
 		Controls.QuickPanel:SetSizeY(25);
 		Controls.ExpandStack:SetHide(true);
+		Controls.QuickSep:SetHide(false);	-- 收起时底部装饰线回到 23 处
 		m_quickExpanded = false;
 	else
 		UI.PlaySound("Tech_Tray_Slide_Open");
-		Controls.QuickPanel:SetSizeY(71);	-- 25(标题) + 2×32(按钮) + 间距/边距
+		-- 展开高度 = 头部 25 + Stack 顶部偏移 15 + 按钮总高(32+间距4+32=68) = 108，留 2px 余量
+		Controls.QuickPanel:SetSizeY(110);
 		Controls.ExpandStack:SetHide(false);
+		Controls.QuickSep:SetHide(true);	-- 展开时按钮占满底部，装饰线隐藏
 		m_quickExpanded = true;
 	end
 end
