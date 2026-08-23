@@ -89,3 +89,105 @@ function OnPlayerDefeat(player, defeat, eventID)
 	end
 	MPT_BASE_OnPlayerDefeat(player, defeat, eventID);
 end
+
+-- ============================================================================
+-- 条目8续：投降投票结算弹窗（判负 + 判胜 + 观察者排除）
+--
+-- 投降投票过半通过后 Gameplay 侧写属性（MPT_SURRENDER_TEAM_<team> / 
+-- MPT_SURRENDER_WIN_TEAM），引擎不会判负，需手动弹结算：
+--   - 本地玩家队伍已投降 → PlayerDefeatedData 战败结算（DEFEAT_DEFAULT + 观战按钮）
+--   - 本地玩家队伍是胜队（所有其他队伍都已投降）→ TeamVictoryData 胜利结算
+-- 观察者（LEADER_SPECTATOR）不弹任何结算；已点击观战（条目7 m_mpt_observed）
+-- 也不再弹。
+--
+-- 触发：QuickPanel 1 秒轮询检测到结局后经 LuaEvents.MPT_SurrenderOutcome 通知
+--（标准跨 Context 机制，避免 GameCoreEventPublishComplete 高频回调）；
+-- Events.LocalPlayerTurnBegin 回合边界兜底（直接查属性）。
+-- 防重入：m_mpt_surrenderShown / m_mpt_surrenderWinShown 置位后不再触发。
+-- EndGameMenu Context 每次进游戏会话重建，local 标志自然重置，无需显式跨房间重置。
+-- ============================================================================
+local m_mpt_surrenderShown :boolean = false;		-- 战败结算已弹
+local m_mpt_surrenderWinShown :boolean = false;	-- 胜利结算已弹
+
+local function MPT_IsObserver(playerID)
+	if playerID == nil or playerID < 0 then
+		return false;
+	end
+	local pCfg = PlayerConfigurations[playerID];
+	if pCfg == nil then
+		return false;
+	end
+	return pCfg:GetLeaderTypeName() == "LEADER_SPECTATOR";
+end
+
+-- ============================================================================
+-- 收到 QuickPanel 的结局通知 → 弹结算
+-- ============================================================================
+local function MPT_OnSurrenderOutcome(outcome)
+	if m_mpt_observed then
+		return;	-- 已点击观战，不再弹
+	end
+	local localPlayer :number = Game.GetLocalPlayer();
+	if localPlayer == nil or localPlayer < 0 then
+		return;
+	end
+	if MPT_IsObserver(localPlayer) then
+		-- 观察者不弹结算（吸掉标志，避免后续兜底重复检测）
+		m_mpt_surrenderShown = true;
+		m_mpt_surrenderWinShown = true;
+		return;
+	end
+
+	if outcome == "defeat" and not m_mpt_surrenderShown then
+		m_mpt_surrenderShown = true;
+		m_isFadeOutGame = true;
+		View(PlayerDefeatedData(localPlayer, "DEFEAT_DEFAULT"));
+	elseif outcome == "win" and not m_mpt_surrenderWinShown then
+		m_mpt_surrenderWinShown = true;
+		m_isFadeOutGame = true;
+		View(TeamVictoryData(Players[localPlayer]:GetTeam(), "VICTORY_DEFAULT"));
+	end
+end
+
+-- ============================================================================
+-- 回合边界兜底：直接查属性（QuickPanel 轮询万一未检测到，回合切换时补弹）
+-- ============================================================================
+local function MPT_CheckSurrenderOutcome()
+	if m_mpt_observed then
+		return;
+	end
+	local localPlayer :number = Game.GetLocalPlayer();
+	if localPlayer == nil or localPlayer < 0 then
+		return;
+	end
+	if MPT_IsObserver(localPlayer) then
+		m_mpt_surrenderShown = true;
+		m_mpt_surrenderWinShown = true;
+		return;
+	end
+	local localTeam :number = Players[localPlayer]:GetTeam();
+
+	-- 胜利：本队是胜队
+	if not m_mpt_surrenderWinShown then
+		local winTeam = Game:GetProperty("MPT_SURRENDER_WIN_TEAM");
+		if winTeam ~= nil and winTeam == localTeam then
+			m_mpt_surrenderWinShown = true;
+			m_isFadeOutGame = true;
+			View(TeamVictoryData(localTeam, "VICTORY_DEFAULT"));
+			return;
+		end
+	end
+
+	-- 战败：本队已投降
+	if not m_mpt_surrenderShown then
+		if Game:GetProperty("MPT_SURRENDER_TEAM_" .. localTeam) == 1 then
+			m_mpt_surrenderShown = true;
+			m_isFadeOutGame = true;
+			View(PlayerDefeatedData(localPlayer, "DEFEAT_DEFAULT"));
+		end
+	end
+end
+
+-- 注册：QuickPanel 通知 + 回合边界兜底
+LuaEvents.MPT_SurrenderOutcome.Add(MPT_OnSurrenderOutcome);
+Events.LocalPlayerTurnBegin.Add(MPT_CheckSurrenderOutcome);

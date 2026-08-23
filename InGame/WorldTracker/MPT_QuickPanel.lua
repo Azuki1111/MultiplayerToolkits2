@@ -25,6 +25,16 @@ local m_quickExpanded :boolean = false;
 local m_votePollTimer :number = 0;
 local VOTE_POLL_INTERVAL :number = 1.0;	-- 秒
 
+-- 投降/胜利结算已通知 EndGameMenu（只发一次，防重入；跨房间需在进房时重置）
+local m_mpt_outcomeNotified :boolean = false;
+
+-- ============================================================================
+-- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
+-- ============================================================================
+local function MPT_IsLocalObserver()
+	return Game.GetLocalObserver() == PlayerTypes.OBSERVER;
+end
+
 -- ============================================================================
 -- 当前本地玩家与本队信息
 -- ============================================================================
@@ -53,6 +63,7 @@ local function MPT_ReadVoteState()
 		agreeCount = 0,
 		totalCount = 0,
 		passed = false,
+		winTeam = nil,
 	};
 	if teamID < 0 then
 		return state;
@@ -66,6 +77,7 @@ local function MPT_ReadVoteState()
 			state.agreeCount = gpState.agreeCount or 0;
 			state.totalCount = gpState.totalCount or 0;
 			state.passed = gpState.passed or false;
+			state.winTeam = gpState.winTeam;
 		end
 	else
 		-- 兜底：直接读 Game 属性（UI 侧 Game 可读属性）
@@ -83,6 +95,7 @@ local function MPT_ReadVoteState()
 			end
 		end
 		state.passed = Game:GetProperty("MPT_SURRENDER_TEAM_" .. teamID) == 1;
+		state.winTeam = Game:GetProperty("MPT_SURRENDER_WIN_TEAM");
 	end
 
 	return state;
@@ -164,12 +177,35 @@ end
 -- ============================================================================
 function MPT_RefreshVotePanel()
 	local state = MPT_ReadVoteState();
-	local bShowVoteArea :boolean = false;
 	local localPlayer :number = Game.GetLocalPlayer();
+	local bLocalObserver :boolean = MPT_IsLocalObserver();
 
-	-- 仅同队、多人局、本地玩家存活时参与投票判定；
+	-- 观察者：投降按钮禁用（禁发起）、投票区整体隐藏（禁投票、不弹结算 UI）
+	Controls.SurrenderButton:SetDisabled(bLocalObserver);
+
+	-- 结算通知：本队已投降 / 本队是胜队 → 通知 EndGameMenu 弹结算（只发一次）
+	-- 观察者不通知（无结算）；已通知过不再重复
+	if not m_mpt_outcomeNotified and not bLocalObserver
+		and localPlayer ~= nil and localPlayer >= 0 then
+		local pLocalPlayer = Players[localPlayer];
+		local localTeam = -1;
+		if pLocalPlayer ~= nil then
+			localTeam = pLocalPlayer:GetTeam();
+		end
+		if state.passed then
+			m_mpt_outcomeNotified = true;
+			LuaEvents.MPT_SurrenderOutcome("defeat");
+		elseif state.winTeam ~= nil and state.winTeam == localTeam then
+			m_mpt_outcomeNotified = true;
+			LuaEvents.MPT_SurrenderOutcome("win");
+		end
+	end
+
+	-- 仅同队、多人局、本地玩家存活、非观察者时参与投票判定；
 	-- 投票区整体默认隐藏，只有「本时代已发起投票」或「已通过」时才显示
-	if GameConfiguration.IsAnyMultiplayer()
+	local bShowVoteArea :boolean = false;
+	if not bLocalObserver
+		and GameConfiguration.IsAnyMultiplayer()
 		and localPlayer ~= nil and localPlayer >= 0
 		and Players[localPlayer] ~= nil and Players[localPlayer]:IsAlive()
 		and state.teamID >= 0
@@ -249,6 +285,11 @@ local function MPT_QuickAttach()
 		worldTrackerPanel:CalculateSize();
 		worldTrackerPanel:ReprocessAnchoring();
 		m_quickAttached = true;
+
+		-- 新会话（进房）重置结算通知标志（Lua 状态跨房间存续，见 AGENTS.md）
+		m_mpt_outcomeNotified = false;
+		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
+		MPT_RefreshVotePanel();
 	end
 end
 

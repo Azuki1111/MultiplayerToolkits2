@@ -26,6 +26,22 @@ local function MPT_VoteStartedKey(era, team) return "MPT_SURRENDER_VOTE_" .. era
 local function MPT_VotesKey(team) return "MPT_SURRENDER_VOTES_" .. team; end
 -- 该队已投降：MPT_SURRENDER_TEAM_<team> = 1
 local function MPT_SurrenderedKey(team) return "MPT_SURRENDER_TEAM_" .. team; end
+-- 胜利队伍：全部其他队伍投降后仅剩一队 → MPT_SURRENDER_WIN_TEAM = 胜队ID
+local function MPT_WinTeamKey() return "MPT_SURRENDER_WIN_TEAM"; end
+
+-- ============================================================================
+-- 该玩家是否为观察者（LEADER_SPECTATOR，无文明；不参与投票/不计入真人总数/不弹结算）
+-- ============================================================================
+local function MPT_IsObserverPlayer(playerID)
+	if playerID == nil or playerID < 0 then
+		return false;
+	end
+	local pCfg = PlayerConfigurations[playerID];
+	if pCfg == nil then
+		return false;
+	end
+	return pCfg:GetLeaderTypeName() == "LEADER_SPECTATOR";
+end
 
 -- ============================================================================
 -- 当前时代号（发起/查询频率限制用）
@@ -39,7 +55,7 @@ local function MPT_GetCurrentEra()
 end
 
 -- ============================================================================
--- 某队当前存活的「主要文明玩家 ID」列表（含观察者过滤；AI 不算投票人）
+-- 某队当前存活的「主要文明玩家 ID」列表（观察者/AI 不算投票人）
 -- ============================================================================
 local function MPT_GetTeamHumanAliveMajorIDs(teamID)
 	local result = {};
@@ -47,7 +63,8 @@ local function MPT_GetTeamHumanAliveMajorIDs(teamID)
 		local pPlayer = Players[i];
 		if pPlayer ~= nil and pPlayer:IsMajor() and pPlayer:IsAlive()
 			and pPlayer:GetTeam() == teamID
-			and pPlayer:IsHuman() then
+			and pPlayer:IsHuman()
+			and not MPT_IsObserverPlayer(i) then
 			table.insert(result, i);
 		end
 	end
@@ -84,6 +101,34 @@ local function MPT_SurrenderExecute(teamID)
 
 	Game:SetProperty(MPT_SurrenderedKey(teamID), 1);
 	print("[MPT_SurrenderVote] Team " .. tostring(teamID) .. " has surrendered.");
+
+	-- 胜利判定：统计所有「存活主要队伍」中尚未投降的队伍数
+	-- 观察者/次要文明/AI 不算队伍；恰好剩 1 个未投降队伍 → 判胜
+	-- （2 队局 A 投降后剩 B → 判 B 胜；3 队局须前两队都投降后剩第三队才判胜）
+	if Game:GetProperty(MPT_WinTeamKey()) == nil then
+		local remainingTeams = {};
+		for i = 0, PlayerManager.GetWasEverAliveCount() - 1 do
+			local pPlayer = Players[i];
+			if pPlayer ~= nil and pPlayer:IsMajor() and pPlayer:IsAlive() then
+				local t = pPlayer:GetTeam();
+				if t >= 0 then
+					remainingTeams[t] = true;
+				end
+			end
+		end
+		local notSurrenderedCount = 0;
+		local lastTeam = nil;
+		for t in pairs(remainingTeams) do
+			if Game:GetProperty(MPT_SurrenderedKey(t)) ~= 1 then
+				notSurrenderedCount = notSurrenderedCount + 1;
+				lastTeam = t;
+			end
+		end
+		if notSurrenderedCount == 1 and lastTeam ~= nil and notSurrenderedCount < #remainingTeams then
+			Game:SetProperty(MPT_WinTeamKey(), lastTeam);
+			print("[MPT_SurrenderVote] Team " .. tostring(lastTeam) .. " has won (all others surrendered).");
+		end
+	end
 end
 
 -- ============================================================================
@@ -109,6 +154,7 @@ function MPT_GetSurrenderVoteState(teamID)
 		agreeCount = agreeCount,
 		totalCount = totalCount,
 		passed = MPT_IsTeamSurrendered(teamID),
+		winTeam = Game:GetProperty(MPT_WinTeamKey()),
 	};
 end
 
