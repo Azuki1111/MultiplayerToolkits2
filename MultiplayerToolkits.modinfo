@@ -243,7 +243,7 @@
 			<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 			<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		</UpdateText>
-		<!-- 条目5：显示地图角落——空 Context + 同名 Lua 自动执行，LoadScreenClose 时建两个极地真实地图钉 + 弹掉编辑弹窗，撑开引擎小地图矩形（移植 1.67 RMC） -->
+		<!-- 条目5：显示地图角落——空 Context + 同名 Lua 自动执行，LoadScreenClose 时用透明 WorldAnchor 实例锚定地图两极，撑开相机包围盒使小地图全球比例（移植 1.67 RMC 自制版，不留 pin 数据） -->
 		<AddUserInterfaces id="IG_RevealMapCorners">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
@@ -251,14 +251,6 @@
 			</Properties>
 			<File>InGame/RevealMapCorners/RevealMapCorners.xml</File>
 		</AddUserInterfaces>
-		<!-- 条目5实验：追加注入 MapPinManager 上下文（模式4 ImportFiles LuaContext 注入），验证访问 GetMapPinFlag 单独控制 pin 实例 -->
-		<ImportFiles id="IG_MapPinOffset">
-			<Properties>
-				<LoadOrder>1000</LoadOrder>
-				<LuaContext>MapPinManager</LuaContext>
-			</Properties>
-			<File>InGame/RevealMapCorners/MPT_MapPinOffset.lua</File>
-		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -300,6 +292,5 @@
 		<File>Shared/MPT_DataStorage.lua</File>
 		<File>InGame/RevealMapCorners/RevealMapCorners.xml</File>
 		<File>InGame/RevealMapCorners/RevealMapCorners.lua</File>
-		<File>InGame/RevealMapCorners/MPT_MapPinOffset.lua</File>
 	</Files>
 </Mod>
