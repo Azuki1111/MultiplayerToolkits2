@@ -63,4 +63,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_CONFIRM_DELETE_TITLE', 'en_US', 'Delete Player Record'),
 ('LOC_MPT_PLAYERMARK_CONFIRM_DELETE_TEXT', 'en_US', 'Permanently delete all records of this player? This takes effect immediately and cannot be undone.'),
 ('LOC_MPT_PLAYERMARK_CONFIRM_DISCARD_TITLE', 'en_US', 'Discard Changes'),
-('LOC_MPT_PLAYERMARK_CONFIRM_DISCARD_TEXT', 'en_US', 'This player has unsaved changes. Discard them?');
+('LOC_MPT_PLAYERMARK_CONFIRM_DISCARD_TEXT', 'en_US', 'This player has unsaved changes. Discard them?'),
+-- 条目4.8续：隐身开关（头部复选框）
+('LOC_MPT_PLAYERMARK_HIDDEN_MARK', 'en_US', 'Hide my marks'),
+('LOC_MPT_PLAYERMARK_HIDDEN_MARK_TT', 'en_US', 'When checked, other players in the room will not see your special marks (Admin/Normal/Honor marks; Ban marks always show)');

@@ -5419,9 +5419,11 @@ local PlayerMarkTagNameStrs			: table = {	-- 下标即 Tag：标签下拉项/按
 -- ============================================================================
 local PLAYERMARK_STORAGE_FILE : string = "MPT_PlayerInfo";	-- 数据组命名空间段（字母数字下划线）
 local PLAYERMARK_STORAGE_KEY  : string = "Players";			-- 数据组键名段
+local PLAYERMARK_STORAGE_SETTINGS_KEY : string = "Settings";	-- 配置键名段（条目4.8续：隐身设置；与 Players 同命名空间 MPT_PlayerInfo，组名各异互不覆盖）
 local PLAYERMARK_TAG_ICONS : table = { "[ICON_OnlineGreenPingPip]", "[ICON_OnlineYellowPingPig]", "[ICON_OnlineRedPingPig]" };	-- 下标即 Tag：1好友 2一般 3黑名单（游戏真实图标名黄/红为 PingPig，已核实）；带方括号文本 tag，下拉按钮文本用
 local PLAYERMARK_TAG_ICON_NAMES : table = { "OnlineGreenPingPip", "OnlineYellowPingPig", "OnlineRedPingPig" };	-- 下标即 Tag；列表行 Image:SetIcon 用（FontIcons.xml 的裸 Name——SetIcon/Icon= 内部自动拼 ICON_ 前缀，不可再带）
 
+g_MPT_MarkHidden = true;		-- 条目4.8续：隐身设置内存态（默认开启=隐藏自身 SQL 公共标记；4.8 分区兜底读取）
 g_PlayerMarkList        = {};		-- 玩家记录数组（磁盘内容的工作副本）
 g_PlayerMarkSelectedId  = nil;		-- 当前选中玩家 Id（nil=未选中）
 g_PlayerMarkSortAsc     = false;	-- 排序方向：false=最新修改在前（默认）
@@ -5557,6 +5559,59 @@ function MPT_PlayerMark_SaveToDisk(callback)
 		end
 		if callback ~= nil then callback(ok); end
 	end);
+end
+
+-- ============================================================================
+-- 条目4.8续：隐身设置（隐藏自身 SQL 公共标记）
+-- 语义：勾选 = 隐藏自己，房间内其他玩家加载我的配置后跳过我的 SQL 公共标记
+--   （Admin/Normal/Honor；Ban 强制显示）。默认开启（继承 1.67 IsHiddenPlayerInfo_STR="T"）。
+-- 存储：与 Players 同命名空间 MPT_PlayerInfo 下新增 Settings key（组名各异互不覆盖），
+--   存 { HiddenSqlMark=boolean }；每次打开面板真实读库（同 4.4 惯例）。
+-- 广播：设置/进房时写 PlayerConfigurations[我]:SetValue("HiddenPkayerInfo","T"/"F")
+--   + Network.BroadcastPlayerInfo（1.67 同款：键为 1.67 自定义配置键，随房间同步）。
+-- ============================================================================
+
+-- MPT_PlayerMark_ApplyHiddenMarkUI()：复选框 UI 状态 <- 内存设置（g_MPT_MarkHidden）
+function MPT_PlayerMark_ApplyHiddenMarkUI()
+	Controls.PlayerMarkHiddenMarkCheck:SetCheck(g_MPT_MarkHidden);
+end
+
+-- MPT_PlayerMark_BroadcastHiddenMark()：把内存设置写入本机 PlayerConfigurations 并广播
+--   （进房/勾选后调用；PlayerConfigurations[我] 不可用时静默跳过）
+function MPT_PlayerMark_BroadcastHiddenMark()
+	local localPlayerID : number = Network.GetLocalPlayerID();
+	if localPlayerID ~= nil and PlayerConfigurations[localPlayerID] ~= nil then
+		PlayerConfigurations[localPlayerID]:SetValue("HiddenPkayerInfo", g_MPT_MarkHidden and "T" or "F");
+		Network.BroadcastPlayerInfo(localPlayerID);
+	end
+end
+
+-- MPT_PlayerMark_LoadSettings()：读 Settings 存档刷新 g_MPT_MarkHidden 并应用 UI+广播
+--   （无存档/字段缺失 → 默认 true 开启隐身；读完广播一次保证他人视角即时生效）
+function MPT_PlayerMark_LoadSettings()
+	MPT_Storage_LoadData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_SETTINGS_KEY, function(data)
+		if type(data) == "table" and type(data.HiddenSqlMark) == "boolean" then
+			g_MPT_MarkHidden = data.HiddenSqlMark;
+		else
+			g_MPT_MarkHidden = true;	-- 默认开启隐身（继承 1.67）
+		end
+		MPT_PlayerMark_ApplyHiddenMarkUI();
+		MPT_PlayerMark_BroadcastHiddenMark();
+	end);
+end
+
+-- MPT_PlayerMark_OnHiddenMarkCheck()：复选框勾选回调（NoStateChange 手动维护勾选态）
+--   取反 → 广播 → 落盘 → 重刷房间条目（本机视角立即生效，4.8 ApplyStatusLabel 读配置键）
+function MPT_PlayerMark_OnHiddenMarkCheck()
+	g_MPT_MarkHidden = not g_MPT_MarkHidden;
+	MPT_PlayerMark_ApplyHiddenMarkUI();
+	MPT_PlayerMark_BroadcastHiddenMark();
+	MPT_Storage_SaveData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_SETTINGS_KEY, { HiddenSqlMark = g_MPT_MarkHidden }, function(ok)
+		if not ok then
+			print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
+		end
+	end);
+	MPT_PlayerMark_RefreshLocalCache();	-- 重刷房间条目：本机视角立即生效（他人视角由广播驱动）
 end
 
 -- ============================================================================
@@ -5878,6 +5933,7 @@ function MPT_PlayerMark_Open()
 	Controls.PlayerMarkPanel:SetHide(false);
 	UI.PlaySound("UI_Screen_Open");
 	MPT_PlayerMark_LoadFromDisk(function()
+		MPT_PlayerMark_LoadSettings();	-- 条目4.8续：读隐身设置存档并应用 UI+广播（异步回调，不阻塞）
 		MPT_PlayerMark_RebuildList();
 		MPT_PlayerMark_RefreshEditor();
 	end);
@@ -5939,6 +5995,8 @@ Controls.PlayerMarkButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Open);
 Controls.PlayerMarkButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 Controls.PlayerMarkCloseButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Close);
 Controls.PlayerMarkModalBlocker:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Close);
+Controls.PlayerMarkHiddenMarkCheck:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnHiddenMarkCheck);
+MPT_PlayerMark_ApplyHiddenMarkUI();	-- 初始勾选态（默认隐身；LoadSettings 读盘后会再刷）
 
 -- 左列：过滤复选框 / 排序切换 / 搜索框
 local function PlayerMarkOnFilterChanged()
@@ -6698,6 +6756,10 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 	-- 2) SQL 标记 + 日期时效 + 隐身判定
 	local sqlRec = g_MPT_MarkSql[netId];
 	if sqlRec ~= nil and MPT_PlayerMark_DateAllowed(sqlRec) then
+		-- 条目4.8续：本机玩家配置键兜底同步（进房广播的同步保险；他人视角由广播驱动，本行仅保证本机视角自洽）
+		if playerID == Network.GetLocalPlayerID() and cfg:GetValue("HiddenPkayerInfo") ~= (g_MPT_MarkHidden and "T" or "F") then
+			cfg:SetValue("HiddenPkayerInfo", g_MPT_MarkHidden and "T" or "F");
+		end
 		local isHidden : boolean = cfg:GetValue("HiddenPkayerInfo") == "T";
 		local isPublic : boolean = (sqlRec.Type == "Admin" or sqlRec.Type == "Normal" or sqlRec.Type == "Honor");
 		if not (isHidden and isPublic) then	-- 隐身隐藏公共标记；Ban 与未隐身仍显示
