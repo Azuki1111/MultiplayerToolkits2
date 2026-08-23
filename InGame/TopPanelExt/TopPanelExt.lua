@@ -475,6 +475,7 @@ if BaseFile == "TopPanel_Expansion2" then
             local isOverflow : boolean = false;
             local overflowString : string = "";
             local plusInstance : table;
+            local plusClickInstance : table;		-- 条目9续：溢出(+)实例的透明点击层（同步 Tooltip）
             BuildStrategicTeamPlayerIDs();		-- 队友列表每刷新周期构建一次（GetMoreStrategicstr 复用）
             for resource in GameInfo.Resources() do
                 if (resource.ResourceClassType ~= nil and resource.ResourceClassType ~= "RESOURCECLASS_BONUS" and resource.ResourceClassType ~="RESOURCECLASS_LUXURY" and resource.ResourceClassType ~="RESOURCECLASS_ARTIFACT") then
@@ -568,10 +569,12 @@ if BaseFile == "TopPanel_Expansion2" then
 
                                 instance.ResourceText:SetText(resourceText);
                                 instance.ResourceText:SetToolTipString(tooltip);
-                                -- 条目9续：战略资源点击发送交易（覆盖式注册，实例池复用安全；闭包捕获 ResourceType 拷贝
-                                -- 防迭代器行对象复用；回调内部自行判断 允许交易/有可接收队友，禁止交易模式不动作）
+                                -- 条目9续：战略资源点击发送交易（透明 BoxButton 覆盖层接收点击；覆盖层同时
+                                -- 设置相同 Tooltip 以免拦截原版悬停；闭包捕获 ResourceType 拷贝防迭代器行对象
+                                -- 复用；回调内部自行判断 允许交易/有可接收队友，禁止交易模式不动作）
                                 local clickResourceType : string = resource.ResourceType;
-                                instance.ResourceText:RegisterCallback(Mouse.eLClick, function() MPT_TPE_OpenResourceSendPopup(clickResourceType) end);
+                                instance.ResourceClick:SetToolTipString(tooltip);
+                                instance.ResourceClick:RegisterCallback(Mouse.eLClick, function() MPT_TPE_OpenResourceSendPopup(clickResourceType) end);
                                 local instanceWidth : number = instance.ResourceText:GetSizeX();
                                 currSize = currSize + instanceWidth;
                             end
@@ -581,6 +584,8 @@ if BaseFile == "TopPanel_Expansion2" then
                                 local instance : table = m_kResourceIM:GetInstance();
                                 instance.ResourceText:SetText("[ICON_Plus]");
                                 plusInstance = instance.ResourceText;
+                                -- 条目9续：溢出(+)图标同步 Tooltip 与点击到透明覆盖层（BoxButton 拦截悬停/点击）
+                                plusClickInstance = instance.ResourceClick;
                             else
                                 overflowString = overflowString .. "[NEWLINE]" .. tooltip;
                             end
@@ -592,6 +597,9 @@ if BaseFile == "TopPanel_Expansion2" then
 
             if (plusInstance ~= nil) then
                 plusInstance:SetToolTipString(overflowString);
+                if plusClickInstance ~= nil then
+                    plusClickInstance:SetToolTipString(overflowString);
+                end
             end
 
             Controls.ResourceStack:CalculateSize();

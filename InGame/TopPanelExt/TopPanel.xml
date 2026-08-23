@@ -3,9 +3,9 @@
 <!-- 条目9续：战略资源点击发送交易                                                 -->
 <!-- 整文件同名覆盖 Base/Assets/UI/TopPanel.xml（游戏内唯一加载的 TopPanel 布局，   -->
 <!-- Expansion1/2 均复用此 xml，仅覆盖 Lua）。                                     -->
-<!-- 唯一结构性改动：ResourceInstance 模板中 ResourceText 由 Label 改为 Button      -->
-<!-- （保留 Style/ColorSet，Lua 端 SetText/SetToolTipString/GetSizeX 均兼容；       -->
-<!-- Button 无 Texture 默认透明无背景，仅扩展点击能力供 条目9续 发送交易弹窗使用）。  -->
+<!-- 唯一结构性改动：ResourceInstance 模板中保持 Label ResourceText 原版渲染，         -->
+<!-- 新增透明 BoxButton ResourceClick 覆盖层（Color 0,0,0,0 NoStateChange 无纹理，     -->
+<!-- 接收点击 + 同步 Tooltip，供条目9续 发送交易弹窗使用；Container 高度固定 24）。      -->
 <!-- 弹窗控件 MPT_TPE_SendPopup 直接内嵌于本 Context（Anchor="C,C" 全屏居中覆盖，  -->
 <!-- TopPanel 为 HUD 常驻层，子控件可覆盖全屏；Lua 经 Controls.xxx 访问）。          -->
 <!-- 发送逻辑见同目录 TopPanelExt.lua 条目9续 分区。                                -->
@@ -103,14 +103,16 @@
 
 	<!-- ============================================================================ -->
 	<!-- 条目9续：ResourceInstance 模板改造                                             -->
-	<!-- 原版 ResourceText 为 Label（不支持点击回调），改为 Button（保留样式与颜色，     -->
-	<!-- Lua 端 SetText/SetToolTipString/GetSizeX 兼容；Button 无 Texture 透明无背景，    -->
-	<!-- 仅扩展点击能力，供条目9续 点击战略资源打开发送交易弹窗）。                        -->
-	<!-- 原版：Label ID=ResourceText Style=FontNormal14 ColorSet=TopBarValueCS            -->
+	<!-- 原版 ResourceText 为 Label（不支持点击回调）；保持 Label 原版渲染完全不变       -->
+	<!-- （Style/ColorSet/尺寸，Lua 端 SetText/SetToolTipString/GetSizeX 行为一致），     -->
+	<!-- 在其上方叠一层透明 BoxButton（ResourceClick）作为点击层，供条目9续 点击战略资源 -->
+	<!-- 打开发送交易弹窗。Container 高度固定 24 与 Resources Grid(48,24) 匹配，不变形。  -->
+	<!-- 原版：Label ID=ResourceText Style=FontNormal14 ColorSet=TopBarValueCS             -->
 	<!-- ============================================================================ -->
 	<Instance			Name="ResourceInstance">
-    <Container	ID="Top"								Anchor="L,C" Offset="0,2" Size="auto,auto">
-      <Button		ID="ResourceText" Style="FontNormal14" ColorSet="TopBarValueCS" Size="auto,24" ConsumeAllMouse="1"/>
+    <Container	ID="Top"								Anchor="L,C" Offset="0,2" Size="auto,24">
+      <Label		ID="ResourceText" Style="FontNormal14" ColorSet="TopBarValueCS" Anchor="L,C"/>
+      <BoxButton	ID="ResourceClick" Anchor="L,C" Size="parent,parent" Color="0,0,0,0" NoStateChange="1" ConsumeAllMouse="1"/>
       <Image		ID="ResourceVelocity"		Anchor="L,B" Offset="10,-1" Size="12,12" Hidden="1"/>
     </Container>		
 	</Instance>
