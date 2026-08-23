@@ -790,6 +790,11 @@ do
         end
 
         Controls.MPT_TPE_SendList:CalculateSize()
+        -- 动态设置弹窗高度：Grid 为 auto 时背景 Image 的 parent 高度引用不可靠（解析成异常值导致背景超界），
+        -- 显式 SetSizeY = 列表高度 + 固定增量（标题/持有量/合计/按钮/内边距），背景随父高度正常铺满
+        local listHeight : number = Controls.MPT_TPE_SendList:GetSizeY();
+        if listHeight == nil or listHeight == 0 then listHeight = 24; end		-- 无队友行时的兜底
+        Controls.MPT_TPE_SendPopup:SetSizeY(listHeight + 220);
         Controls.MPT_TPE_SendPopup:SetHide(false)
     end
 
