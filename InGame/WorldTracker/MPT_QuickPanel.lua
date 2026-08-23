@@ -12,6 +12,8 @@
 --   投票状态存 Game:SetProperty（跨端同步+持久化）；本面板定期轮询刷新。
 --   频率限制：每游戏时代每队仅可发起一次（SetProperty 记录）。
 --   「重新开始」按钮响应暂未配置（TODO）。
+--   投票面板（VoteArea）独立于快捷面板：ChangeParent 到 PanelStack 作为平级子级
+--   （QuickPanel 之后），显隐只由投票状态驱动，不受快捷面板展开/收起影响。
 -- ============================================================================
 
 include("SupportFunctions");	-- TruncateStringWithTooltip 等
@@ -198,12 +200,9 @@ local function MPT_QuickToggle()
 		m_quickExpanded = false;
 	else
 		UI.PlaySound("Tech_Tray_Slide_Open");
-		-- 展开高度动态：投票区可见时更高（头部 25 + 偏移 30 + 投票区 280 + 两按钮 32*2 + 间距）
-		local height = 110;
-		if not Controls.VoteArea:IsHidden() then
-			height = 400;
-		end
-		Controls.QuickPanel:SetSizeY(height);
+		-- 展开高度固定：头部 25 + 展开区（30 偏移 + 32 按钮 + 4 + 32 按钮 + 4）≈ 102；
+		-- 投票面板独立挂 PanelStack，不参与本面板高度
+		Controls.QuickPanel:SetSizeY(110);
 		Controls.ExpandStack:SetHide(false);
 		Controls.QuickSepBottom:SetHide(false);
 		m_quickExpanded = true;
@@ -228,6 +227,10 @@ local function MPT_QuickAttach()
 	if worldTrackerPanel ~= nil then
 		Controls.QuickPanel:ChangeParent(worldTrackerPanel);
 		worldTrackerPanel:AddChildAtIndex(Controls.QuickPanel, 1);
+		-- 条目8续：投票面板独立挂载（QuickPanel 之后，作为 PanelStack 平级子级；
+		-- 显隐只由投票状态驱动，QuickPanel 展开/收起不影响其显隐；Hidden 时 Stack 不占位）
+		Controls.VoteArea:ChangeParent(worldTrackerPanel);
+		worldTrackerPanel:AddChildAtIndex(Controls.VoteArea, 2);
 		worldTrackerPanel:CalculateSize();
 		worldTrackerPanel:ReprocessAnchoring();
 		m_quickAttached = true;
@@ -235,17 +238,13 @@ local function MPT_QuickAttach()
 end
 
 -- ============================================================================
--- 每帧刷新（投票状态轮询 + 展开高度重算）
+-- 每帧刷新（投票状态轮询）
 -- ============================================================================
 local function MPT_QuickOnUpdate()
 	m_votePollTimer = m_votePollTimer + UIManager:GetLastTimeDelta();
 	if m_votePollTimer >= VOTE_POLL_INTERVAL then
 		m_votePollTimer = 0;
 		MPT_RefreshVotePanel();
-		-- 投票状态变化后重算展开高度
-		if m_quickExpanded and not Controls.VoteArea:IsHidden() then
-			Controls.QuickPanel:SetSizeY(400);
-		end
 	end
 end
 
