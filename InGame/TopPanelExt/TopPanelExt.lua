@@ -791,7 +791,6 @@ do
 
         Controls.MPT_TPE_SendList:CalculateSize()
         Controls.MPT_TPE_SendPopup:SetHide(false)
-        Controls.MPT_TPE_SendPopup:CalculateSize()
     end
 
     -- 确认发送：向每个可接收队友分别发起 PROPOSED 提案（对方手动接受；每对玩家一单）
