@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目5：显示地图角落（移植 1.67 RMC，自制透明实例版）
+空 Context 经 AddUserInterfaces 注册进 InGame；同名 RevealMapCorners.lua 自动作为本 Context 脚本执行。
+WorldAnchor 把 3D 世界坐标投影到屏幕：本文件仅定义实例模板，实例由 Lua 在 LoadScreenClose 时创建，
+用 UI.GridToWorld(plotIndex) 取极地格世界坐标 SetWorldPositionVal 锚定，撑开相机包围盒使小地图全球比例。
+透明实例：极小全透明 Box 作为有效渲染节点（避免无渲染节点不被纳入包围盒，见实测记录）。
+-------------------------------------------------------------------------- -->
+<Context>
+	<Container ID="MPT_WorldAnchorRoot"/>
+	<Instance Name="MPT_WorldAnchorInstance">
+		<WorldAnchor ID="Anchor">
+			<!-- 透明实例：2x2 全透明 Box 撑开相机包围盒，肉眼不可见 -->
+			<Box Size="2,2" Color="0,0,0,0"/>
+		</WorldAnchor>
+	</Instance>
+</Context>

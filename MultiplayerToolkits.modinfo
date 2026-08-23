@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>20</Version>
+		<Version>21</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -243,6 +243,14 @@
 			<File>FrontEnd/Text/FrontEnd_zh_Hans_CN.sql</File>
 			<File>FrontEnd/Text/FrontEnd_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目5：显示地图角落——空 Context + 同名 Lua 自动执行，LoadScreenClose 时用透明 WorldAnchor 实例锚定地图两极，撑开相机包围盒使小地图全球比例（移植 1.67 RMC 自制版，不留 pin 数据） -->
+		<AddUserInterfaces id="IG_RevealMapCorners">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/RevealMapCorners/RevealMapCorners.xml</File>
+		</AddUserInterfaces>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -282,5 +290,7 @@
 		<File>FrontEnd/UI/AdvancedSetup/AdvancedSetup.lua</File>
 		<File>Shared/MPT_Serialize.lua</File>
 		<File>Shared/MPT_DataStorage.lua</File>
+		<File>InGame/RevealMapCorners/RevealMapCorners.xml</File>
+		<File>InGame/RevealMapCorners/RevealMapCorners.lua</File>
 	</Files>
 </Mod>

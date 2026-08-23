@@ -12,7 +12,7 @@
 ### Mod 清单
 
 - Mod id：`00000000-7369-4685-ab5f-bf77bc22b54e`（规约：GUID 前 8 位为 0）
-- `<Version>20</Version>` 是模组版本一致性校验指纹，**结构性更新必须递增**
+- `<Version>21</Version>` 是模组版本一致性校验指纹，**结构性更新必须递增**
 - `AffectsSavedGames=0`，`CompatibleVersions=1.2,2.0`
 - 本 mod 前端功能全部走 FrontEndActions；InGameActions 仅注册同一份通用文本文件（`IG_Import_Storage` 存储双环境注册已移除，原因见踩坑记录 include 缺陷）。
 
@@ -39,7 +39,7 @@
 | `Shared/PlayerMark/` | 条目4.4/4.8 玩家标记：专属文本（按钮/面板/弹窗/确认框 Tag；无数据表，数据走条目4.3 存储管线——ModGroup 组名 [MPT_DS][MPT_PlayerInfo][Players]）+ 条目4.8 数据表 `TPT_PlayerData`（`PlayerMark_Data.sql`，移植 1.67 全部类型有效行，去注释/过期/测试行）+ 3 张标记图片 DDS（AnDe/HuaMing/QingTian_Desc_Texture，经 ImportFiles 入 VFS 供 ToolTipType 用） |
 | `FrontEnd/IconViewer/` | 条目4.5 图标查看器：`MPT_IconCollection` 数据表（移植 EasyIconViewer 5056 图标，表名改 MPT_ 前缀）+ 专属文本 |
 | `FrontEnd/TextureViewer/` | 条目4.6 贴图查看器：`MPT_TextureCollection` 数据表（移植 TextureViewer 游戏本体+全部DLC UI 贴图 5017 行，表名改 MPT_ 前缀）+ 专属文本 |
-| `InGame/` | 游戏内功能（预留：当前为空目录，移植 1.67 InGame 部分时每功能一个自包含子目录） |
+| `InGame/RevealMapCorners/` | 条目5 显示地图角落（移植 1.67 RMC 自制版）：`RevealMapCorners.xml`（空 Context + `WorldAnchor` + 2x2 全透明 Box 实例模板）+ `RevealMapCorners.lua`（LoadScreenClose 时 `UI.GridToWorld(plotIndex)` 取首/末格坐标、`Anchor:SetWorldPositionVal` 锚定两极撑开相机包围盒使小地图全球比例，不留 pin 数据；AddUserInterfaces Context=InGame 注册）；后续 InGame 功能每功能一个自包含子目录 |
 
 ## 加载机制（.modinfo）
 
