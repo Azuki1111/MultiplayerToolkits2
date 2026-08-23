@@ -41,7 +41,7 @@
 | `FrontEnd/TextureViewer/` | 条目4.6 贴图查看器：`MPT_TextureCollection` 数据表（移植 TextureViewer 游戏本体+全部DLC UI 贴图 5017 行，表名改 MPT_ 前缀）+ 专属文本 |
 | `InGame/RevealMapCorners/` | 条目5 显示地图角落（移植 1.67 RMC）：`RevealMapCorners.xml`（空 Context）+ `RevealMapCorners.lua`（LoadScreenClose 时 `LuaEvents.MapPinPopup_RequestMapPin` 建两个极地真实地图钉 + `UIManager:DequeuePopup` 弹掉编辑弹窗，撑开引擎小地图世界矩形使全球比例；原理见踩坑记录「小地图矩形只认引擎数据」；副作用：留两个可见 pin；AddUserInterfaces Context=InGame 注册） |
 | `InGame/GreatPersonNames/` | 条目6 伟人名字更新（移植 1.67 GPN）：`GreatPersonNames.sql` 魔女环境检测（仅当 LocalizedText 已含魔女改写的伟人标记 IMHOTEPI='号码菌' 时）把炼金联赛纪念伟人名字写入 zh_Hans_CN，LoadOrder 5000000 压后覆盖，非魔女环境保护原版名字；UpdateText 注册（InGame） |
-| `InGame/EndGameMenu/` | 条目7 战败后观战按钮（移植 1.67 EGM 并修复反复弹出 bug）：`EndGameMenu.xml` 整文件同名覆盖原版（Exp2 版）在 ButtonStack 追加「观看」按钮；`EndGameMenu_MPT.lua` 经原版 include("EndGameMenu_", true) 通配符注入 EndGameMenu 上下文（点击切观察者 PlayerManager.SetLocalObserverTo + 完整 Close() 释放暂停/弹窗，修复 1.67 仅 SetHide 导致画面反复弹出）；ImportFiles 注册（LoadOrder 30000） |
+| `InGame/EndGameMenu/` | 条目7 战败后观战按钮（移植 1.67 EGM 并修复反复弹出 bug）：`EndGameMenu.xml` 整文件同名覆盖原版（Exp2 版）在 ButtonStack 追加「观看」按钮；`EndGameMenu_MPT.lua` 经原版 include("EndGameMenu_", true) 通配符注入 EndGameMenu 上下文（点击置本地屏蔽标志 + 完整 Close() 释放暂停/弹窗 + 替换 OnPlayerDefeat 拦截重入，修复 1.67 仅 SetHide 导致画面反复弹出）；ImportFiles 注册（LoadOrder 30000） |
 | `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目7+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
 
 ## 加载机制（.modinfo）
