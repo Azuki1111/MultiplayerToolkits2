@@ -173,10 +173,10 @@
               <Label ID="MPT_TPE_SendBanned" Anchor="C,T" Style="BodyTextDark18" Color="200,40,40,255" Align="Center" WrapWidth="400" Hidden="1"/>
               <Stack ID="MPT_TPE_SendList" Anchor="C,T" StackGrowth="Down" StackPadding="4"/>
               <Label ID="MPT_TPE_SendTotal" Anchor="C,T" Style="BodyTextDark18" Align="Center" WrapWidth="400"/>
-              <!-- 底部按钮（取消/确认并排，同原版 PopupDialog 按钮区） -->
+              <!-- 底部按钮（确认在左/取消在右并排，同原版 PopupDialog 按钮区） -->
               <Stack Anchor="C,T" Offset="0,6" StackGrowth="Right" StackPadding="15">
-                <GridButton ID="MPT_TPE_SendCancel" Style="MainButton" String="LOC_MPT_TPE_SEND_CANCEL" Size="200,41"/>
                 <GridButton ID="MPT_TPE_SendConfirm" Style="ButtonConfirm" String="LOC_MPT_TPE_SEND_CONFIRM" Size="200,41"/>
+                <GridButton ID="MPT_TPE_SendCancel" Style="MainButton" String="LOC_MPT_TPE_SEND_CANCEL" Size="200,41"/>
               </Stack>
             </Stack>
           </Grid>
