@@ -28,9 +28,10 @@ local VOTE_POLL_INTERVAL :number = 1.0;	-- 秒
 -- 投降/胜利结算已通知 EndGameMenu（只发一次，防重入；跨房间需在进房时重置）
 local m_mpt_outcomeNotified :boolean = false;
 
--- 本时代投票已失败（全部投完未过半）：面板保留显示到回合结束，回合结束才隐藏
+-- 本时代投票已失败（全部投完未过半）：面板保留显示到「此回合结束后的下个回合结束」才隐藏
 local m_mpt_voteFailed :boolean = false;		-- 本时代投票已失败
-local m_mpt_voteFailedHidden :boolean = false;	-- 失败后面板已在回合结束隐藏（隐藏后不再显示）
+local m_mpt_voteFailedHidden :boolean = false;	-- 失败后已在 T+1 回合结束隐藏（隐藏后不再显示）
+local m_mpt_voteFailTurn :number = -1;			-- 失败时的回合号（隐藏条件 = 当前回合 >= 失败回合 + 2）
 -- 已处理过的投票标识（era_team）：检测新一轮投票（跨时代再发起）时重置失败隐藏标志
 local m_mpt_processedVoteID :string = "";
 
@@ -251,12 +252,14 @@ function MPT_RefreshVotePanel()
 			m_mpt_processedVoteID = voteID;
 			m_mpt_voteFailed = false;
 			m_mpt_voteFailedHidden = false;
+			m_mpt_voteFailTurn = -1;
 		end
 	end
 
-	-- 投票失败检测：全部投完未过半 → 置位（面板保留显示到回合结束，按钮禁用）
+	-- 投票失败检测：全部投完未过半 → 置位，记录失败回合（面板保留到 T+1 结束才隐藏）
 	if not m_mpt_voteFailed and state.failed then
 		m_mpt_voteFailed = true;
+		m_mpt_voteFailTurn = Game.GetCurrentGameTurn();
 	end
 
 	-- 仅同队、多人局、本地玩家存活、非观察者、投票失败尚未回合结束隐藏时参与显示判定；
@@ -349,6 +352,7 @@ local function MPT_QuickAttach()
 		m_mpt_outcomeNotified = false;
 		m_mpt_voteFailed = false;
 		m_mpt_voteFailedHidden = false;
+		m_mpt_voteFailTurn = -1;
 		m_mpt_processedVoteID = "";
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
@@ -359,11 +363,10 @@ end
 -- 每帧刷新（投票状态轮询 + 回合结束隐藏失败投票面板）
 -- ============================================================================
 local function MPT_QuickOnUpdate()
-	-- 投票失败后：本地回合结束（不再活跃）→ 隐藏投票面板，且不再显示
+	-- 投票失败后：当前回合 >= 失败回合 + 2（= 失败回合 T 结束后的下个回合 T+1 结束）→ 隐藏
 	if m_mpt_voteFailed and not m_mpt_voteFailedHidden then
-		local localPlayer :number = Game.GetLocalPlayer();
-		local pLocalPlayer :table = localPlayer ~= nil and localPlayer >= 0 and Players[localPlayer] or nil;
-		if pLocalPlayer ~= nil and not pLocalPlayer:IsTurnActive() then
+		local currentTurn :number = Game.GetCurrentGameTurn();
+		if currentTurn >= m_mpt_voteFailTurn + 2 then
 			m_mpt_voteFailedHidden = true;
 			Controls.VoteArea:SetHide(true);
 		end
