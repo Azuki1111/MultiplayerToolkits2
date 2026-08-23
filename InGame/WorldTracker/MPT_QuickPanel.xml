@@ -52,8 +52,8 @@
 			<Label ID="VoteStatusLabel" Anchor="C,T" Style="FontNormal12" Color="255,255,255,255" String="LOC_MPT_VOTE_TITLE" WrapWidth="270" Align="Center"/>
 			<Label ID="VoteProgressLabel" Anchor="C,T" Style="FontNormal12" Color="208,212,217,255" WrapWidth="270" Align="Center"/>
 			<Stack Anchor="C,T" StackGrowth="Right" StackPadding="6">
-				<GridButton ID="VoteAgreeButton" Style="ButtonConfirm" Anchor="C,T" String="LOC_MPT_VOTE_AGREE" Size="130,28"/>
-				<GridButton ID="VoteDisagreeButton" Style="ButtonRed" Anchor="C,T" String="LOC_MPT_VOTE_DISAGREE" Size="130,28"/>
+				<GridButton ID="VoteAgreeButton" Style="ButtonConfirmSmall" Anchor="C,T" String="LOC_MPT_VOTE_AGREE" Size="130,28"/>
+				<GridButton ID="VoteDisagreeButton" Style="ButtonRedSmall" Anchor="C,T" String="LOC_MPT_VOTE_DISAGREE" Size="130,28"/>
 			</Stack>
 		</Stack>
 		<Box ID="VoteAreaBottom" Color="143,122,82,200" Anchor="L,B" Size="parent,2" Offset="0,0" Hidden="0">
