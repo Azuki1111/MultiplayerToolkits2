@@ -99,7 +99,7 @@ g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 20);
 - 校验发布/回报必须限定准备房间可见窗口，否则隐藏期 BroadcastPlayerInfo 会触发槽位漂移风暴（详见 git 历史条目4.1修复）。
 - Lua 状态跨房间存续：新会话必须调用 `MPT_ResetModCheckSession()` 重置校验生命周期。
 - 声明点之前引用的 `local` 会解析为全局（g_mpt_checkSkipped 等曾因误用 local 失效），新增全局状态注意声明顺序。
-- UI 实测坑：ScrollPanel 内 Line 控件顶部两行高区域被裁剪不渲染（改用细 Box）；SetColor 对 Label 无效（用 `[color:R,G,B,A]` 文本标签）；SetTexture 对轮播贴图静默无效（改 Button 内嵌 Image 子控件）；DDS 需 A8R8G8B8 单 mip。
+- UI 实测坑：ScrollPanel 内 Line 控件顶部两行高区域被裁剪不渲染（改用细 Box）；SetColor 对 Label 无效（用 `[color:R,G,B,A]` 文本标签）；SetTexture 对轮播贴图静默无效（改 Button 内嵌 Image 子控件）；DDS 需 A8R8G8B8 单 mip；auto 宽 Container 内子控件 `Size="parent"` 宽度会在 Stack 末位实例上误解析延伸到屏幕右缘（点击层吞掉大片区域，须 Lua 显式 `SetSizeX` 跟随文本宽，条目9续 ResourceClick 踩过）。
 - **存储管线实测定论**（条目4.3预备 Phase0/1/2 三轮冒烟；**Civ6Cfg 方案已弃用移除**——存储已切换 ModGroup 组名，以下实测结论作为引擎行为知识留存）：
   - **前端无法新建 UI Context**：AddUserInterfaces + 空 Context 实测 Lua 根本不执行（日志零输出），前端功能必须依附既有界面上下文（存储模块现由 StagingRoom 内联承载，见下条）；前端各 Context 脚本在启动时即执行并注册事件（JoiningRoom 事件在进房前触发为证）。
   - **【重大】前端 include() 本 mod 的 Lua 文件只在进程首个前端生命周期内真正执行**：经 ImportFiles 注册的 mod Lua 文件，首次前端启动时 include 正常；**开一局游戏退回主菜单后，前端重建的新 Lua 状态下 include 静默不执行**——`pcall(include)` 返回成功与一个 table，但文件体零执行、无任何报错/日志，全局 API 全缺。单变量实验证明与 InGame 双环境注册无关（禁用后故障依旧），系引擎缺陷。ReplaceUIScript 投递的 StagingRoom.lua 每次前端重建都可靠重执行 → **前端消费本 mod 自己的 Lua 一律内联进 StagingRoom.lua，勿用 include**；引擎自身加载的脚本（Test.LUA）在新状态下仍正常重执行。条目3.7 原同名覆盖文件 `Scripts/NetConnectionIconLogic.lua` 亦已内联进 StagingRoom.lua 条目3.7 分区（文件与 action 注册已移除），前端不再依赖任何本 mod 经 ImportFiles 注册的 include 文件。另实测：StagingRoom Lua 状态跨房间存续（反复建房退房不重跑顶层脚本），只有前端整体重建才换状态。

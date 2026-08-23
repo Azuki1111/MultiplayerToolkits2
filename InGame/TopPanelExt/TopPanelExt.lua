@@ -583,6 +583,9 @@ if BaseFile == "TopPanel_Expansion2" then
                                 instance.ResourceClick:SetToolTipString(tooltip);
                                 instance.ResourceClick:RegisterCallback(Mouse.eLClick, function() MPT_TPE_OpenResourceSendPopup(clickResourceType) end);
                                 local instanceWidth : number = instance.ResourceText:GetSizeX();
+                                -- 条目9续修复：点击覆盖层宽度显式跟随文本宽（XML 里 Size="parent" 在 Stack
+                                -- 末位实例上被错误解析延伸到屏幕右缘，吞掉大片点击区域）
+                                instance.ResourceClick:SetSizeX(instanceWidth);
                                 currSize = currSize + instanceWidth;
                             end
                         else
@@ -591,7 +594,9 @@ if BaseFile == "TopPanel_Expansion2" then
                                 local instance : table = m_kResourceIM:GetInstance();
                                 instance.ResourceText:SetText("[ICON_Plus]");
                                 plusInstance = instance.ResourceText;
-                                -- 条目9续：溢出(+)图标同步 Tooltip 与点击到透明覆盖层（BoxButton 拦截悬停/点击）
+                                -- 条目9续：溢出(+)图标同步 Tooltip 与点击到透明覆盖层（BoxButton 拦截悬停/点击）；
+                                -- 覆盖层宽度同样显式跟随文本宽（修复 parent 宽度误解析延伸到屏幕右缘）
+                                instance.ResourceClick:SetSizeX(instance.ResourceText:GetSizeX());
                                 plusClickInstance = instance.ResourceClick;
                             else
                                 overflowString = overflowString .. "[NEWLINE]" .. tooltip;

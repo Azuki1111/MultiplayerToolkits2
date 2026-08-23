@@ -107,6 +107,8 @@
 	<!-- （Style/ColorSet/尺寸，Lua 端 SetText/SetToolTipString/GetSizeX 行为一致），     -->
 	<!-- 在其上方叠一层透明 BoxButton（ResourceClick）作为点击层，供条目9续 点击战略资源 -->
 	<!-- 打开发送交易弹窗。Container 高度固定 24 与 Resources Grid(48,24) 匹配，不变形。  -->
+	<!-- 注意：点击层宽度由 Lua 显式 SetSizeX(文本宽)（Size="parent" 在 Stack 末位实例    -->
+	<!-- 上会被误解析延伸到屏幕右缘）；XML 里 parent 仅为初始占位。                        -->
 	<!-- 原版：Label ID=ResourceText Style=FontNormal14 ColorSet=TopBarValueCS             -->
 	<!-- ============================================================================ -->
 	<Instance			Name="ResourceInstance">
