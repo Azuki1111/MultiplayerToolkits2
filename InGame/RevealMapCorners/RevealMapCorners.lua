@@ -1,70 +1,36 @@
 -- ============================================================================
--- 条目5：显示地图角落（移植 1.67 RMC，自制透明实例版）
--- 目的：在游戏世界两极锚定两个透明 WorldAnchor 实例，撑开相机包围盒，
---       使小地图以全球比例显示（1.67 用真实地图钉实现，本版自绘不留 pin 数据）。
--- 原理：WorldAnchor 控件将 3D 世界坐标投影到屏幕；UI.GridToWorld(plotIndex)
---       把格子索引转世界坐标，Anchor:SetWorldPositionVal 完成锚定。
--- 关键：AddUserInterfaces 上下文默认挂载在 AdditionalUserInterfaces（渲染树最末，
---       非世界层），WorldAnchor 不参与相机包围盒——须把根容器 ChangeParent 到
---       /InGame/WorldViewControls（世界层，MapPinManager 同层）后实例才参与包围盒
---       （模仿 1.67 NHK/UI/TurnTime_HotKey.lua 的 ChangeParent 手法）。
+-- 条目5：显示地图角落（移植 1.67 RMC）
+-- 目的：在游戏世界两极创建两个真实地图钉，撑开引擎小地图世界矩形，
+--       使小地图以全球比例显示。
+-- 原理（实测定论）：小地图世界矩形（UI.GetMinimapWorldRect）由引擎计算且只认
+--       游戏世界数据——地图钉（PlayerConfigurations:GetMapPin(x,y) 为 create-or-get，
+--       写入引擎层）坐标被纳入矩形计算；UI 控件（WorldAnchor 自绘实例）无论挂载
+--       在哪个父容器/是否可见，都不参与包围盒计算（自制透明实例方案已实测无效，弃用）。
+-- 实现：1.67 原版——LuaEvents.MapPinPopup_RequestMapPin(x,y) 创建 pin（会弹编辑弹窗），
+--       随即 UIManager:DequeuePopup 弹掉弹窗；MapPinManager 自动在世界层渲染旗帜。
 -- 用法：本文件经 AddUserInterfaces 注册的空 Context 自动执行，无外部接口。
--- 调试：全链路 print 日志，排查「小地图未达全球比例」用，定稿后按需移除。
 -- ============================================================================
-print( "[MPT_RMC] RevealMapCorners.lua 顶层执行（脚本已加载）" );
-include( "InstanceManager" );
 
--- 实例管理器：实例模板 MPT_WorldAnchorInstance，关键控件 "Anchor"（WorldAnchor）
-local m_AnchorIM : table = InstanceManager:new( "MPT_WorldAnchorInstance", "Anchor", Controls.MPT_WorldAnchorRoot );
-print( "[MPT_RMC] InstanceManager 创建完成，root=" .. tostring(Controls.MPT_WorldAnchorRoot) );
-
--- 幂等守卫：进游戏只锚定一次（Lua 状态跨房间存续，防止反复创建实例）
+-- 幂等守卫：进游戏只打一次钉（Lua 状态跨房间存续，防止反复创建）
 local m_anchored : boolean = false;
 
 -- ============================================================================
--- 在指定格子创建透明实例并锚定
-function AnchorInstance( plotIndex : number )
-	local worldX : number, worldY : number = UI.GridToWorld( plotIndex );
-	print( "[MPT_RMC] AnchorInstance plotIndex=" .. tostring(plotIndex) .. " GridToWorld -> " .. tostring(worldX) .. "," .. tostring(worldY) );
-	local pInstance : table = m_AnchorIM:GetInstance();
-	print( "[MPT_RMC] 实例创建完成，Anchor=" .. tostring(pInstance.Anchor) );
-	if pInstance.Anchor ~= nil then
-		pInstance.Anchor:SetWorldPositionVal( worldX, worldY, 0 );
-		print( "[MPT_RMC] SetWorldPositionVal(" .. tostring(worldX) .. "," .. tostring(worldY) .. ",0) 已设置" );
-	else
-		print( "[MPT_RMC] 【异常】实例的 Anchor 控件为 nil，无法锚定" );
-	end
-end
-
--- ============================================================================
--- 进游戏读盘完成：先把根容器重挂到世界层，再锚定两极角（首格与末格）
+-- 进游戏读盘完成：在两级角（首格与末格）创建地图钉并弹掉编辑弹窗
 function OnLoadScreenClose()
-	print( "[MPT_RMC] Events.LoadScreenClose 触发，m_anchored=" .. tostring(m_anchored) );
 	if m_anchored then return; end
 	m_anchored = true;
 
-	-- 关键：把根容器 ChangeParent 到世界层 WorldViewControls（模仿 1.67 TurnTime_HotKey 手法），
-	-- 否则 AddUserInterfaces 上下文挂 AdditionalUserInterfaces 层，WorldAnchor 不参与相机包围盒。
-	local worldViewControls : table = ContextPtr:LookUpControl( "/InGame/WorldViewControls" );
-	print( "[MPT_RMC] LookUpControl(/InGame/WorldViewControls) -> " .. tostring(worldViewControls) );
-	if worldViewControls ~= nil then
-		Controls.MPT_WorldAnchorRoot:ChangeParent( worldViewControls );
-		print( "[MPT_RMC] MPT_WorldAnchorRoot 已 ChangeParent 到 WorldViewControls" );
-	else
-		print( "[MPT_RMC] 【异常】找不到 /InGame/WorldViewControls，WorldAnchor 无法进入世界层" );
-	end
-
 	local plotFirst : table = Map.GetPlotByIndex( 0 );
 	local plotLast  : table = Map.GetPlotByIndex( Map.GetPlotCount() - 1 );
-	print( "[MPT_RMC] plotCount=" .. tostring(Map.GetPlotCount()) .. " plotFirst=" .. tostring(plotFirst) .. " plotLast=" .. tostring(plotLast) );
 	if plotFirst ~= nil and plotLast ~= nil then
-		print( "[MPT_RMC] plotFirst:GetIndex=" .. tostring(plotFirst:GetIndex()) .. " plotLast:GetIndex=" .. tostring(plotLast:GetIndex()) );
-		AnchorInstance( plotFirst:GetIndex() );
-		AnchorInstance( plotLast:GetIndex() );
-		print( "[MPT_RMC] 两极锚定完成" );
-	else
-		print( "[MPT_RMC] 【异常】GetPlotByIndex 返回 nil，无法锚定" );
+		-- RequestMapPin 内部 GetMapPin(x,y) 为 create-or-get，创建 pin 数据（引擎层）
+		LuaEvents.MapPinPopup_RequestMapPin( plotFirst:GetX(), plotFirst:GetY() );
+		LuaEvents.MapPinPopup_RequestMapPin( plotLast:GetX(), plotLast:GetY() );
+		-- 立即弹掉地图钉编辑弹窗（原版 RMC 手法）
+		local popup : table = ContextPtr:LookUpControl( "/InGame/MapPinPopup" );
+		if popup ~= nil then
+			UIManager:DequeuePopup( popup );
+		end
 	end
 end
 Events.LoadScreenClose.Add( OnLoadScreenClose );
-print( "[MPT_RMC] LoadScreenClose 事件已注册" );

@@ -39,7 +39,7 @@
 | `Shared/PlayerMark/` | 条目4.4/4.8 玩家标记：专属文本（按钮/面板/弹窗/确认框 Tag；无数据表，数据走条目4.3 存储管线——ModGroup 组名 [MPT_DS][MPT_PlayerInfo][Players]）+ 条目4.8 数据表 `TPT_PlayerData`（`PlayerMark_Data.sql`，移植 1.67 全部类型有效行，去注释/过期/测试行）+ 3 张标记图片 DDS（AnDe/HuaMing/QingTian_Desc_Texture，经 ImportFiles 入 VFS 供 ToolTipType 用） |
 | `FrontEnd/IconViewer/` | 条目4.5 图标查看器：`MPT_IconCollection` 数据表（移植 EasyIconViewer 5056 图标，表名改 MPT_ 前缀）+ 专属文本 |
 | `FrontEnd/TextureViewer/` | 条目4.6 贴图查看器：`MPT_TextureCollection` 数据表（移植 TextureViewer 游戏本体+全部DLC UI 贴图 5017 行，表名改 MPT_ 前缀）+ 专属文本 |
-| `InGame/RevealMapCorners/` | 条目5 显示地图角落（移植 1.67 RMC 自制版）：`RevealMapCorners.xml`（空 Context + `WorldAnchor` + 2x2 全透明 Box 实例模板）+ `RevealMapCorners.lua`（LoadScreenClose 时 `UI.GridToWorld(plotIndex)` 取首/末格坐标、`Anchor:SetWorldPositionVal` 锚定两极撑开相机包围盒使小地图全球比例，不留 pin 数据；AddUserInterfaces Context=InGame 注册）；后续 InGame 功能每功能一个自包含子目录 |
+| `InGame/RevealMapCorners/` | 条目5 显示地图角落（移植 1.67 RMC）：`RevealMapCorners.xml`（空 Context）+ `RevealMapCorners.lua`（LoadScreenClose 时 `LuaEvents.MapPinPopup_RequestMapPin` 建两个极地真实地图钉 + `UIManager:DequeuePopup` 弹掉编辑弹窗，撑开引擎小地图世界矩形使全球比例；原理见踩坑记录「小地图矩形只认引擎数据」；副作用：留两个可见 pin；AddUserInterfaces Context=InGame 注册）；后续 InGame 功能每功能一个自包含子目录 |
 
 ## 加载机制（.modinfo）
 
@@ -106,6 +106,7 @@ g_currentMaxPlayers = math.min(MapConfiguration.GetMaxMajorPlayers(), 20);
   - **ModGroup 组名存储实测定论**（条目4.4 存储回归探路，MPT_GRTEST 三轮实测）：`Modding.CreateModGroup(name, group)` 组名长度上限 **>67108864（64MB）未触顶**（16384~67108864 翻倍阶梯全过，SQLite TEXT 无可用上限；数十 MB 档读写有明显卡顿但无卡死）；读回 `Modding.GetModGroups()` 与请求名**逐字符相等**无截断；引号/反斜杠/方括号混合组名（模拟 %q 序列化产物）2000 长往返完整；**创建即落库** Mods.sqlite `ModGroups` 表（列：ModGroupRowId/Name/CanDelete/Selected/SortIndex，Lua 侧 Handle 即 ModGroupRowId）；**跨进程冷启动读回验证通过**（重启游戏后新进程 `GetModGroups()` 读回上轮遗留组，长度与内容逐字符相等）。1.67 的 2000 字符切块是保守设计而非引擎限制，迁移时切块大小可大幅放宽。**本方案已实装为条目4.3预备存储管线**：组名格式 `[size_0][color:0,0,0,0][MPT_DS][fileName][key][len]数据`（隐形前缀使数据组在前端 Mods 界面组列表不可见），单组名直存不切块，写前按前缀删旧组，建组走「干净组」流程（建组前批量禁用全部已启用 mod、建后恢复，官方 DisableAllMods 模式：GetInstalledMods 条目 .Enabled 筛选、DisableMod/EnableMod 表参数批量操作）。
 - **前端 UI 计时/周期任务**：`ContextPtr:SetUpdateHandler` 是 Civ5 API，Civ6 不存在（调用即主 chunk 报错「function expected instead of nil」+ Error loading file）；`Events.MultiplayerPingTimesChanged` 在客机房间实测不触发，不能当滴答源；正确做法 = XML 放 `AlphaAnim Size="1,1" AlphaStart="0" AlphaEnd="0"`（不可见、隐藏也持续 tick，原版 CountdownTimerAnim 同款）+ `RegisterAnimCallback` 拿每帧回调再按需门控。
 - **StagingRoom.lua 寄存器上限**：Civ6 Lua 单函数（含主 chunk）寄存器有限，本文件各条目分区顶层 local 累积到 ~190+ 时编译报 `Function or expression requires too many registers (too complex)`（条目4.6 加入时实测触发）。对策：每个条目分区整体用块级 `do ... end` 包裹（4.3/4.4/4.5/4.6 均已包裹，块内 local 随块结束释放寄存器；块内全局函数/回调以 upvalue 捕获 local，功能不变）。**新增分区必须沿用 do...end 包裹**；分区 local 不得被分区外引用（包裹前已核查四个分区外部引用均为 0）。
+- **小地图矩形只认引擎数据，不认 UI 控件**（条目5 实测定论）：小地图世界矩形由引擎 `UI.GetMinimapWorldRect()` 计算，仅纳入游戏世界数据（**地图钉坐标**等），**UI 控件不参与包围盒**。实测无效的自制方案：WorldAnchor + 全透明 Box、WorldAnchor + 带纹理 Image、`ChangeParent` 把根容器移到 `/InGame/WorldViewControls`（AddUserInterfaces 上下文被 `InGame.lua:348` 硬编码挂 `AdditionalUserInterfaces` 且 `isHidden=true` 加载，但即使移入世界层也不生效）。有效方案 = 真实地图钉数据：`PlayerConfigurations:GetMapPin(x,y)` 是 **create-or-get**（官方 `WorldInput.PlaceMapPin` 即靠它建 pin），`LuaEvents.MapPinPopup_RequestMapPin(x,y)` 建 pin 后会弹编辑弹窗，用 `UIManager:DequeuePopup` 立即弹掉（1.67 RMC 手法）。副作用：留下可见 pin（进存档/钉列表）。InGame.xml 被 Base/Expansion1/Expansion2 三份覆盖，覆盖它注入 LuaContext 风险大，非必要不采用。
 
 ## 参考路径
 
