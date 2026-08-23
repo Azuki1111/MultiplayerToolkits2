@@ -44,6 +44,8 @@ local m_mpt_voteType :string = "surrender";
 -- 重开投票通过后的 10 秒倒计时（倒计时结束才执行重启/快照）
 local m_mpt_restartCountdown :number = -1;	-- -1 = 未激活；10→0 递减
 local RESTART_COUNTDOWN_SEC :number = 10;
+-- 客户端：倒计时结束后等待房主重载完成信号（GAME_HOST_IS_JUST_RELOADING → "N"）再请求快照
+local m_mpt_snapshotArmed :boolean = false;
 
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
@@ -286,6 +288,7 @@ local function MPT_UpdateRestartButton(state, localPlayer)
 	local bObserver :boolean = MPT_IsLocalObserver();
 	local bAlive :boolean = false;
 	local bMulti :boolean = GameConfiguration.IsAnyMultiplayer();
+	local bIsHost :boolean = Network.GetLocalPlayerID() == Network.GetGameHostPlayerID();
 	if localPlayer ~= nil and localPlayer >= 0 and Players[localPlayer] ~= nil then
 		bAlive = Players[localPlayer]:IsAlive();
 	end
@@ -293,15 +296,17 @@ local function MPT_UpdateRestartButton(state, localPlayer)
 	local bDisabled :boolean = false;
 	local tooltipTag :string = "LOC_MPT_RESTART_TT_DEFAULT";
 
-	if bObserver then
+	if not bIsHost then
+		-- 仅房主可发起（非房主玩家/观察者禁用）
 		bDisabled = true;
-		tooltipTag = "LOC_MPT_RESTART_TT_OBSERVER";
-	elseif not bAlive then
-		bDisabled = true;
-		tooltipTag = "LOC_MPT_RESTART_TT_DEAD";
+		tooltipTag = "LOC_MPT_RESTART_TT_HOST_ONLY";
 	elseif not bMulti then
 		bDisabled = true;
 		tooltipTag = "LOC_MPT_RESTART_TT_SINGLE";
+	elseif not bAlive and not bObserver then
+		-- 非观察者已败亡禁用；观察者房主跳过 IsAlive（无文明）
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_RESTART_TT_DEAD";
 	elseif state.passed then
 		bDisabled = true;
 		tooltipTag = "LOC_MPT_RESTART_TT_PASSED";
@@ -327,18 +332,27 @@ local function MPT_ExecuteRestart()
 
 	if bIsHost and not m_mpt_restartExecuted then
 		m_mpt_restartExecuted = true;
-		print("[MPT_RestartVote] Host executing restart with same seeds (map identical).");
-		-- 广播 GameConfig（含种子），确保客户端重载用新配置
+		print("[MPT_RestartVote] Host executing restart (seed+1, new map).");
+		-- 1) 换随机种子（自动 +1，MPH OnHostRemap 行为）→ 新地图
+		GameConfiguration.SetValue("GAME_SYNC_RANDOM_SEED",
+			(GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED") or 0) + 1);
+		MapConfiguration.SetValue("RANDOM_SEED",
+			(MapConfiguration.GetValue("RANDOM_SEED") or 0) + 1);
 		Network.BroadcastGameConfig();
-		-- 置重载标志并广播（客户端据此 RequestSnapshot）
+		-- 2) 暂停（MPH OnLocalHostRestart：SetWantsPause + BroadcastPlayerInfo）
+		local localPlayerConfig = PlayerConfigurations[Network.GetLocalPlayerID()];
+		if localPlayerConfig ~= nil then
+			localPlayerConfig:SetWantsPause(true);
+			Network.BroadcastPlayerInfo();
+		end
+		-- 3) 置重载标志并广播（房主重载完成后会置回 "N"）
 		GameConfiguration.SetValue("GAME_HOST_IS_JUST_RELOADING", "Y");
 		Network.BroadcastGameConfig();
-		-- 重启（用现有 GameConfiguration，种子不变 → 相同地图）
+		-- 4) 重启
 		Network.RestartGame();
 	elseif not bIsHost and not m_mpt_snapshotRequested then
-		m_mpt_snapshotRequested = true;
-		print("[MPT_RestartVote] Client requesting snapshot to resync new game.");
-		Network.RequestSnapshot();
+		-- 客户端：不立即请求快照，置 armed 等待房主重载完成信号（GAME_HOST_IS_JUST_RELOADING → "N"）
+		m_mpt_snapshotArmed = true;
 	end
 end
 
@@ -514,21 +528,23 @@ local function MPT_QuickToggle()
 end
 
 -- ============================================================================
--- 重新开始按钮（条目8续2）：发起全局重开投票
+-- 重新开始按钮（条目8续2）：发起全局重开投票（仅房主可发起，观察者房主也可）
 -- 点击 → EXECUTE_SCRIPT 到房主（Gameplay 侧记票/判过半/写属性）；
--- 房主轮询到通过后执行 Network.RestartGame()（同种子 → 地图相同）。
+-- 房主轮询到通过后执行 Network.RestartGame()（换种子 +1 → 新地图）。
 -- ============================================================================
 local function MPT_QuickRestart()
 	local localPlayer :number = Game.GetLocalPlayer();
 	if localPlayer == nil or localPlayer < 0 then
 		return;
 	end
-	local pPlayer :table = Players[localPlayer];
-	if pPlayer == nil or not pPlayer:IsAlive() then
-		return;	-- 已败亡不可发起
+	-- 仅房主可发起（观察者房主也可发起——不拦截观察者）
+	if Network.GetLocalPlayerID() ~= Network.GetGameHostPlayerID() then
+		return;
 	end
-	if MPT_IsLocalObserver() then
-		return;	-- 观察者不可发起
+	local pPlayer :table = Players[localPlayer];
+	-- 已败亡不可发起；但观察者房主无文明（IsAlive 可能 false）→ 观察者跳过 IsAlive 检查
+	if pPlayer == nil or (not MPT_IsLocalObserver() and not pPlayer:IsAlive()) then
+		return;
 	end
 	if not GameConfiguration.IsAnyMultiplayer() then
 		return;	-- 单人局不可发起（重开需多人同步）
@@ -572,6 +588,15 @@ local function MPT_QuickAttach()
 		worldTrackerPanel:ReprocessAnchoring();
 		m_quickAttached = true;
 
+		-- 房主重载完成信号：检测到 GAME_HOST_IS_JUST_RELOADING=="Y" → 置 "N" 并广播
+		-- （客户端检测到 "N" 后请求快照；房主重启后前端重建，本处每次挂载执行）
+		if Network.GetLocalPlayerID() == Network.GetGameHostPlayerID()
+			and GameConfiguration.GetValue("GAME_HOST_IS_JUST_RELOADING") == "Y" then
+			GameConfiguration.SetValue("GAME_HOST_IS_JUST_RELOADING", "N");
+			Network.BroadcastGameConfig();
+			print("[MPT_RestartVote] Host reload complete, broadcast JUST_RELOADING=N.");
+		end
+
 		-- 新会话（进房）重置结算/投票失败标志（Lua 状态跨房间存续，见 AGENTS.md）
 		m_mpt_outcomeNotified = false;
 		m_mpt_voteFailed = false;
@@ -583,6 +608,7 @@ local function MPT_QuickAttach()
 		m_mpt_restartFailed = false;
 		m_mpt_voteType = "surrender";
 		m_mpt_restartCountdown = -1;
+		m_mpt_snapshotArmed = false;
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end
@@ -599,8 +625,18 @@ local function MPT_QuickOnUpdate()
 		Controls.VoteCountdownLabel:SetText(Locale.Lookup("LOC_MPT_RESTART_COUNTDOWN", math.ceil(m_mpt_restartCountdown)));
 		if m_mpt_restartCountdown <= 0 then
 			m_mpt_restartCountdown = 0;
-			-- 倒计时结束：执行重启（房主）/ 快照（客户端）
+			-- 倒计时结束：执行重启（房主）/ 置 armed 等房主重载（客户端）
 			MPT_ExecuteRestart();
+		end
+	end
+
+	-- 客户端：倒计时结束后等房主重载完成（GAME_HOST_IS_JUST_RELOADING → "N"）再请求快照
+	if m_mpt_snapshotArmed and not m_mpt_snapshotRequested then
+		if GameConfiguration.GetValue("GAME_HOST_IS_JUST_RELOADING") ~= "Y" then
+			m_mpt_snapshotRequested = true;
+			m_mpt_snapshotArmed = false;
+			print("[MPT_RestartVote] Client requesting snapshot to resync new game.");
+			Network.RequestSnapshot();
 		end
 	end
 

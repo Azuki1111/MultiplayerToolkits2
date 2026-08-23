@@ -26,4 +26,5 @@ VALUES
 	('LOC_MPT_RESTART_TT_SINGLE',	'en_US',	'Single-player games cannot start a restart vote'),
 	('LOC_MPT_RESTART_TT_PASSED',	'en_US',	'Restart approved, game is restarting'),
 	('LOC_MPT_RESTART_TT_ALREADY',	'en_US',	'A restart vote was already started this era'),
+	('LOC_MPT_RESTART_TT_HOST_ONLY','en_US',	'Only the host can start a restart vote'),
 	('LOC_MPT_RESTART_COUNTDOWN',	'en_US',	'Restarting in {1_Num}s');

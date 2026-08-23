@@ -414,10 +414,10 @@ function OnMPT_RestartVoteGameEvent(localPlayerID, params)
 		if initiator == nil then
 			return;
 		end
-		-- 校验发起人：存活真人（主要文明）、非观察者
+		-- 校验发起人：真人玩家（含观察者房主；观察者可发起但不计票；
+		-- "仅房主"由 UI 侧限制——Gameplay 侧无 Network 无法验证房主）
 		local pInitiator = Players[initiator];
-		if pInitiator == nil or not pInitiator:IsMajor() or not pInitiator:IsAlive()
-			or not pInitiator:IsHuman() or MPT_IsObserverPlayer(initiator) then
+		if pInitiator == nil or not pInitiator:IsHuman() then
 			return;
 		end
 
