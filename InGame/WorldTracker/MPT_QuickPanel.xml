@@ -31,7 +31,7 @@
 			<Box Color="0,0,0,200" Anchor="L,T" Size="parent,1" AnchorSide="I,O"/>
 			<Box Color="0,0,0,200" Anchor="L,B" Size="parent,1" AnchorSide="I,O"/>
 		</Box>
-		<Box ID="QuickSepBottom" Color="143,122,82,200" Anchor="L,T" Size="parent,2" Offset="0,108" Hidden="1">
+		<Box ID="QuickSepBottom" Color="143,122,82,200" Anchor="L,T" Size="parent,2" Offset="0,108" Hidden="0">
 			<Box Color="0,0,0,200" Anchor="L,T" Size="parent,1" AnchorSide="I,O"/>
 			<Box Color="0,0,0,200" Anchor="L,B" Size="parent,1" AnchorSide="I,O"/>
 		</Box>
@@ -40,13 +40,13 @@
 		仅投票进行中/已通过时显示；显隐只由投票状态驱动，不受快捷面板展开/收起影响；
 		背景 EMERGENCY_BACKSTAB_BG3 等比缩放 296 宽（原图 553x523 → 296x280），
 		Group Clip=1 裁高到 180，只显示纹理上部，Image Offset 可调显示区（texture offset）） -->
-	<Container ID="VoteArea" Anchor="L,T" Offset="0,0" Size="296,180" Hidden="1">
+	<Container ID="VoteArea" Anchor="L,T" Offset="0,0" Size="296,186" Hidden="1">
 		<!-- 背景等比缩放 + 高度裁切 + texture offset：
 			 Image 按宽度 296 等比缩放（原图 553x523 → 296x280，不变形）；
 			 外层 Group Clip=1 裁高到 180，只显示纹理上部 180px（裁掉底部 100px）；
 			 调整 Image 的 Offset 可上下平移显示区（texture offset 效果），Offset="0,0" 显示顶部 -->
-		<Group ID="VoteBackingClip" Anchor="L,T" Size="296,180" Clip="1">
-			<Image ID="VoteBacking" Anchor="L,T" Offset="0,0" Size="296,280" Texture="EMERGENCY_BACKSTAB_BG3" StretchMode="Fill" Color="255,255,255,255"/>
+		<Group ID="VoteBackingClip" Anchor="L,T" Size="296,parent-2" Clip="1">
+			<Image ID="VoteBacking" Anchor="L,T" Offset="0,-30" Size="296,280" Texture="EMERGENCY_BACKSTAB_BG3" StretchMode="Fill"/>
 		</Group>
 		<Stack ID="VoteContent" Anchor="C,T" Offset="0,30" StackGrowth="Down" Padding="8">
 			<Label ID="VoteStatusLabel" Anchor="C,T" Style="FontNormal12" Color="255,255,255,255" String="LOC_MPT_VOTE_TITLE" WrapWidth="270" Align="Center"/>
@@ -56,5 +56,9 @@
 				<GridButton ID="VoteDisagreeButton" Style="ButtonRed" Anchor="C,T" String="LOC_MPT_VOTE_DISAGREE" Size="130,28"/>
 			</Stack>
 		</Stack>
+		<Box ID="VoteAreaBottom" Color="143,122,82,200" Anchor="L,B" Size="parent,2" Offset="0,0" Hidden="0">
+			<Box Color="0,0,0,200" Anchor="L,T" Size="parent,1" AnchorSide="I,O"/>
+			<Box Color="0,0,0,200" Anchor="L,B" Size="parent,1" AnchorSide="I,O"/>
+		</Box>
 	</Container>
 </Context>
