@@ -332,12 +332,18 @@ local function MPT_ExecuteRestart()
 
 	if bIsHost and not m_mpt_restartExecuted then
 		m_mpt_restartExecuted = true;
-		print("[MPT_RestartVote] Host executing restart (seed+1, new map).");
 		-- 1) 换随机种子（自动 +1，MPH OnHostRemap 行为）→ 新地图
+		--    设置前打印现值，便于排查地图种子为何随机
+		local oldGameSeed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED");
+		local oldMapSeed = MapConfiguration.GetValue("RANDOM_SEED");
+		print("[MPT_RestartVote] BEFORE seed set: game=" .. tostring(oldGameSeed) .. " map=" .. tostring(oldMapSeed));
 		GameConfiguration.SetValue("GAME_SYNC_RANDOM_SEED",
-			(GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED") or 0) + 1);
+			(oldGameSeed or 0) + 1);
 		MapConfiguration.SetValue("RANDOM_SEED",
-			(MapConfiguration.GetValue("RANDOM_SEED") or 0) + 1);
+			(oldMapSeed or 0) + 1);
+		local newGameSeed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED");
+		local newMapSeed = MapConfiguration.GetValue("RANDOM_SEED");
+		print("[MPT_RestartVote] AFTER seed set: game=" .. tostring(newGameSeed) .. " map=" .. tostring(newMapSeed));
 		Network.BroadcastGameConfig();
 		-- 2) 暂停（MPH OnLocalHostRestart：SetWantsPause + BroadcastPlayerInfo）
 		local localPlayerConfig = PlayerConfigurations[Network.GetLocalPlayerID()];
@@ -349,6 +355,7 @@ local function MPT_ExecuteRestart()
 		GameConfiguration.SetValue("GAME_HOST_IS_JUST_RELOADING", "Y");
 		Network.BroadcastGameConfig();
 		-- 4) 重启
+		print("[MPT_RestartVote] Host calling RestartGame now.");
 		Network.RestartGame();
 	elseif not bIsHost and not m_mpt_snapshotRequested then
 		-- 客户端：不立即请求快照，置 armed 等待房主重载完成信号（GAME_HOST_IS_JUST_RELOADING → "N"）
@@ -594,7 +601,10 @@ local function MPT_QuickAttach()
 			and GameConfiguration.GetValue("GAME_HOST_IS_JUST_RELOADING") == "Y" then
 			GameConfiguration.SetValue("GAME_HOST_IS_JUST_RELOADING", "N");
 			Network.BroadcastGameConfig();
-			print("[MPT_RestartVote] Host reload complete, broadcast JUST_RELOADING=N.");
+			-- 重载后打印配置中的种子（排查重启后种子是否保留/被重置）
+			local curGameSeed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED");
+			local curMapSeed = MapConfiguration.GetValue("RANDOM_SEED");
+			print("[MPT_RestartVote] Host reload complete, JUST_RELOADING=N. config seeds: game=" .. tostring(curGameSeed) .. " map=" .. tostring(curMapSeed));
 		end
 
 		-- 新会话（进房）重置结算/投票失败标志（Lua 状态跨房间存续，见 AGENTS.md）
