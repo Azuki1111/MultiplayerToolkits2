@@ -36,6 +36,23 @@ local function MPT_VoteCountKey(team) return "MPT_SURRENDER_VOTECOUNT_" .. team;
 local function MPT_VoteStartTurnKey(team) return "MPT_SURRENDER_VOTE_TURN_" .. team; end
 
 -- ============================================================================
+-- 重开投票（条目8续2）：全局投票重新开始游戏（所有真人玩家参与，非按队）
+-- 属性键（Game 属性：跨客户端同步、随存档持久化）
+-- ============================================================================
+-- 本时代已发起过重开投票：MPT_RESTART_VOTE_STARTED_<era> = 1
+local function MPT_RestartStartedKey(era) return "MPT_RESTART_VOTE_STARTED_" .. era; end
+-- 重开投票累计：MPT_RESTART_VOTES = "agree/total"
+local function MPT_RestartVotesKey() return "MPT_RESTART_VOTES"; end
+-- 本时代重开投票已失败（全部投完/超时未过半）：MPT_RESTART_VOTE_FAILED_<era> = 1
+local function MPT_RestartFailedKey(era) return "MPT_RESTART_VOTE_FAILED_" .. era; end
+-- 重开投票已通过：MPT_RESTART_VOTE_PASSED = 1（房主 UI 轮询后执行重启）
+local function MPT_RestartPassedKey() return "MPT_RESTART_VOTE_PASSED"; end
+-- 已投票人数累计：MPT_RESTART_VOTECOUNT
+local function MPT_RestartVoteCountKey() return "MPT_RESTART_VOTECOUNT"; end
+-- 发起回合：MPT_RESTART_VOTE_TURN（时限判定用）
+local function MPT_RestartStartTurnKey() return "MPT_RESTART_VOTE_TURN"; end
+
+-- ============================================================================
 -- 该玩家是否为观察者（LEADER_SPECTATOR，无文明；不参与投票/不计入真人总数/不弹结算）
 -- ============================================================================
 local function MPT_IsObserverPlayer(playerID)
@@ -75,6 +92,21 @@ local function MPT_GetTeamHumanAliveMajorIDs(teamID)
 		end
 	end
 	return result;
+end
+
+-- ============================================================================
+-- 全局存活真人玩家（主要文明、非观察者）计数（重开投票的应投人数）
+-- ============================================================================
+local function MPT_GetGlobalHumanAliveMajorCount()
+	local count = 0;
+	for i = 0, PlayerManager.GetWasEverAliveCount() - 1 do
+		local pPlayer = Players[i];
+		if pPlayer ~= nil and pPlayer:IsMajor() and pPlayer:IsAlive()
+			and pPlayer:IsHuman() and not MPT_IsObserverPlayer(i) then
+			count = count + 1;
+		end
+	end
+	return count;
 end
 
 -- ============================================================================
@@ -328,11 +360,168 @@ end
 GameEvents.OnGameTurnStarted.Add(MPT_CheckVoteTimeouts);
 
 -- ============================================================================
+-- 重开投票（条目8续2）：全局投票重新开始游戏（所有真人玩家参与，非按队）
+-- 通信复用 UI.RequestPlayerOperation(EXECUTE_SCRIPT, {OnStart="MPT_RestartVote"})
+-- Gameplay 侧只记票/判过半/写属性（无 Network API）；
+-- 房主 UI 侧轮询 MPT_RESTART_VOTE_PASSED 后执行 Network.RestartGame()。
+-- 频率：每时代一次（全局）；时限：发起回合 +2 未过半按拒绝关闭。
+-- ============================================================================
+
+-- ============================================================================
+-- 供 UI 查询的重开投票状态
+-- ============================================================================
+function MPT_GetRestartVoteState()
+	local era = MPT_GetCurrentEra();
+	local started = Game:GetProperty(MPT_RestartStartedKey(era)) == 1;
+	local votesStr = Game:GetProperty(MPT_RestartVotesKey());
+	local agreeCount = 0;
+	local totalCount = 0;
+	if votesStr ~= nil then
+		local slash = string.find(votesStr, "/");
+		if slash ~= nil then
+			agreeCount = tonumber(string.sub(votesStr, 1, slash - 1)) or 0;
+			totalCount = tonumber(string.sub(votesStr, slash + 1)) or 0;
+		end
+	end
+	return {
+		era = era,
+		started = started,
+		agreeCount = agreeCount,
+		totalCount = totalCount,
+		passed = Game:GetProperty(MPT_RestartPassedKey()) == 1,
+		failed = Game:GetProperty(MPT_RestartFailedKey(era)) == 1,
+	};
+end
+
+-- ============================================================================
+-- EXECUTE_SCRIPT 入口（GameEvents 注册名 = OnStart 传入的 "MPT_RestartVote"）
+-- params: { type="start"|"vote", initiator, voter, agree }
+-- ============================================================================
+function OnMPT_RestartVoteGameEvent(localPlayerID, params)
+	if params == nil or params.type == nil then
+		return;
+	end
+
+	local era = MPT_GetCurrentEra();
+	local startedKey = MPT_RestartStartedKey(era);
+
+	if params.type == "start" then
+		-- 发起：本时代未发起过才允许
+		if Game:GetProperty(startedKey) == 1 then
+			return;
+		end
+		local initiator = params.initiator;
+		if initiator == nil then
+			return;
+		end
+		-- 校验发起人：存活真人（主要文明）、非观察者
+		local pInitiator = Players[initiator];
+		if pInitiator == nil or not pInitiator:IsMajor() or not pInitiator:IsAlive()
+			or not pInitiator:IsHuman() or MPT_IsObserverPlayer(initiator) then
+			return;
+		end
+
+		-- 标记本时代已发起；投票者列表置空累计；记录发起回合
+		Game:SetProperty(startedKey, 1);
+		Game:SetProperty(MPT_RestartVotesKey(), "0/" .. tostring(MPT_GetGlobalHumanAliveMajorCount()));
+		Game:SetProperty(MPT_RestartVoteCountKey(), 0);
+		Game:SetProperty(MPT_RestartStartTurnKey(), Game.GetCurrentGameTurn());
+		print("[MPT_RestartVote] Vote started by player " .. tostring(initiator) .. " era " .. tostring(era));
+		return;
+	end
+
+	if params.type == "vote" then
+		-- 投票：必须已发起过；已通过/已失败则不再接受
+		if Game:GetProperty(startedKey) ~= 1 then
+			return;
+		end
+		if Game:GetProperty(MPT_RestartPassedKey()) == 1 then
+			return;
+		end
+		if Game:GetProperty(MPT_RestartFailedKey(era)) == 1 then
+			return;
+		end
+		local voter = params.voter;
+		if voter == nil then
+			return;
+		end
+		-- 校验投票者：存活真人（主要文明）、非观察者
+		local pVoter = Players[voter];
+		if pVoter == nil or not pVoter:IsMajor() or not pVoter:IsAlive()
+			or not pVoter:IsHuman() or MPT_IsObserverPlayer(voter) then
+			return;
+		end
+
+		-- 一人一票
+		local voterKey = "MPT_RESTART_VOTED_" .. voter;
+		if Game:GetProperty(voterKey) == 1 then
+			return;
+		end
+		Game:SetProperty(voterKey, 1);
+
+		-- 累计票数
+		local votesStr = Game:GetProperty(MPT_RestartVotesKey());
+		local agreeCount = 0;
+		local totalCount = 0;
+		if votesStr ~= nil then
+			local slash = string.find(votesStr, "/");
+			if slash ~= nil then
+				agreeCount = tonumber(string.sub(votesStr, 1, slash - 1)) or 0;
+				totalCount = tonumber(string.sub(votesStr, slash + 1)) or 0;
+			end
+		end
+		if params.agree == true then
+			agreeCount = agreeCount + 1;
+		end
+		Game:SetProperty(MPT_RestartVotesKey(), tostring(agreeCount) .. "/" .. tostring(totalCount));
+		print("[MPT_RestartVote] Player " .. tostring(voter) .. " voted agree=" .. tostring(params.agree) .. " (" .. agreeCount .. "/" .. totalCount .. ")");
+
+		-- 过半判定：agreeCount >= totalCount/2 且至少 1 票
+		if totalCount > 0 and agreeCount >= totalCount / 2 then
+			Game:SetProperty(MPT_RestartPassedKey(), 1);
+			print("[MPT_RestartVote] Vote PASSED! Host will restart the game.");
+			return;
+		end
+
+		-- 失败判定：全部应投者投完仍未过半
+		local voteCount = (Game:GetProperty(MPT_RestartVoteCountKey()) or 0) + 1;
+		Game:SetProperty(MPT_RestartVoteCountKey(), voteCount);
+		if totalCount > 0 and voteCount >= totalCount
+			and Game:GetProperty(MPT_RestartFailedKey(era)) ~= 1 then
+			Game:SetProperty(MPT_RestartFailedKey(era), 1);
+			print("[MPT_RestartVote] Vote failed for era " .. tostring(era) .. " (agree " .. agreeCount .. "/" .. totalCount .. " not majority).");
+		end
+		return;
+	end
+end
+
+GameEvents.MPT_RestartVote.Add(OnMPT_RestartVoteGameEvent);
+
+-- ============================================================================
+-- 重开投票时限：发起回合 + 2 未过半 → 按拒绝关闭（同投降投票时限）
+-- ============================================================================
+local function MPT_CheckRestartTimeout()
+	local era = MPT_GetCurrentEra();
+	if Game:GetProperty(MPT_RestartStartedKey(era)) == 1
+		and Game:GetProperty(MPT_RestartFailedKey(era)) ~= 1
+		and Game:GetProperty(MPT_RestartPassedKey()) ~= 1 then
+		local startTurn = Game:GetProperty(MPT_RestartStartTurnKey());
+		if startTurn ~= nil and Game.GetCurrentGameTurn() >= startTurn + 2 then
+			Game:SetProperty(MPT_RestartFailedKey(era), 1);
+			print("[MPT_RestartVote] Vote timed out for era " .. tostring(era) .. " (rejected).");
+		end
+	end
+end
+
+GameEvents.OnGameTurnStarted.Add(MPT_CheckRestartTimeout);
+
+-- ============================================================================
 -- ExposedMembers 暴露：UI 侧同步查询投票状态（Gameplay 定义、UI 读取，
 -- 参考 3417070280 GameBasicSupport.lua 的 ExposedMembers.PKUI 写法）
 -- ============================================================================
 ExposedMembers.MPT = ExposedMembers.MPT or {};
 ExposedMembers.MPT.GetSurrenderVoteState = MPT_GetSurrenderVoteState;
 ExposedMembers.MPT.IsTeamSurrendered = MPT_IsTeamSurrendered;
+ExposedMembers.MPT.GetRestartVoteState = MPT_GetRestartVoteState;
 
 print("[MPT_SurrenderVote] Gameplay script initialized.");

@@ -35,6 +35,13 @@ local m_mpt_voteFailTurn :number = -1;			-- 失败时的回合号（隐藏条件
 -- 已处理过的投票标识（era_team）：检测新一轮投票（跨时代再发起）时重置失败隐藏标志
 local m_mpt_processedVoteID :string = "";
 
+-- 重开投票（条目8续2）相关状态
+local m_mpt_restartExecuted :boolean = false;		-- 房主已执行重启（防重入）
+local m_mpt_snapshotRequested :boolean = false;	-- 客户端已请求快照（防重入）
+local m_mpt_restartFailed :boolean = false;		-- 重开投票已失败（复用投降失败隐藏流程）
+-- 当前 VoteArea 显示的投票类型（"surrender" 投降 / "restart" 重开），投票按钮据此路由
+local m_mpt_voteType :string = "surrender";
+
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
 -- ============================================================================
@@ -112,6 +119,52 @@ local function MPT_ReadVoteState()
 end
 
 -- ============================================================================
+-- 读取重开投票状态（经 ExposedMembers.MPT（Gameplay 暴露）同步查询，
+-- Gameplay 侧见 SurrenderVote_Gameplay.lua 条目8续2 区）
+-- ============================================================================
+local function MPT_ReadRestartVoteState()
+	local state = {
+		era = -1,
+		started = false,
+		agreeCount = 0,
+		totalCount = 0,
+		passed = false,
+		failed = false,
+	};
+
+	if ExposedMembers ~= nil and ExposedMembers.MPT ~= nil and ExposedMembers.MPT.GetRestartVoteState ~= nil then
+		local gpState = ExposedMembers.MPT.GetRestartVoteState();
+		if gpState ~= nil then
+			state.era = gpState.era or -1;
+			state.started = gpState.started or false;
+			state.agreeCount = gpState.agreeCount or 0;
+			state.totalCount = gpState.totalCount or 0;
+			state.passed = gpState.passed or false;
+			state.failed = gpState.failed or false;
+		end
+	else
+		-- 兜底：直接读 Game 属性
+		local pGameEras = Game.GetEras();
+		if pGameEras ~= nil then
+			state.era = pGameEras:GetCurrentEra();
+		end
+		state.started = Game:GetProperty("MPT_RESTART_VOTE_STARTED_" .. state.era) == 1;
+		local votesStr = Game:GetProperty("MPT_RESTART_VOTES");
+		if votesStr ~= nil then
+			local slash = string.find(votesStr, "/");
+			if slash ~= nil then
+				state.agreeCount = tonumber(string.sub(votesStr, 1, slash - 1)) or 0;
+				state.totalCount = tonumber(string.sub(votesStr, slash + 1)) or 0;
+			end
+		end
+		state.passed = Game:GetProperty("MPT_RESTART_VOTE_PASSED") == 1;
+		state.failed = Game:GetProperty("MPT_RESTART_VOTE_FAILED_" .. state.era) == 1;
+	end
+
+	return state;
+end
+
+-- ============================================================================
 -- 发起投降投票（EXECUTE_SCRIPT → 房主）
 -- ============================================================================
 -- forward 声明：MPT_RefreshVotePanel 定义在本文件下方（Lua local 顺序限制，
@@ -152,10 +205,10 @@ local function MPT_QuickSurrender()
 end
 
 -- ============================================================================
--- 投同意/反对票（EXECUTE_SCRIPT → 房主）
+-- 投同意/反对票（EXECUTE_SCRIPT → 房主；按当前 VoteArea 类型路由投降/重开）
 -- ============================================================================
 local function MPT_QuickVote(agree :boolean)
-	print("[MPT_QuickVote] clicked agree=" .. tostring(agree));
+	print("[MPT_QuickVote] clicked agree=" .. tostring(agree) .. " type=" .. m_mpt_voteType);
 	local localPlayer :number = Game.GetLocalPlayer();
 	if localPlayer == nil or localPlayer < 0 then
 		return;
@@ -165,18 +218,26 @@ local function MPT_QuickVote(agree :boolean)
 		return;
 	end
 
-	local state = MPT_ReadVoteState();
-	if not state.started or state.passed then
-		return;	-- 未发起或已通过，不能投
+	local kParameters :table = { agree = agree };
+	if m_mpt_voteType == "restart" then
+		local state = MPT_ReadRestartVoteState();
+		if not state.started or state.passed then
+			return;	-- 未发起或已通过，不能投
+		end
+		kParameters.OnStart = "MPT_RestartVote";
+		kParameters.type = "vote";
+		kParameters.voter = localPlayer;
+	else
+		local state = MPT_ReadVoteState();
+		if not state.started or state.passed then
+			return;	-- 未发起或已通过，不能投
+		end
+		kParameters.OnStart = "MPT_SurrenderVote";
+		kParameters.type = "vote";
+		kParameters.voter = localPlayer;
+		kParameters.team = state.teamID;
 	end
 
-	local kParameters :table = {
-		OnStart = "MPT_SurrenderVote",
-		type = "vote",
-		voter = localPlayer,
-		team = state.teamID,
-		agree = agree,
-	};
 	UI.RequestPlayerOperation(Network.GetGameHostPlayerID(), PlayerOperations.EXECUTE_SCRIPT, kParameters);
 	-- 请求后立即刷新一次面板（若 Gameplay 已记票则立即反映；未完成时轮询兜底）
 	MPT_RefreshVotePanel();
@@ -216,15 +277,87 @@ local function MPT_UpdateSurrenderButton(state, localPlayer)
 end
 
 -- ============================================================================
+-- 刷新重新开始按钮（发起重开投票）状态与 tooltip
+-- ============================================================================
+local function MPT_UpdateRestartButton(state, localPlayer)
+	local bObserver :boolean = MPT_IsLocalObserver();
+	local bAlive :boolean = false;
+	local bMulti :boolean = GameConfiguration.IsAnyMultiplayer();
+	if localPlayer ~= nil and localPlayer >= 0 and Players[localPlayer] ~= nil then
+		bAlive = Players[localPlayer]:IsAlive();
+	end
+
+	local bDisabled :boolean = false;
+	local tooltipTag :string = "LOC_MPT_RESTART_TT_DEFAULT";
+
+	if bObserver then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_RESTART_TT_OBSERVER";
+	elseif not bAlive then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_RESTART_TT_DEAD";
+	elseif not bMulti then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_RESTART_TT_SINGLE";
+	elseif state.passed then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_RESTART_TT_PASSED";
+	elseif state.started then
+		bDisabled = true;
+		tooltipTag = "LOC_MPT_RESTART_TT_ALREADY";
+	end
+
+	Controls.RestartButton:SetDisabled(bDisabled);
+	Controls.RestartButton:SetToolTipString(Locale.Lookup(tooltipTag));
+end
+
+-- ============================================================================
+-- 重开投票通过后的执行（在 MPT_RefreshVotePanel 中调用）：
+--   房主：轮询到 MPT_RESTART_VOTE_PASSED → 广播配置 + 置重载标志 + RestartGame
+--   客户端：轮询到通过 → RequestSnapshot 拉新游戏
+-- 同种子重启 → 所有玩家重载后地图相同。
+-- ============================================================================
+local function MPT_HandleRestartExecution(restartState)
+	if not restartState.passed then
+		return;
+	end
+	if m_mpt_restartExecuted and m_mpt_snapshotRequested then
+		return;
+	end
+
+	local bIsHost :boolean = Network.GetLocalPlayerID() == Network.GetGameHostPlayerID();
+
+	if bIsHost and not m_mpt_restartExecuted then
+		m_mpt_restartExecuted = true;
+		print("[MPT_RestartVote] Host executing restart with same seeds (map identical).");
+		-- 广播 GameConfig（含种子），确保客户端重载用新配置
+		Network.BroadcastGameConfig();
+		-- 置重载标志并广播（客户端据此 RequestSnapshot）
+		GameConfiguration.SetValue("GAME_HOST_IS_JUST_RELOADING", "Y");
+		Network.BroadcastGameConfig();
+		-- 重启（用现有 GameConfiguration，种子不变 → 相同地图）
+		Network.RestartGame();
+	elseif not bIsHost and not m_mpt_snapshotRequested then
+		m_mpt_snapshotRequested = true;
+		print("[MPT_RestartVote] Client requesting snapshot to resync new game.");
+		Network.RequestSnapshot();
+	end
+end
+
+-- ============================================================================
 -- 刷新投票面板显示（赋值给上面 forward 声明的 local，勿加 local 关键字）
+-- 投降投票（BG3）与重开投票（BG2）共用一个 VoteArea，按状态切换类型/背景。
 -- ============================================================================
 function MPT_RefreshVotePanel()
 	local state = MPT_ReadVoteState();
+	local restartState = MPT_ReadRestartVoteState();
 	local localPlayer :number = Game.GetLocalPlayer();
 	local bLocalObserver :boolean = MPT_IsLocalObserver();
 
 	-- 投降按钮状态 + tooltip（观察者/已败亡/已投降/本时代已投过）
 	MPT_UpdateSurrenderButton(state, localPlayer);
+	-- 重新开始按钮状态 + tooltip
+	MPT_UpdateRestartButton(restartState, localPlayer);
 
 	-- 结算通知：本队已投降 / 本队是胜队 → 通知 EndGameMenu 弹结算（只发一次）
 	-- 观察者不通知（无结算）；已通知过不再重复
@@ -244,6 +377,10 @@ function MPT_RefreshVotePanel()
 		end
 	end
 
+	-- 重开投票：房主轮询到通过 → 执行重启（同种子 → 地图相同）
+	-- 客户端轮询到通过 → 请求快照同步新游戏
+	MPT_HandleRestartExecution(restartState);
+
 	-- 新一轮投票检测：跨时代/新投票发起时重置失败隐藏标志
 	-- （第一次失败后 m_mpt_voteFailedHidden 置位永久隐藏；新投票应重新显示面板）
 	if state.started and not state.passed then
@@ -262,17 +399,41 @@ function MPT_RefreshVotePanel()
 		m_mpt_voteFailTurn = Game.GetCurrentGameTurn();
 	end
 
-	-- 仅同队、多人局、本地玩家存活、非观察者、投票失败尚未回合结束隐藏时参与显示判定；
-	-- 投票区整体默认隐藏，只有「本时代已发起投票」或「已通过」时才显示
+	-- ==========================================================================
+	-- 显示类型判定（优先级：重开投票 > 投降投票）
+	--   - 重开投票已发起/已通过 → 显示重开投票（BG2 背景）
+	--   - 否则投降投票已发起/已通过 → 显示投降投票（BG3 背景）
+	-- ==========================================================================
 	local bShowVoteArea :boolean = false;
-	if not bLocalObserver
-		and not m_mpt_voteFailedHidden
-		and GameConfiguration.IsAnyMultiplayer()
+	local bShowRestart :boolean = false;
+	local bShowSurrender :boolean = false;
+
+	if not bLocalObserver and GameConfiguration.IsAnyMultiplayer()
 		and localPlayer ~= nil and localPlayer >= 0
-		and Players[localPlayer] ~= nil and Players[localPlayer]:IsAlive()
-		and state.teamID >= 0
-		and (state.started or state.passed) then
-		bShowVoteArea = true;
+		and Players[localPlayer] ~= nil and Players[localPlayer]:IsAlive() then
+
+		-- 重开投票优先
+		if restartState.started or restartState.passed then
+			if restartState.failed then
+				-- 重开投票失败：复用投降失败的隐藏流程（T+1 回合结束隐藏）
+				if not m_mpt_restartFailed and not m_mpt_voteFailedHidden then
+					m_mpt_restartFailed = true;
+					m_mpt_voteFailed = true;
+					m_mpt_voteFailTurn = Game.GetCurrentGameTurn();
+				end
+				bShowVoteArea = not m_mpt_voteFailedHidden;
+			else
+				bShowVoteArea = true;
+			end
+			if bShowVoteArea then
+				bShowRestart = true;
+			end
+		elseif state.started or state.passed then
+			bShowVoteArea = not m_mpt_voteFailedHidden;
+			if bShowVoteArea then
+				bShowSurrender = true;
+			end
+		end
 	end
 
 	Controls.VoteArea:SetHide(not bShowVoteArea);
@@ -280,24 +441,34 @@ function MPT_RefreshVotePanel()
 		return;
 	end
 
-	if state.passed then
-		Controls.VoteStatusLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_PASSED"));
+	-- 设置投票类型与背景（重开 BG2 / 投降 BG3）
+	m_mpt_voteType = bShowRestart and "restart" or "surrender";
+	Controls.VoteBacking:SetTexture(bShowRestart and "EMERGENCY_BACKSTAB_BG2" or "EMERGENCY_BACKSTAB_BG3");
+
+	local activeState = bShowRestart and restartState or state;
+	if activeState.passed then
+		Controls.VoteStatusLabel:SetText(Locale.Lookup(bShowRestart and "LOC_MPT_RESTART_PASSED" or "LOC_MPT_VOTE_PASSED"));
 		Controls.VoteProgressLabel:SetText("");
 		Controls.VoteAgreeButton:SetHide(true);
 		Controls.VoteDisagreeButton:SetHide(true);
 	else
 		-- 已发起：显示进度 + 投票按钮
-		Controls.VoteStatusLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_TITLE"));
-		Controls.VoteProgressLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_PROGRESS", state.agreeCount, state.totalCount));
+		Controls.VoteStatusLabel:SetText(Locale.Lookup(bShowRestart and "LOC_MPT_RESTART_TITLE" or "LOC_MPT_VOTE_TITLE"));
+		Controls.VoteProgressLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_PROGRESS", activeState.agreeCount, activeState.totalCount));
 		Controls.VoteAgreeButton:SetHide(false);
 		Controls.VoteDisagreeButton:SetHide(false);
 		-- 本机已投票则禁用按钮（Gameplay 一人一票防重复；UI 读属性给明确反馈）
 		local bLocalVoted :boolean = false;
-		if localPlayer ~= nil and localPlayer >= 0 and state.teamID >= 0 then
-			bLocalVoted = Game:GetProperty("MPT_SURRENDER_VOTED_" .. state.teamID .. "_" .. localPlayer) == 1;
+		if localPlayer ~= nil and localPlayer >= 0 then
+			if bShowRestart then
+				bLocalVoted = Game:GetProperty("MPT_RESTART_VOTED_" .. localPlayer) == 1;
+			elseif state.teamID >= 0 then
+				bLocalVoted = Game:GetProperty("MPT_SURRENDER_VOTED_" .. state.teamID .. "_" .. localPlayer) == 1;
+			end
 		end
-		Controls.VoteAgreeButton:SetDisabled(bLocalVoted or m_mpt_voteFailed);
-		Controls.VoteDisagreeButton:SetDisabled(bLocalVoted or m_mpt_voteFailed);
+		local bDisabled :boolean = bLocalVoted or m_mpt_voteFailed;
+		Controls.VoteAgreeButton:SetDisabled(bDisabled);
+		Controls.VoteDisagreeButton:SetDisabled(bDisabled);
 	end
 end
 
@@ -323,10 +494,43 @@ local function MPT_QuickToggle()
 end
 
 -- ============================================================================
--- 重新开始按钮（响应待配置：TODO 条目后续接入重开逻辑）
+-- 重新开始按钮（条目8续2）：发起全局重开投票
+-- 点击 → EXECUTE_SCRIPT 到房主（Gameplay 侧记票/判过半/写属性）；
+-- 房主轮询到通过后执行 Network.RestartGame()（同种子 → 地图相同）。
 -- ============================================================================
 local function MPT_QuickRestart()
-	-- TODO: 条目8后续：接入重新开始（Restart）逻辑
+	local localPlayer :number = Game.GetLocalPlayer();
+	if localPlayer == nil or localPlayer < 0 then
+		return;
+	end
+	local pPlayer :table = Players[localPlayer];
+	if pPlayer == nil or not pPlayer:IsAlive() then
+		return;	-- 已败亡不可发起
+	end
+	if MPT_IsLocalObserver() then
+		return;	-- 观察者不可发起
+	end
+	if not GameConfiguration.IsAnyMultiplayer() then
+		return;	-- 单人局不可发起（重开需多人同步）
+	end
+
+	local state = MPT_ReadRestartVoteState();
+	if state.passed then
+		return;	-- 已通过（房主即将重启）
+	end
+	if state.started then
+		return;	-- 本时代已发起过
+	end
+
+	-- 发起请求 → 房主（EXECUTE_SCRIPT）
+	local kParameters :table = {
+		OnStart = "MPT_RestartVote",
+		type = "start",
+		initiator = localPlayer,
+	};
+	UI.RequestPlayerOperation(Network.GetGameHostPlayerID(), PlayerOperations.EXECUTE_SCRIPT, kParameters);
+	-- 请求后立即刷新一次面板
+	MPT_RefreshVotePanel();
 end
 
 -- ============================================================================
@@ -354,6 +558,10 @@ local function MPT_QuickAttach()
 		m_mpt_voteFailedHidden = false;
 		m_mpt_voteFailTurn = -1;
 		m_mpt_processedVoteID = "";
+		m_mpt_restartExecuted = false;
+		m_mpt_snapshotRequested = false;
+		m_mpt_restartFailed = false;
+		m_mpt_voteType = "surrender";
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end
