@@ -2686,6 +2686,10 @@ function OnShow()
 		-- 触发点由 1.67 的 RealizeGameSetup 改为新会话分支，每进房只触发一次；函数定义在文件末尾条目4.7分区）
 		-- ----------------------------------------------------------------------------
 		MPT_UpdateEnabledMods();
+		-- ============================================================================
+		-- 联机工具箱2.0【临时探针】：UI.RequestPlayerOperation 前端可用性探测（条目4.9，验证后移除）
+		-- ----------------------------------------------------------------------------
+		MPT_Probe_Run();
 
 		StopCountdown();
 
@@ -6713,3 +6717,64 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 	-- 都未命中：不动（还原由 UpdatePlayerEntry 原生 statusString 逻辑负责）
 end
 end	-- 条目4.8 do 块结束（寄存器上限适配）
+
+-- ############################################################################
+-- 条目4.9【临时实测探针】：UI.RequestPlayerOperation 前端可用性探测（验证后移除）
+-- 目的：验证前端（StagingRoom）环境中 UI.RequestPlayerOperation / PlayerOperations
+--      是否被引擎导出、EXECUTE_SCRIPT 是否有接收方；pcall 防御逐步探测 + print 留痕。
+-- 触发：OnShow 新会话分支（与 4.7 同一处，见本文件 :2688 附近）；同会话幂等，每进房一次。
+-- ############################################################################
+do	-- 寄存器上限适配：分区块级 do...end 包裹（同 4.3预备）
+local g_mptProbeSessionID : number = -1;	-- 上次探测会话 ID（幂等守卫）
+
+function MPT_Probe_Run()
+	local sessionID : number = Network.GetSessionID();
+	if sessionID == g_mptProbeSessionID then
+		return;	-- 同会话已探测过
+	end
+	g_mptProbeSessionID = sessionID;
+
+	print("==== MPT 条目4.9 探针 start (session " .. tostring(sessionID) .. ") ====");
+
+	-- 1) UI.RequestPlayerOperation 是否存在（引擎是否向前端导出）
+	local ok1, err1 = pcall(function()
+		print("MPT 条目4.9: UI.RequestPlayerOperation = " .. tostring(UI.RequestPlayerOperation));
+	end);
+	if not ok1 then print("MPT 条目4.9: pcall(UI) 失败: " .. tostring(err1)); end
+
+	-- 2) PlayerOperations 枚举是否存在及其关键成员
+	local ok2, err2 = pcall(function()
+		if PlayerOperations == nil then
+			print("MPT 条目4.9: PlayerOperations = nil");
+		else
+			print("MPT 条目4.9: PlayerOperations.EXECUTE_SCRIPT = " .. tostring(PlayerOperations.EXECUTE_SCRIPT));
+			print("MPT 条目4.9: PlayerOperations.RESEARCH = " .. tostring(PlayerOperations.RESEARCH));
+		end
+	end);
+	if not ok2 then print("MPT 条目4.9: pcall(PlayerOperations) 失败: " .. tostring(err2)); end
+
+	-- 3) 前端 Game 表可用性对照（LoadSaveMenu_Shared 用过，看进房后返回什么）
+	local ok3, err3 = pcall(function()
+		print("MPT 条目4.9: Game.GetLocalPlayer() = " .. tostring(Game.GetLocalPlayer()));
+		print("MPT 条目4.9: Game.GetCurrentGameTurn() = " .. tostring(Game.GetCurrentGameTurn()));
+	end);
+	if not ok3 then print("MPT 条目4.9: pcall(Game) 失败: " .. tostring(err3)); end
+
+	-- 4) Network 目标 ID（本 mod 条目8续 用 hostID 作第一参数）
+	local hostID : number = Network.GetGameHostPlayerID();
+	print("MPT 条目4.9: Network.GetGameHostPlayerID() = " .. tostring(hostID));
+
+	-- 5) 前置满足时实际发起一次 EXECUTE_SCRIPT（无害 noop），观察是否报错/有无异常
+	local ok5, err5 = pcall(function()
+		if type(UI.RequestPlayerOperation) == "function" and PlayerOperations ~= nil and PlayerOperations.EXECUTE_SCRIPT ~= nil then
+			UI.RequestPlayerOperation(hostID, PlayerOperations.EXECUTE_SCRIPT, { OnStart = "MPT_Probe_Noop" });
+			print("MPT 条目4.9: EXECUTE_SCRIPT 请求已发出（无 Lua 异常）");
+		else
+			print("MPT 条目4.9: 前置探测不满足，跳过实际请求");
+		end
+	end);
+	if not ok5 then print("MPT 条目4.9: pcall(RequestPlayerOperation) 失败: " .. tostring(err5)); end
+
+	print("==== MPT 条目4.9 探针 end ====");
+end
+end	-- 条目4.9 do 块结束（寄存器上限适配）
