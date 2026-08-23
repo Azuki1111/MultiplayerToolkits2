@@ -39,23 +39,6 @@ local function MPT_GetLocalTeam()
 end
 
 -- ============================================================================
--- 本队当前存活的同队人类玩家数（投票分母）
--- ============================================================================
-local function MPT_GetTeamHumanAliveCount(teamID)
-	local count = 0;
-	for i = 0, PlayerManager.GetWasEverAliveCount() - 1 do
-		local pPlayer = Players[i];
-		if pPlayer ~= nil and pPlayer:IsMajor() and pPlayer:IsAlive()
-			and pPlayer:GetTeam() == teamID
-			and PlayerConfigurations[i] ~= nil
-			and not PlayerConfigurations[i]:IsAIPlayer() then
-			count = count + 1;
-		end
-	end
-	return count;
-end
-
--- ============================================================================
 -- 读取投票状态（经 ExposedMembers.MPT（Gameplay 暴露）同步查询，
 -- Gameplay 侧见 SurrenderVote_Gameplay.lua）
 -- ============================================================================
@@ -173,11 +156,14 @@ local function MPT_RefreshVotePanel()
 	local state = MPT_ReadVoteState();
 	local bShowVoteArea :boolean = false;
 
-	-- 仅同队、多人局、本地玩家存活时显示投票区
+	-- 仅同队、多人局、本地玩家存活时参与投票判定；
+	-- 投票区整体默认隐藏，只有「本时代已发起投票」或「已通过」时才显示
+	local bShowVoteArea :boolean = false;
 	if GameConfiguration.IsAnyMultiplayer()
 		and localPlayer ~= nil and localPlayer >= 0
 		and Players[localPlayer] ~= nil and Players[localPlayer]:IsAlive()
-		and state.teamID >= 0 then
+		and state.teamID >= 0
+		and (state.started or state.passed) then
 		bShowVoteArea = true;
 	end
 
@@ -191,18 +177,12 @@ local function MPT_RefreshVotePanel()
 		Controls.VoteProgressLabel:SetText("");
 		Controls.VoteAgreeButton:SetHide(true);
 		Controls.VoteDisagreeButton:SetHide(true);
-	elseif state.started then
+	else
 		-- 已发起：显示进度 + 投票按钮
 		Controls.VoteStatusLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_TITLE"));
 		Controls.VoteProgressLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_PROGRESS", state.agreeCount, state.totalCount));
 		Controls.VoteAgreeButton:SetHide(false);
 		Controls.VoteDisagreeButton:SetHide(false);
-	else
-		-- 未发起：显示提示（本时代可发起）
-		Controls.VoteStatusLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_TITLE"));
-		Controls.VoteProgressLabel:SetText(Locale.Lookup("LOC_MPT_VOTE_NOT_STARTED"));
-		Controls.VoteAgreeButton:SetHide(true);
-		Controls.VoteDisagreeButton:SetHide(true);
 	end
 end
 

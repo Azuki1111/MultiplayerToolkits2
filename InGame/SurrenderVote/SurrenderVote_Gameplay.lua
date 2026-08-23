@@ -47,8 +47,7 @@ local function MPT_GetTeamHumanAliveMajorIDs(teamID)
 		local pPlayer = Players[i];
 		if pPlayer ~= nil and pPlayer:IsMajor() and pPlayer:IsAlive()
 			and pPlayer:GetTeam() == teamID
-			and PlayerConfigurations[i] ~= nil
-			and not PlayerConfigurations[i]:IsAIPlayer() then
+			and pPlayer:IsHuman() then
 			table.insert(result, i);
 		end
 	end
