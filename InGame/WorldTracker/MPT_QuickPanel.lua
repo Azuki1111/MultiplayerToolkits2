@@ -52,6 +52,8 @@ local m_mpt_syncDoneSent :boolean = false;
 local m_mpt_waitingSync :boolean = false;
 -- 非房主：已显示「等待房主重新开始」文本（防重复设置）
 local m_mpt_waitingHostShown :boolean = false;
+-- 房主：投票通过后已执行暂停（取消他人暂停+房主暂停，倒计时期间只一次）
+local m_mpt_pauseDone :boolean = false;
 
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
@@ -338,20 +340,7 @@ local function MPT_ExecuteRestart()
 
 	if bIsHost and not m_mpt_restartExecuted then
 		m_mpt_restartExecuted = true;
-		-- 第一步：取消其他玩家的暂停（1.67 OnReallyRestartGame 同款；
-		-- SetWantsPause 本地改对方配置并广播即可生效）
-		if GameConfiguration.IsPaused() == true then
-			local pausePlayerID = GameConfiguration.GetPausePlayer();
-			if pausePlayerID ~= nil and pausePlayerID ~= Network.GetGameHostPlayerID() then
-				local pauseCfg = PlayerConfigurations[pausePlayerID];
-				if pauseCfg ~= nil then
-					pauseCfg:SetWantsPause(false);
-					Network.BroadcastPlayerInfo();
-					print("[MPT_RestartVote] Step1: unpaused other player " .. tostring(pausePlayerID));
-				end
-			end
-		end
-		-- 2) 随机化地图+游戏种子（官方 API RegenerateSeeds，1.67/MPH 同款；
+		-- 随机化地图+游戏种子（官方 API RegenerateSeeds，1.67/MPH 同款；
 		--    手动 MapConfiguration.SetValue 对引擎地图生成无效——引擎种子由
 		--    RegenerateSeeds 管理，重开时地图种子才会真正随机）
 		local oldGameSeed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED");
@@ -362,16 +351,10 @@ local function MPT_ExecuteRestart()
 		local newMapSeed = MapConfiguration.GetValue("RANDOM_SEED");
 		print("[MPT_RestartVote] AFTER RegenerateSeeds: game=" .. tostring(newGameSeed) .. " map=" .. tostring(newMapSeed));
 		Network.BroadcastGameConfig();
-		-- 3) 暂停（MPH OnLocalHostRestart：SetWantsPause + BroadcastPlayerInfo）
-		local localPlayerConfig = PlayerConfigurations[Network.GetLocalPlayerID()];
-		if localPlayerConfig ~= nil then
-			localPlayerConfig:SetWantsPause(true);
-			Network.BroadcastPlayerInfo();
-		end
-		-- 4) 置重载标志并广播（房主重载完成后会置回 "N"）
+		-- 置重载标志并广播（房主重载完成后会置回 "N"）
 		GameConfiguration.SetValue("GAME_HOST_IS_JUST_RELOADING", "Y");
 		Network.BroadcastGameConfig();
-		-- 5) 重启
+		-- 重启
 		print("[MPT_RestartVote] Host calling RestartGame now.");
 		Network.RestartGame();
 	elseif not bIsHost and not m_mpt_snapshotRequested then
@@ -394,6 +377,33 @@ local function MPT_HandleRestartExecution(restartState)
 	end
 
 	local bIsHost :boolean = Network.GetLocalPlayerID() == Network.GetGameHostPlayerID();
+
+	-- 投票通过后立即暂停游戏（不等倒计时结束）：
+	--   1) 取消其他玩家的暂停（1.67 OnReallyRestartGame 同款；SetWantsPause 本地改对方配置并广播）
+	--   2) 房主暂停
+	-- m_mpt_pauseDone 防重复（倒计时期间只暂停一次）
+	if bIsHost and not m_mpt_pauseDone then
+		m_mpt_pauseDone = true;
+		-- 第一步：取消其他玩家的暂停
+		if GameConfiguration.IsPaused() == true then
+			local pausePlayerID = GameConfiguration.GetPausePlayer();
+			if pausePlayerID ~= nil and pausePlayerID ~= Network.GetGameHostPlayerID() then
+				local pauseCfg = PlayerConfigurations[pausePlayerID];
+				if pauseCfg ~= nil then
+					pauseCfg:SetWantsPause(false);
+					Network.BroadcastPlayerInfo();
+					print("[MPT_RestartVote] Step1: unpaused other player " .. tostring(pausePlayerID));
+				end
+			end
+		end
+		-- 房主暂停
+		local localPlayerConfig = PlayerConfigurations[Network.GetLocalPlayerID()];
+		if localPlayerConfig ~= nil then
+			localPlayerConfig:SetWantsPause(true);
+			Network.BroadcastPlayerInfo();
+			print("[MPT_RestartVote] Step2: host paused game.");
+		end
+	end
 
 	-- 通过后首次检测：隐藏投票按钮 + 显示等待/倒计时 Label
 	if m_mpt_restartCountdown < 0 then
@@ -721,6 +731,7 @@ local function MPT_QuickAttach()
 		m_mpt_syncDoneSent = false;
 		m_mpt_waitingSync = false;
 		m_mpt_waitingHostShown = false;
+		m_mpt_pauseDone = false;
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end
