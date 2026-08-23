@@ -4,6 +4,10 @@
 --       使小地图以全球比例显示（1.67 用真实地图钉实现，本版自绘不留 pin 数据）。
 -- 原理：WorldAnchor 控件将 3D 世界坐标投影到屏幕；UI.GridToWorld(plotIndex)
 --       把格子索引转世界坐标，Anchor:SetWorldPositionVal 完成锚定。
+-- 关键：AddUserInterfaces 上下文默认挂载在 AdditionalUserInterfaces（渲染树最末，
+--       非世界层），WorldAnchor 不参与相机包围盒——须把根容器 ChangeParent 到
+--       /InGame/WorldViewControls（世界层，MapPinManager 同层）后实例才参与包围盒
+--       （模仿 1.67 NHK/UI/TurnTime_HotKey.lua 的 ChangeParent 手法）。
 -- 用法：本文件经 AddUserInterfaces 注册的空 Context 自动执行，无外部接口。
 -- 调试：全链路 print 日志，排查「小地图未达全球比例」用，定稿后按需移除。
 -- ============================================================================
@@ -33,11 +37,23 @@ function AnchorInstance( plotIndex : number )
 end
 
 -- ============================================================================
--- 进游戏读盘完成：锚定两极角（首格与末格）
+-- 进游戏读盘完成：先把根容器重挂到世界层，再锚定两极角（首格与末格）
 function OnLoadScreenClose()
 	print( "[MPT_RMC] Events.LoadScreenClose 触发，m_anchored=" .. tostring(m_anchored) );
 	if m_anchored then return; end
 	m_anchored = true;
+
+	-- 关键：把根容器 ChangeParent 到世界层 WorldViewControls（模仿 1.67 TurnTime_HotKey 手法），
+	-- 否则 AddUserInterfaces 上下文挂 AdditionalUserInterfaces 层，WorldAnchor 不参与相机包围盒。
+	local worldViewControls : table = ContextPtr:LookUpControl( "/InGame/WorldViewControls" );
+	print( "[MPT_RMC] LookUpControl(/InGame/WorldViewControls) -> " .. tostring(worldViewControls) );
+	if worldViewControls ~= nil then
+		Controls.MPT_WorldAnchorRoot:ChangeParent( worldViewControls );
+		print( "[MPT_RMC] MPT_WorldAnchorRoot 已 ChangeParent 到 WorldViewControls" );
+	else
+		print( "[MPT_RMC] 【异常】找不到 /InGame/WorldViewControls，WorldAnchor 无法进入世界层" );
+	end
+
 	local plotFirst : table = Map.GetPlotByIndex( 0 );
 	local plotLast  : table = Map.GetPlotByIndex( Map.GetPlotCount() - 1 );
 	print( "[MPT_RMC] plotCount=" .. tostring(Map.GetPlotCount()) .. " plotFirst=" .. tostring(plotFirst) .. " plotLast=" .. tostring(plotLast) );
