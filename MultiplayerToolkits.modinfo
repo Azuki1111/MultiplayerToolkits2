@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>25</Version>
+		<Version>26</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -306,6 +306,37 @@
 			<File>InGame/SurrenderVote/SurrenderVote_zh_Hans_CN.sql</File>
 			<File>InGame/SurrenderVote/SurrenderVote_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目9：顶部面板扩展（TPE）——移植 1.67 TPE；ReplaceUIScript 投递 TopPanelExt.lua（基类探测 include
+			TopPanel_Expansion2/1/TopPanel 后覆盖 RefreshYields/LateInitialize/RefreshResources），
+			TopPanelExt_TT.xml 定义 Tooltip 类型与实例模板（AddUserInterfaces 挂 InGame），同名 lua 注册 LuaEvents 监听 -->
+		<UpdateText id="IG_TopPanelExt_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/TopPanelExt/TopPanelExt_zh_Hans_CN.sql</File>
+			<File>InGame/TopPanelExt/TopPanelExt_en_US.sql</File>
+		</UpdateText>
+		<ReplaceUIScript id="IG_TopPanelExt">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>TopPanel</LuaContext>
+				<LuaReplace>InGame/TopPanelExt/TopPanelExt.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_TopPanelExt_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/TopPanelExt/TopPanelExt.lua</File>
+			<File>InGame/TopPanelExt/TopPanelExt_TT.lua</File>
+		</ImportFiles>
+		<AddUserInterfaces id="IG_TopPanelExt_TT">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/TopPanelExt/TopPanelExt_TT.xml</File>
+		</AddUserInterfaces>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -357,5 +388,10 @@
 		<File>InGame/SurrenderVote/SurrenderVote_Gameplay.lua</File>
 		<File>InGame/SurrenderVote/SurrenderVote_zh_Hans_CN.sql</File>
 		<File>InGame/SurrenderVote/SurrenderVote_en_US.sql</File>
+		<File>InGame/TopPanelExt/TopPanelExt.lua</File>
+		<File>InGame/TopPanelExt/TopPanelExt_TT.lua</File>
+		<File>InGame/TopPanelExt/TopPanelExt_TT.xml</File>
+		<File>InGame/TopPanelExt/TopPanelExt_zh_Hans_CN.sql</File>
+		<File>InGame/TopPanelExt/TopPanelExt_en_US.sql</File>
 	</Files>
 </Mod>

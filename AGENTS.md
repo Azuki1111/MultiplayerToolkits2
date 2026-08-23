@@ -14,7 +14,7 @@
 - Mod id：`00000000-7369-4685-ab5f-bf77bc22b54e`（规约：GUID 前 8 位为 0）
 - `<Version>21</Version>` 是模组版本一致性校验指纹，**结构性更新必须递增**
 - `AffectsSavedGames=0`，`CompatibleVersions=1.2,2.0`
-- 本 mod 前端功能全部走 FrontEndActions；InGameActions 仅注册同一份通用文本文件（`IG_Import_Storage` 存储双环境注册已移除，原因见踩坑记录 include 缺陷）。
+- 本 mod 前端功能全部走 FrontEndActions；InGameActions 注册游戏内功能（条目5 起逐条移植 1.67）与通用文本（`IG_Import_Storage` 存储双环境注册已移除，原因见踩坑记录 include 缺陷）。
 
 ## 目录结构与功能模块
 
@@ -44,7 +44,8 @@
 | `InGame/EndGameMenu/` | 条目7 战败后观战按钮（移植 1.67 EGM 并修复反复弹出 bug）：`EndGameMenu.xml` 整文件同名覆盖原版（Exp2 版）在 ButtonStack 追加「观看」按钮；`EndGameMenu_MPT.lua` 经原版 include("EndGameMenu_", true) 通配符注入 EndGameMenu 上下文（点击置本地屏蔽标志 + 完整 Close() 释放暂停/弹窗 + 替换 OnPlayerDefeat 拦截重入，修复 1.67 仅 SetHide 导致画面反复弹出）；ImportFiles 注册（LoadOrder 30000） |
 | `InGame/WorldTracker/` | 条目8 WorldTracker 快捷操作面板（自定义功能，仿作弊面板 mod 挂载方式）：`MPT_QuickPanel.xml` 空 Context（标题「快捷操作」+ 展开区「投降」「重新开始」两按钮 + 投票区 VoteArea）；`MPT_QuickPanel.lua` 同名自动执行，LoadGameViewStateDone 时 LookUpControl("/InGame/WorldTracker/PanelStack") + ChangeParent + AddChildAtIndex(1) 挂载，点击标题展开/收起，每帧轮询投票状态刷新；「投降」= 团队投降投票（条目8续）；「重新开始」响应未配置 TODO；AddUserInterfaces(Context=InGame, LoadOrder=900) + ImportFiles + UpdateText 注册 |
 | `InGame/SurrenderVote/` | 条目8续 团队投降投票（Gameplay 侧）：`SurrenderVote_Gameplay.lua` 经 AddGameplayScripts 注册，`GameEvents.MPT_SurrenderVote.Add` 接收 UI 的 EXECUTE_SCRIPT（OnStart="MPT_SurrenderVote"，UI→房主，不用 Chat 指令）——房主分支校验（发起人同队存活/本时代未投过/投票者同队未投过）→ 记票 → 票数 ≥ 半数（agree>=total/2）→ 该队城市全部叛变自由城（CityManager.TransferCityToFreeCities，仿乔尔mod RegicideVictory 自定义战败范式，不销毁城市/单位、不做引擎判负，Game:SetProperty MPT_SURRENDER_TEAM_<team> 标记判负）；频率限制每时代每队一次（MPT_SURRENDER_VOTE_<era>_<team>），票数存 MPT_SURRENDER_VOTES_<team>="agree/total"、每投票者一键防重复；UpdateText 注册（InGame） |
-| `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目7+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
+| `InGame/TopPanelExt/` | 条目9 顶部面板扩展（移植 1.67 TPE）：`TopPanelExt.lua` 经 ReplaceUIScript（LuaContext=TopPanel, LoadOrder 100000）投递——基类探测 include TopPanel_Expansion2/1/TopPanel 后覆盖 RefreshYields/LateInitialize/RefreshResources；游戏内顶部面板追加 食物/生产力/人口/奢侈品 四个统计按钮与联动 Tooltip（逐城市明细经 LuaEvents.TopPanelToolTip_*_Refresh 事件驱动，`TopPanelExt_TT.lua` 渲染）；战略资源 Tooltip 追加队友战略资源清单；处理 TPT_NO_TRADING_LUXURIES/STRATEGICS/SETTINGS_DIPLOMATIC_DEAL 交易限制与队伍/FFA 检测（IsFFA：全无队伍时显示所有玩家重复奢侈品）；`TopPanelExt_TT.xml` 经 AddUserInterfaces（Context=InGame）定义 TooltipType + 3 实例模板；ImportFiles（100010）双 Lua 入 VFS；UpdateText 注册（InGame）；优化：奢侈品类型查表 O(1)、战略资源表轻量化 {Index,Hash}、队友列表每刷新周期缓存、文本预加载缓存 + 带参数 tag 拆 PRE/SUF、取消 1.67 CanRefresh 冻结缺陷 |
+| `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目10+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
 
 ## 加载机制（.modinfo）
 
