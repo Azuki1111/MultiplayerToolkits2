@@ -28,6 +28,10 @@ local VOTE_POLL_INTERVAL :number = 1.0;	-- 秒
 -- 投降/胜利结算已通知 EndGameMenu（只发一次，防重入；跨房间需在进房时重置）
 local m_mpt_outcomeNotified :boolean = false;
 
+-- 本时代投票已失败（全部投完未过半）：面板保留显示到回合结束再隐藏
+local m_mpt_voteFailed :boolean = false;
+local m_mpt_hideVoteAtTurnEnd :boolean = false;
+
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
 -- ============================================================================
@@ -64,6 +68,7 @@ local function MPT_ReadVoteState()
 		totalCount = 0,
 		passed = false,
 		winTeam = nil,
+		failed = false,
 	};
 	if teamID < 0 then
 		return state;
@@ -78,6 +83,7 @@ local function MPT_ReadVoteState()
 			state.totalCount = gpState.totalCount or 0;
 			state.passed = gpState.passed or false;
 			state.winTeam = gpState.winTeam;
+			state.failed = gpState.failed or false;
 		end
 	else
 		-- 兜底：直接读 Game 属性（UI 侧 Game 可读属性）
@@ -96,6 +102,7 @@ local function MPT_ReadVoteState()
 		end
 		state.passed = Game:GetProperty("MPT_SURRENDER_TEAM_" .. teamID) == 1;
 		state.winTeam = Game:GetProperty("MPT_SURRENDER_WIN_TEAM");
+		state.failed = Game:GetProperty("MPT_SURRENDER_VOTE_FAILED_" .. state.era .. "_" .. teamID) == 1;
 	end
 
 	return state;
@@ -201,10 +208,17 @@ function MPT_RefreshVotePanel()
 		end
 	end
 
-	-- 仅同队、多人局、本地玩家存活、非观察者时参与投票判定；
+	-- 投票失败检测：全部投完未过半 → 置位，面板保留显示到回合结束再隐藏
+	if not m_mpt_voteFailed and state.failed then
+		m_mpt_voteFailed = true;
+		m_mpt_hideVoteAtTurnEnd = true;
+	end
+
+	-- 仅同队、多人局、本地玩家存活、非观察者、未到回合结束隐藏时参与投票判定；
 	-- 投票区整体默认隐藏，只有「本时代已发起投票」或「已通过」时才显示
 	local bShowVoteArea :boolean = false;
 	if not bLocalObserver
+		and not m_mpt_hideVoteAtTurnEnd
 		and GameConfiguration.IsAnyMultiplayer()
 		and localPlayer ~= nil and localPlayer >= 0
 		and Players[localPlayer] ~= nil and Players[localPlayer]:IsAlive()
@@ -234,8 +248,8 @@ function MPT_RefreshVotePanel()
 		if localPlayer ~= nil and localPlayer >= 0 and state.teamID >= 0 then
 			bLocalVoted = Game:GetProperty("MPT_SURRENDER_VOTED_" .. state.teamID .. "_" .. localPlayer) == 1;
 		end
-		Controls.VoteAgreeButton:SetDisabled(bLocalVoted);
-		Controls.VoteDisagreeButton:SetDisabled(bLocalVoted);
+		Controls.VoteAgreeButton:SetDisabled(bLocalVoted or m_mpt_voteFailed);
+		Controls.VoteDisagreeButton:SetDisabled(bLocalVoted or m_mpt_voteFailed);
 	end
 end
 
@@ -286,17 +300,29 @@ local function MPT_QuickAttach()
 		worldTrackerPanel:ReprocessAnchoring();
 		m_quickAttached = true;
 
-		-- 新会话（进房）重置结算通知标志（Lua 状态跨房间存续，见 AGENTS.md）
+		-- 新会话（进房）重置结算/投票失败标志（Lua 状态跨房间存续，见 AGENTS.md）
 		m_mpt_outcomeNotified = false;
+		m_mpt_voteFailed = false;
+		m_mpt_hideVoteAtTurnEnd = false;
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end
 end
 
 -- ============================================================================
--- 每帧刷新（投票状态轮询）
+-- 每帧刷新（投票状态轮询 + 回合结束隐藏）
 -- ============================================================================
 local function MPT_QuickOnUpdate()
+	-- 回合结束（本地回合不再活跃）：投票失败后隐藏投票面板
+	if m_mpt_hideVoteAtTurnEnd then
+		local localPlayer :number = Game.GetLocalPlayer();
+		local pLocalPlayer :table = localPlayer ~= nil and localPlayer >= 0 and Players[localPlayer] or nil;
+		if pLocalPlayer ~= nil and not pLocalPlayer:IsTurnActive() then
+			m_mpt_hideVoteAtTurnEnd = false;
+			MPT_RefreshVotePanel();	-- 内部根据标志隐藏 VoteArea
+		end
+	end
+
 	m_votePollTimer = m_votePollTimer + UIManager:GetLastTimeDelta();
 	if m_votePollTimer >= VOTE_POLL_INTERVAL then
 		m_votePollTimer = 0;

@@ -28,6 +28,10 @@ local function MPT_VotesKey(team) return "MPT_SURRENDER_VOTES_" .. team; end
 local function MPT_SurrenderedKey(team) return "MPT_SURRENDER_TEAM_" .. team; end
 -- 胜利队伍：全部其他队伍投降后仅剩一队 → MPT_SURRENDER_WIN_TEAM = 胜队ID
 local function MPT_WinTeamKey() return "MPT_SURRENDER_WIN_TEAM"; end
+-- 本时代本队投票已失败（全部投完仍未过半）：MPT_SURRENDER_VOTE_FAILED_<era>_<team> = 1
+local function MPT_VoteFailedKey(era, team) return "MPT_SURRENDER_VOTE_FAILED_" .. era .. "_" .. team; end
+-- 已投票人数累计：MPT_SURRENDER_VOTECOUNT_<team>（判定"全部投完"用）
+local function MPT_VoteCountKey(team) return "MPT_SURRENDER_VOTECOUNT_" .. team; end
 
 -- ============================================================================
 -- 该玩家是否为观察者（LEADER_SPECTATOR，无文明；不参与投票/不计入真人总数/不弹结算）
@@ -155,6 +159,7 @@ function MPT_GetSurrenderVoteState(teamID)
 		totalCount = totalCount,
 		passed = MPT_IsTeamSurrendered(teamID),
 		winTeam = Game:GetProperty(MPT_WinTeamKey()),
+		failed = Game:GetProperty(MPT_VoteFailedKey(era, teamID)) == 1,
 	};
 end
 
@@ -202,13 +207,17 @@ function OnMPT_SurrenderVoteGameEvent(localPlayerID, params)
 		-- 标记本时代已发起；投票者列表置空累计
 		Game:SetProperty(startedKey, 1);
 		Game:SetProperty(MPT_VotesKey(teamID), "0/" .. tostring(#MPT_GetTeamHumanAliveMajorIDs(teamID)));
+		Game:SetProperty(MPT_VoteCountKey(teamID), 0);
 		print("[MPT_SurrenderVote] Vote started by player " .. tostring(initiator) .. " for team " .. tostring(teamID) .. " era " .. tostring(era));
 		return;
 	end
 
 	if params.type == "vote" then
-		-- 投票：必须已发起过
+		-- 投票：必须已发起过；本时代已失败则不再接受投票
 		if Game:GetProperty(startedKey) ~= 1 then
+			return;
+		end
+		if Game:GetProperty(MPT_VoteFailedKey(era, teamID)) == 1 then
 			return;
 		end
 		local voter = params.voter;
@@ -249,6 +258,17 @@ function OnMPT_SurrenderVoteGameEvent(localPlayerID, params)
 		-- 过半判定：agreeCount >= totalCount/2 且至少 1 票
 		if totalCount > 0 and agreeCount >= totalCount / 2 then
 			MPT_SurrenderExecute(teamID);
+			return;
+		end
+
+		-- 失败判定：全部应投者投完仍未过半 → 本时代本队投票失败
+		-- （UI 侧检测到失败后保留面板到回合结束再隐藏）
+		local voteCount = (Game:GetProperty(MPT_VoteCountKey(teamID)) or 0) + 1;
+		Game:SetProperty(MPT_VoteCountKey(teamID), voteCount);
+		if totalCount > 0 and voteCount >= totalCount
+			and Game:GetProperty(MPT_VoteFailedKey(era, teamID)) ~= 1 then
+			Game:SetProperty(MPT_VoteFailedKey(era, teamID), 1);
+			print("[MPT_SurrenderVote] Vote failed for team " .. tostring(teamID) .. " era " .. tostring(era) .. " (agree " .. agreeCount .. "/" .. totalCount .. " not majority).");
 		end
 		return;
 	end
