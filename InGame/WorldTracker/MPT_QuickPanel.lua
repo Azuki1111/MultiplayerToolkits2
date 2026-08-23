@@ -198,10 +198,10 @@ local function MPT_QuickToggle()
 		m_quickExpanded = false;
 	else
 		UI.PlaySound("Tech_Tray_Slide_Open");
-		-- 展开高度动态：投票区可见时更高（头部 25 + 按钮 32*2 + 投票区）
+		-- 展开高度动态：投票区可见时更高（头部 25 + 偏移 30 + 投票区 280 + 两按钮 32*2 + 间距）
 		local height = 110;
 		if not Controls.VoteArea:IsHidden() then
-			height = 196;
+			height = 400;
 		end
 		Controls.QuickPanel:SetSizeY(height);
 		Controls.ExpandStack:SetHide(false);
@@ -244,7 +244,7 @@ local function MPT_QuickOnUpdate()
 		MPT_RefreshVotePanel();
 		-- 投票状态变化后重算展开高度
 		if m_quickExpanded and not Controls.VoteArea:IsHidden() then
-			Controls.QuickPanel:SetSizeY(196);
+			Controls.QuickPanel:SetSizeY(400);
 		end
 	end
 end
