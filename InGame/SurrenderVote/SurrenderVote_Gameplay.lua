@@ -32,6 +32,8 @@ local function MPT_WinTeamKey() return "MPT_SURRENDER_WIN_TEAM"; end
 local function MPT_VoteFailedKey(era, team) return "MPT_SURRENDER_VOTE_FAILED_" .. era .. "_" .. team; end
 -- 已投票人数累计：MPT_SURRENDER_VOTECOUNT_<team>（判定"全部投完"用）
 local function MPT_VoteCountKey(team) return "MPT_SURRENDER_VOTECOUNT_" .. team; end
+-- 投票发起时的回合号：MPT_SURRENDER_VOTE_TURN_<team>（时限判定用）
+local function MPT_VoteStartTurnKey(team) return "MPT_SURRENDER_VOTE_TURN_" .. team; end
 
 -- ============================================================================
 -- 该玩家是否为观察者（LEADER_SPECTATOR，无文明；不参与投票/不计入真人总数/不弹结算）
@@ -83,12 +85,24 @@ function MPT_IsTeamSurrendered(teamID)
 end
 
 -- ============================================================================
--- 执行投降：该队所有存活的非自由城城市叛变为自由城市，并标记该队判负。
--- 仿乔尔mod MarkTeamLost（不做引擎判负，只写属性 + 城市叛变）。
+-- 执行投降：先消灭该队所有单位的存活者，再将该队所有存活城市叛变为自由城市，
+-- 最后标记该队判负。仿乔尔mod MarkTeamLost（不做引擎判负，只写属性 + 单位消灭 + 城市叛变）。
 -- ============================================================================
 local function MPT_SurrenderExecute(teamID)
 	if Game:GetProperty(MPT_SurrenderedKey(teamID)) == 1 then
 		return; -- 已投降，幂等
+	end
+
+	-- 先消灭该队所有存活玩家（主要文明）的全部单位
+	for i = 0, PlayerManager.GetWasEverAliveCount() - 1 do
+		local pPlayer = Players[i];
+		if pPlayer ~= nil and pPlayer:IsMajor() and pPlayer:IsAlive() and pPlayer:GetTeam() == teamID then
+			for _, pUnit in pPlayer:GetUnits():Members() do
+				if pUnit ~= nil then
+					pUnit:Kill();
+				end
+			end
+		end
 	end
 
 	-- 城市全部叛变为自由城市
@@ -197,18 +211,20 @@ function OnMPT_SurrenderVoteGameEvent(localPlayerID, params)
 		if initiator == nil then
 			return;
 		end
-		-- 校验发起人：同队、存活、人类、非观察者
+		-- 校验发起人：同队、存活、人类（主要文明）、非观察者
 		local pInitiator = Players[initiator];
 		if pInitiator == nil or not pInitiator:IsMajor() or not pInitiator:IsAlive()
-			or pInitiator:GetTeam() ~= teamID then
+			or not pInitiator:IsHuman() or pInitiator:GetTeam() ~= teamID
+			or MPT_IsObserverPlayer(initiator) then
 			return;
 		end
 
-		-- 标记本时代已发起；投票者列表置空累计
+		-- 标记本时代已发起；投票者列表置空累计；记录发起回合（时限判定）
 		Game:SetProperty(startedKey, 1);
 		Game:SetProperty(MPT_VotesKey(teamID), "0/" .. tostring(#MPT_GetTeamHumanAliveMajorIDs(teamID)));
 		Game:SetProperty(MPT_VoteCountKey(teamID), 0);
-		print("[MPT_SurrenderVote] Vote started by player " .. tostring(initiator) .. " for team " .. tostring(teamID) .. " era " .. tostring(era));
+		Game:SetProperty(MPT_VoteStartTurnKey(teamID), Game.GetCurrentGameTurn());
+		print("[MPT_SurrenderVote] Vote started by player " .. tostring(initiator) .. " for team " .. tostring(teamID) .. " era " .. tostring(era) .. " turn " .. tostring(Game.GetCurrentGameTurn()));
 		return;
 	end
 
@@ -224,10 +240,11 @@ function OnMPT_SurrenderVoteGameEvent(localPlayerID, params)
 		if voter == nil then
 			return;
 		end
-		-- 校验投票者：同队、存活、人类
+		-- 校验投票者：同队、存活、人类（主要文明）、非观察者
 		local pVoter = Players[voter];
 		if pVoter == nil or not pVoter:IsMajor() or not pVoter:IsAlive()
-			or pVoter:GetTeam() ~= teamID then
+			or not pVoter:IsHuman() or pVoter:GetTeam() ~= teamID
+			or MPT_IsObserverPlayer(voter) then
 			return;
 		end
 
@@ -275,6 +292,40 @@ function OnMPT_SurrenderVoteGameEvent(localPlayerID, params)
 end
 
 GameEvents.MPT_SurrenderVote.Add(OnMPT_SurrenderVoteGameEvent);
+
+-- ============================================================================
+-- 投票时限：当前回合结束后的下一个回合结束时（约跨 2 个回合）关闭投票，
+-- 未过半则按「拒绝」结果处理（写 failed 属性，UI 检测后隐藏投票面板）。
+-- 发起回合 T：T 结束（边界1）→ T+1 期间仍可投 → T+1 结束（边界2）关闭。
+-- 即当前回合号 >= 发起回合号 + 2 时关闭。
+-- ============================================================================
+local function MPT_CheckVoteTimeouts()
+	local currentTurn :number = Game.GetCurrentGameTurn();
+	local era = MPT_GetCurrentEra();
+
+	-- 遍历所有曾存在的队伍，检查有活跃投票（本时代已发起、未失败、未投降）的超时
+	local checkedTeams = {};
+	for i = 0, PlayerManager.GetWasEverAliveCount() - 1 do
+		local pPlayer = Players[i];
+		if pPlayer ~= nil and pPlayer:IsMajor() then
+			local teamID = pPlayer:GetTeam();
+			if teamID ~= nil and teamID >= 0 and checkedTeams[teamID] ~= true then
+				checkedTeams[teamID] = true;
+				if Game:GetProperty(MPT_VoteStartedKey(era, teamID)) == 1
+					and Game:GetProperty(MPT_VoteFailedKey(era, teamID)) ~= 1
+					and not MPT_IsTeamSurrendered(teamID) then
+					local startTurn = Game:GetProperty(MPT_VoteStartTurnKey(teamID));
+					if startTurn ~= nil and currentTurn >= startTurn + 2 then
+						Game:SetProperty(MPT_VoteFailedKey(era, teamID), 1);
+						print("[MPT_SurrenderVote] Vote timed out for team " .. tostring(teamID) .. " era " .. tostring(era) .. " (rejected, started turn " .. tostring(startTurn) .. " now " .. tostring(currentTurn) .. ").");
+					end
+				end
+			end
+		end
+	end
+end
+
+GameEvents.OnGameTurnStarted.Add(MPT_CheckVoteTimeouts);
 
 -- ============================================================================
 -- ExposedMembers 暴露：UI 侧同步查询投票状态（Gameplay 定义、UI 读取，
