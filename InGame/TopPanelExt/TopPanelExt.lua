@@ -705,7 +705,8 @@ end
 -- 依赖 DealManager（与 Base/Assets/UI/DiplomacyDealView.lua 同款 API）：
 --   GetWorkingDeal / pDeal:AddItemOfType / pDealItem:SetValueType/SetAmount/SetDuration
 --   / pDealItem:IsValid / pDeal:RemoveItemByID / FindItemsByType / DealManager.SendWorkingDeal
--- 弹窗控件 MPT_TPE_SendPopup 定义于 TopPanel.xml 覆盖版（内嵌本 Context，全屏居中）。
+-- 弹窗控件 MPT_TPE_SendPopup 定义于 TopPanel.xml 覆盖版（内嵌本 Context，全屏暗化模态，
+-- 结构照抄原版 Popups/PopupDialog.xml，高度 auto 自适应无需 Lua SetSizeY）。
 -- ===========================================================================
 do
     local SendPopupIM = nil				-- 队友列表行实例管理器（惰性创建）
@@ -789,12 +790,10 @@ do
             Controls.MPT_TPE_SendTotal:SetText(SendNoTeammateStr)
         end
 
+        -- 弹窗高度全自动（Size auto + AutoSizePadding 随内容自适应，同原版 PopupDialog），
+        -- 只需重算列表与内容两个 Stack（Stack 有 CalculateSize，外层 auto Grid 自动跟随）
         Controls.MPT_TPE_SendList:CalculateSize()
-        -- 动态设置弹窗高度：原版 DropShadow 容器内部为 parent-100 内缩，内容 Stack 从顶部偏移 70 开始排列。
-        -- 高度 = 内容 Stack 总高 + 70(顶部偏移) + 60(底部留白)，parent 引用（Parchment/Frame/内缩容器）随确定高度正常铺满
-        local contentHeight : number = Controls.MPT_TPE_SendContent:GetSizeY();
-        if contentHeight == nil or contentHeight == 0 then contentHeight = 120; end		-- 兜底
-        Controls.MPT_TPE_SendPopup:SetSizeY(contentHeight + 130);
+        Controls.MPT_TPE_SendContent:CalculateSize()
         Controls.MPT_TPE_SendPopup:SetHide(false)
     end
 
