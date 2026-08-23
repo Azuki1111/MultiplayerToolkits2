@@ -31,6 +31,8 @@ local m_mpt_outcomeNotified :boolean = false;
 -- 本时代投票已失败（全部投完未过半）：面板保留显示到回合结束，回合结束才隐藏
 local m_mpt_voteFailed :boolean = false;		-- 本时代投票已失败
 local m_mpt_voteFailedHidden :boolean = false;	-- 失败后面板已在回合结束隐藏（隐藏后不再显示）
+-- 已处理过的投票标识（era_team）：检测新一轮投票（跨时代再发起）时重置失败隐藏标志
+local m_mpt_processedVoteID :string = "";
 
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
@@ -241,6 +243,17 @@ function MPT_RefreshVotePanel()
 		end
 	end
 
+	-- 新一轮投票检测：跨时代/新投票发起时重置失败隐藏标志
+	-- （第一次失败后 m_mpt_voteFailedHidden 置位永久隐藏；新投票应重新显示面板）
+	if state.started and not state.passed then
+		local voteID :string = tostring(state.era) .. "_" .. tostring(state.teamID);
+		if m_mpt_processedVoteID ~= voteID then
+			m_mpt_processedVoteID = voteID;
+			m_mpt_voteFailed = false;
+			m_mpt_voteFailedHidden = false;
+		end
+	end
+
 	-- 投票失败检测：全部投完未过半 → 置位（面板保留显示到回合结束，按钮禁用）
 	if not m_mpt_voteFailed and state.failed then
 		m_mpt_voteFailed = true;
@@ -336,6 +349,7 @@ local function MPT_QuickAttach()
 		m_mpt_outcomeNotified = false;
 		m_mpt_voteFailed = false;
 		m_mpt_voteFailedHidden = false;
+		m_mpt_processedVoteID = "";
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end
