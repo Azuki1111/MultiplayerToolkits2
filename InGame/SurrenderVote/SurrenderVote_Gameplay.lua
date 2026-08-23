@@ -499,9 +499,31 @@ GameEvents.MPT_RestartVote.Add(OnMPT_RestartVoteGameEvent);
 
 -- ============================================================================
 -- 重开投票时限：发起回合 + 2 未过半 → 按拒绝关闭（同投降投票时限）
+-- 首个回合（新游戏开始）时重置重开投票残留属性（跨存档持久化，防止
+-- 第二轮重开被第一轮残留的 PASSED/FAILED 误判）
 -- ============================================================================
+local m_mpt_restartResetDone :boolean = false;
+
 local function MPT_CheckRestartTimeout()
 	local era = MPT_GetCurrentEra();
+
+	-- 新游戏首个回合：重置重开投票全部属性（防跨存档残留）
+	if not m_mpt_restartResetDone then
+		m_mpt_restartResetDone = true;
+		-- 清本时代发起标志 + 已投票者标记（跨时代属性残留会锁死新一轮发起）
+		for i = 0, PlayerManager.GetWasEverAliveCount() - 1 do
+			local pPlayer = Players[i];
+			if pPlayer ~= nil then
+				Game:SetProperty("MPT_RESTART_VOTED_" .. i, nil);
+			end
+		end
+		Game:SetProperty(MPT_RestartPassedKey(), nil);
+		Game:SetProperty(MPT_RestartVotesKey(), nil);
+		Game:SetProperty(MPT_RestartVoteCountKey(), nil);
+		Game:SetProperty(MPT_RestartStartTurnKey(), nil);
+		print("[MPT_RestartVote] New game turn 1: reset restart vote properties.");
+	end
+
 	if Game:GetProperty(MPT_RestartStartedKey(era)) == 1
 		and Game:GetProperty(MPT_RestartFailedKey(era)) ~= 1
 		and Game:GetProperty(MPT_RestartPassedKey()) ~= 1 then

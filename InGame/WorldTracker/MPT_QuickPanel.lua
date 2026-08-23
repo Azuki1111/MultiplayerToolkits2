@@ -332,18 +332,16 @@ local function MPT_ExecuteRestart()
 
 	if bIsHost and not m_mpt_restartExecuted then
 		m_mpt_restartExecuted = true;
-		-- 1) 换随机种子（自动 +1，MPH OnHostRemap 行为）→ 新地图
-		--    设置前打印现值，便于排查地图种子为何随机
+		-- 1) 随机化地图+游戏种子（官方 API RegenerateSeeds，1.67/MPH 同款；
+		--    手动 MapConfiguration.SetValue 对引擎地图生成无效——引擎种子由
+		--    RegenerateSeeds 管理，重开时地图种子才会真正随机）
 		local oldGameSeed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED");
 		local oldMapSeed = MapConfiguration.GetValue("RANDOM_SEED");
-		print("[MPT_RestartVote] BEFORE seed set: game=" .. tostring(oldGameSeed) .. " map=" .. tostring(oldMapSeed));
-		GameConfiguration.SetValue("GAME_SYNC_RANDOM_SEED",
-			(oldGameSeed or 0) + 1);
-		MapConfiguration.SetValue("RANDOM_SEED",
-			(oldMapSeed or 0) + 1);
+		print("[MPT_RestartVote] BEFORE RegenerateSeeds: game=" .. tostring(oldGameSeed) .. " map=" .. tostring(oldMapSeed));
+		GameConfiguration.RegenerateSeeds();
 		local newGameSeed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED");
 		local newMapSeed = MapConfiguration.GetValue("RANDOM_SEED");
-		print("[MPT_RestartVote] AFTER seed set: game=" .. tostring(newGameSeed) .. " map=" .. tostring(newMapSeed));
+		print("[MPT_RestartVote] AFTER RegenerateSeeds: game=" .. tostring(newGameSeed) .. " map=" .. tostring(newMapSeed));
 		Network.BroadcastGameConfig();
 		-- 2) 暂停（MPH OnLocalHostRestart：SetWantsPause + BroadcastPlayerInfo）
 		local localPlayerConfig = PlayerConfigurations[Network.GetLocalPlayerID()];
