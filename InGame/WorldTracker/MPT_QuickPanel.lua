@@ -46,6 +46,10 @@ local m_mpt_restartCountdown :number = -1;	-- -1 = 未激活；10→0 递减
 local RESTART_COUNTDOWN_SEC :number = 10;
 -- 客户端：倒计时结束后等待房主重载完成信号（GAME_HOST_IS_JUST_RELOADING → "N"）再请求快照
 local m_mpt_snapshotArmed :boolean = false;
+-- 客户端：本会话已发过同步完成标记（防重复发）
+local m_mpt_syncDoneSent :boolean = false;
+-- 房主：重开后等待所有客户端同步完成（全齐后取消暂停）
+local m_mpt_waitingSync :boolean = false;
 
 -- ============================================================================
 -- 本地玩家是否为观察者（LEADER_SPECTATOR；禁发起投降、禁投票、不弹结算）
@@ -332,7 +336,20 @@ local function MPT_ExecuteRestart()
 
 	if bIsHost and not m_mpt_restartExecuted then
 		m_mpt_restartExecuted = true;
-		-- 1) 随机化地图+游戏种子（官方 API RegenerateSeeds，1.67/MPH 同款；
+		-- 第一步：取消其他玩家的暂停（1.67 OnReallyRestartGame 同款；
+		-- SetWantsPause 本地改对方配置并广播即可生效）
+		if GameConfiguration.IsPaused() == true then
+			local pausePlayerID = GameConfiguration.GetPausePlayer();
+			if pausePlayerID ~= nil and pausePlayerID ~= Network.GetGameHostPlayerID() then
+				local pauseCfg = PlayerConfigurations[pausePlayerID];
+				if pauseCfg ~= nil then
+					pauseCfg:SetWantsPause(false);
+					Network.BroadcastPlayerInfo();
+					print("[MPT_RestartVote] Step1: unpaused other player " .. tostring(pausePlayerID));
+				end
+			end
+		end
+		-- 2) 随机化地图+游戏种子（官方 API RegenerateSeeds，1.67/MPH 同款；
 		--    手动 MapConfiguration.SetValue 对引擎地图生成无效——引擎种子由
 		--    RegenerateSeeds 管理，重开时地图种子才会真正随机）
 		local oldGameSeed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED");
@@ -343,16 +360,16 @@ local function MPT_ExecuteRestart()
 		local newMapSeed = MapConfiguration.GetValue("RANDOM_SEED");
 		print("[MPT_RestartVote] AFTER RegenerateSeeds: game=" .. tostring(newGameSeed) .. " map=" .. tostring(newMapSeed));
 		Network.BroadcastGameConfig();
-		-- 2) 暂停（MPH OnLocalHostRestart：SetWantsPause + BroadcastPlayerInfo）
+		-- 3) 暂停（MPH OnLocalHostRestart：SetWantsPause + BroadcastPlayerInfo）
 		local localPlayerConfig = PlayerConfigurations[Network.GetLocalPlayerID()];
 		if localPlayerConfig ~= nil then
 			localPlayerConfig:SetWantsPause(true);
 			Network.BroadcastPlayerInfo();
 		end
-		-- 3) 置重载标志并广播（房主重载完成后会置回 "N"）
+		-- 4) 置重载标志并广播（房主重载完成后会置回 "N"）
 		GameConfiguration.SetValue("GAME_HOST_IS_JUST_RELOADING", "Y");
 		Network.BroadcastGameConfig();
-		-- 4) 重启
+		-- 5) 重启
 		print("[MPT_RestartVote] Host calling RestartGame now.");
 		Network.RestartGame();
 	elseif not bIsHost and not m_mpt_snapshotRequested then
@@ -381,6 +398,72 @@ local function MPT_HandleRestartExecution(restartState)
 	end
 	-- 倒计时显示（整秒向上取整）
 	Controls.VoteCountdownLabel:SetText(Locale.Lookup("LOC_MPT_RESTART_COUNTDOWN", math.ceil(m_mpt_restartCountdown)));
+end
+
+-- ============================================================================
+-- 客户端本地首回合：已加载完新游戏 → 发同步完成标记（EXECUTE_SCRIPT → 房主）
+-- 房主据此统计到齐后取消暂停（第七步；不用 Chat）
+-- ============================================================================
+local function MPT_OnLocalTurnBegin()
+	if m_mpt_syncDoneSent then
+		return;
+	end
+	m_mpt_syncDoneSent = true;
+	local localPlayer :number = Game.GetLocalPlayer();
+	if localPlayer ~= nil and localPlayer >= 0 then
+		local kParams :table = {
+			OnStart = "MPT_SyncDone",
+			player = localPlayer,
+		};
+		UI.RequestPlayerOperation(Network.GetGameHostPlayerID(), PlayerOperations.EXECUTE_SCRIPT, kParams);
+		print("[MPT_SyncDone] Local turn begin, sent sync done for player " .. tostring(localPlayer));
+	end
+end
+
+-- ============================================================================
+-- 房主轮询：等待所有客户端同步完成（MPT_SYNC_DONE_<id> 全 1）→ 取消暂停（第七步）
+-- 在 MPT_QuickOnUpdate 每帧调用；m_mpt_waitingSync 由房主重载完成（置 N）时置 true
+-- ============================================================================
+local function MPT_CheckSyncAllDone()
+	if not m_mpt_waitingSync then
+		return;
+	end
+	if Network.GetLocalPlayerID() ~= Network.GetGameHostPlayerID() then
+		return;
+	end
+
+	local bAllDone :boolean = true;
+	for i = 0, PlayerManager.GetWasEverAliveCount() - 1 do
+		local pCfg = PlayerConfigurations[i];
+		if pCfg ~= nil and pCfg:IsHuman() then
+			-- 排除观察者（无需同步完成）；房主自己重载完成即视为完成
+			if pCfg:GetLeaderTypeName() ~= "LEADER_SPECTATOR"
+				and i ~= Network.GetGameHostPlayerID()
+				and Players[i] ~= nil and Players[i]:IsAlive() then
+				if Game:GetProperty("MPT_SYNC_DONE_" .. i) ~= 1 then
+					bAllDone = false;
+					break;
+				end
+			end
+		end
+	end
+
+	if bAllDone then
+		m_mpt_waitingSync = false;
+		print("[MPT_RestartVote] Step7: all clients synced, unpausing game.");
+		if GameConfiguration.IsPaused() == true then
+			local pausePlayerID = GameConfiguration.GetPausePlayer();
+			local pauseCfg = PlayerConfigurations[pausePlayerID];
+			if pauseCfg ~= nil then
+				pauseCfg:SetWantsPause(false);
+				Network.BroadcastPlayerInfo();
+			end
+		end
+		-- 清标记（防第二轮残留）
+		for i = 0, PlayerManager.GetWasEverAliveCount() - 1 do
+			Game:SetProperty("MPT_SYNC_DONE_" .. i, nil);
+		end
+	end
 end
 
 -- ============================================================================
@@ -603,6 +686,8 @@ local function MPT_QuickAttach()
 			local curGameSeed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED");
 			local curMapSeed = MapConfiguration.GetValue("RANDOM_SEED");
 			print("[MPT_RestartVote] Host reload complete, JUST_RELOADING=N. config seeds: game=" .. tostring(curGameSeed) .. " map=" .. tostring(curMapSeed));
+			-- 进入等待所有客户端同步完成状态（第七步）
+			m_mpt_waitingSync = true;
 		end
 
 		-- 新会话（进房）重置结算/投票失败标志（Lua 状态跨房间存续，见 AGENTS.md）
@@ -617,6 +702,8 @@ local function MPT_QuickAttach()
 		m_mpt_voteType = "surrender";
 		m_mpt_restartCountdown = -1;
 		m_mpt_snapshotArmed = false;
+		m_mpt_syncDoneSent = false;
+		m_mpt_waitingSync = false;
 		-- 挂载后立即刷新一次：观察者按钮禁用/投票状态/结算检测立即生效
 		MPT_RefreshVotePanel();
 	end
@@ -626,6 +713,9 @@ end
 -- 每帧刷新（投票状态轮询 + 回合结束隐藏失败投票面板）
 -- ============================================================================
 local function MPT_QuickOnUpdate()
+	-- 房主：等待所有客户端同步完成 → 取消暂停（第七步）
+	MPT_CheckSyncAllDone();
+
 	-- 重开投票通过后的倒计时递减（每帧用 GetLastTimeDelta）
 	if m_mpt_restartCountdown > 0 then
 		m_mpt_restartCountdown = m_mpt_restartCountdown - UIManager:GetLastTimeDelta();
@@ -683,6 +773,8 @@ local function MPT_QuickInitialize()
 	Controls.VoteDisagreeButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
 	Events.LoadGameViewStateDone.Add(MPT_QuickAttach);
+	-- 客户端本地首回合 → 发同步完成标记（重开第七步；不用 Chat）
+	Events.LocalPlayerTurnBegin.Add(MPT_OnLocalTurnBegin);
 	-- 每帧轮询（不可见 AlphaAnim 的 RegisterAnimCallback；Civ6 无 SetUpdateHandler）
 	Controls.MPT_PollAnim:RegisterAnimCallback(MPT_QuickOnUpdate);
 end

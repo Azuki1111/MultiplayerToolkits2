@@ -498,6 +498,22 @@ end
 GameEvents.MPT_RestartVote.Add(OnMPT_RestartVoteGameEvent);
 
 -- ============================================================================
+-- 同步完成标记（条目8续2 第七步）：客户端本地首回合（已加载完）经
+-- EXECUTE_SCRIPT 发来 → 写 MPT_SYNC_DONE_<playerID>=1。
+-- 房主 UI 侧轮询所有人类真人玩家标记齐全后取消暂停。
+-- 不用 Chat（用户既定），通信走 UI.RequestPlayerOperation(EXECUTE_SCRIPT)。
+-- ============================================================================
+function OnMPT_SyncDoneGameEvent(localPlayerID, params)
+	if params == nil or params.player == nil then
+		return;
+	end
+	Game:SetProperty("MPT_SYNC_DONE_" .. params.player, 1);
+	print("[MPT_SyncDone] Player " .. tostring(params.player) .. " sync complete.");
+end
+
+GameEvents.MPT_SyncDone.Add(OnMPT_SyncDoneGameEvent);
+
+-- ============================================================================
 -- 重开投票时限：发起回合 + 2 未过半 → 按拒绝关闭（同投降投票时限）
 -- 首个回合（新游戏开始）时重置重开投票残留属性（跨存档持久化，防止
 -- 第二轮重开被第一轮残留的 PASSED/FAILED 误判）
@@ -516,6 +532,8 @@ local function MPT_CheckRestartTimeout()
 			if pPlayer ~= nil then
 				Game:SetProperty("MPT_RESTART_VOTED_" .. i, nil);
 			end
+			-- 清同步完成标记（防第七步误判）
+			Game:SetProperty("MPT_SYNC_DONE_" .. i, nil);
 		end
 		Game:SetProperty(MPT_RestartPassedKey(), nil);
 		Game:SetProperty(MPT_RestartVotesKey(), nil);
