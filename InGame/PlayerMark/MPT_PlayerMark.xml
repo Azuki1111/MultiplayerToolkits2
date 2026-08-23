@@ -186,7 +186,11 @@
 		<Container ID="EntryRoot" Size="parent,52" Anchor="L,C">
 			<GridButton ID="RowButton" Style="ButtonControl" Size="parent,parent" Offset="-4,0">
 				<Image ID="TagIconLabel" Anchor="L,C" Offset="15,0" Size="22,22" Icon="OnlineYellowPingPig"/>
-				<ScrollTextField ID="NameLabel" Size="300,16" Anchor="C,C" Style="FontNormal19" FontStyle="stroke" String="Name"/>
+				<!-- ============================================================================ -->
+				<!-- 条目11修复：FontNormal19 未定义（字体样式表无 19 号，渲染回退不可控致昵称显小），改 FontNormal20；高度 16 容不下 20 号字行高，抬到 24 -->
+				<!-- <ScrollTextField ID="NameLabel" Size="300,16" Anchor="C,C" Style="FontNormal19" FontStyle="stroke" String="Name"/> -->
+				<ScrollTextField ID="NameLabel" Size="300,24" Anchor="C,C" Style="FontNormal20" FontStyle="stroke" String="Name"/>
+				<!-- ============================================================================ -->
 			</GridButton>
 			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
 		</Container>

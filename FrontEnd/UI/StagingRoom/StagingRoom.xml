@@ -421,7 +421,7 @@
 			<Grid Anchor="C,T" Size="parent-10,39" Texture="Controls_DecoFrame" SliceCorner="19,18" SliceSize="1,1" SliceTextureSize="40,38" Color="41,74,108,255" Offset="0,6"/>
 			<Label Style="ShellHeader" Anchor="C,C" String="LOC_MPT_PLAYERMARK_TITLE"/>
 			<!-- 条目4.8续：隐身开关复选框（头部左侧；勾选=隐藏自身 SQL 公共标记，设置存 MPT_PlayerInfo/Settings 并广播 HiddenPkayerInfo；样式仿 1.67 HiddenPlayerInfoCheck） -->
-			<CheckBox ID="PlayerMarkHiddenMarkCheck" Anchor="L,C" ConsumeMouseOver="1" Offset="14,6" ButtonSize="35,35" BoxOnLeft="1" ButtonTexture="Controls_CheckboxCircle" CheckTexture="Controls_CheckboxCircle" CheckSize="35,35" CheckTextureOffset="0,35" Style="FontNormal16" NoStateChange="1" ToolTip="LOC_MPT_PLAYERMARK_HIDDEN_MARK_TT">
+			<CheckBox ID="PlayerMarkHiddenMarkCheck" Anchor="L,C" ConsumeMouseOver="1" Offset="24,0" ButtonSize="35,35" BoxOnLeft="1" ButtonTexture="Controls_CheckboxCircle" CheckTexture="Controls_CheckboxCircle" CheckSize="35,35" CheckTextureOffset="0,35" Style="FontNormal16" NoStateChange="1" ToolTip="LOC_MPT_PLAYERMARK_HIDDEN_MARK_TT">
 				<Label Offset="32,0" Anchor="L,C" String="LOC_MPT_PLAYERMARK_HIDDEN_MARK" Style="FontNormal16"/>
 			</CheckBox>
 			<Grid Style="Divider3Grid" Size="parent+4,8" Anchor="L,B" Offset="-2,0"/>
@@ -902,7 +902,11 @@
 		<Container ID="EntryRoot" Size="parent,52" Anchor="L,C">
 			<GridButton ID="RowButton" Style="ButtonControl" Size="parent,parent" Offset="-4,0">
 				<Image ID="TagIconLabel" Anchor="L,C" Offset="15,0" Size="22,22" Icon="OnlineYellowPingPig"/>
-				<ScrollTextField ID="NameLabel" Size="300,16" Anchor="C,C" Style="FontNormal19" FontStyle="stroke" String="Name"/>
+				<!-- ============================================================================ -->
+				<!-- 条目11修复：FontNormal19 未定义（字体样式表无 19 号，渲染回退不可控致昵称显小），改 FontNormal20；高度 16 容不下 20 号字行高，抬到 24 -->
+				<!-- <ScrollTextField ID="NameLabel" Size="300,16" Anchor="C,C" Style="FontNormal19" FontStyle="stroke" String="Name"/> -->
+				<ScrollTextField ID="NameLabel" Size="300,24" Anchor="C,C" Style="FontNormal20" FontStyle="stroke" String="Name"/>
+				<!-- ============================================================================ -->
 			</GridButton>
 			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
 		</Container>
