@@ -4,8 +4,9 @@
 <!-- 空 Context，经 AddUserInterfaces(Context=InGame) 注册；同名 Lua              -->
 <!-- MPT_QuickPanel.lua 自动执行，LoadGameViewStateDone 时把本面板 ChangeParent   -->
 <!-- 挂进原版 /InGame/WorldTracker/PanelStack（仿作弊面板 mod 的挂载方式）。        -->
-<!-- 点击标题 HeaderTitle 展开/收起；展开后显示「投降」「重新开始」两按钮，          -->
-<!-- 按钮响应暂不配置（空回调 + TODO，见 Lua）。                                    -->
+<!-- 点击标题 HeaderTitle 展开/收起；展开后显示「投降」「重新开始」两按钮。          -->
+<!-- 「投降」为团队投降投票（条目8续）：展开区含投票进度/同意反对按钮/状态提示，      -->
+<!-- 仅同队玩家可见；投票状态经 Game:SetProperty 跨端同步（见 SurrenderVote_Gameplay.lua）-->
 <!-- ============================================================================ -->
 <Context>
 	<Grid ID="QuickPanel" Offset="0,0" Size="296,25" Texture="Controls_DropdownPanel" Color="143,122,82,200" Anchor="L,T" ConsumeMouseOver="1" Hidden="0">
@@ -15,10 +16,21 @@
 				<Button ID="HeaderTitle" Anchor="C,C" Offset="0,5" ConsumeAllMouse="1" Size="250,23">
 					<Label ID="PanelTitle" Anchor="C,C" Offset="0,7" Align="Center" Size="200,90" WrapWidth="Parent-40" Style="FontFlair16" Color2="143,122,82,255" Color0="106,93,69,230" SmallCaps="20" SmallCapsLeading="0" SmallCapsType="EveryWord" KerningAdjustment="0" String="LOC_MPT_QUICK_HEADER"/>
 				</Button>
-				<!-- 展开区：投降 / 重新开始 两个按钮（响应未配置，TODO 见 Lua） -->
+				<!-- 展开区：投降 / 重新开始 两个按钮 -->
 				<Stack ID="ExpandStack" Anchor="C,T" Offset="0,30" StackGrowth="Down" Padding="4" Hidden="1">
 					<GridButton ID="SurrenderButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_SURRENDER"/>
 					<GridButton ID="RestartButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_RESTART"/>
+					<!-- 条目8续：投降投票状态区（同队玩家可见；发起后显示进度与投票按钮） -->
+					<Container ID="VoteArea" Anchor="C,T" Size="286,auto" Hidden="1">
+						<Stack Anchor="C,T" StackGrowth="Down" Padding="2">
+							<Label ID="VoteStatusLabel" Anchor="C,T" Style="FontNormal12" Color="255,255,255,255" String="LOC_MPT_VOTE_TITLE" WrapWidth="270" Align="Center"/>
+							<Label ID="VoteProgressLabel" Anchor="C,T" Style="FontNormal12" Color="208,212,217,255" WrapWidth="270" Align="Center"/>
+							<Stack Anchor="C,T" StackGrowth="Right" StackPadding="6">
+								<GridButton ID="VoteAgreeButton" Style="ButtonConfirm" Anchor="C,T" String="LOC_MPT_VOTE_AGREE" Size="135,30"/>
+								<GridButton ID="VoteDisagreeButton" Style="ButtonRed" Anchor="C,T" String="LOC_MPT_VOTE_DISAGREE" Size="135,30"/>
+							</Stack>
+						</Stack>
+					</Container>
 				</Stack>
 			</Container>
 		</Box>

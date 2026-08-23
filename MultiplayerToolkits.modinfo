@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>24</Version>
+		<Version>25</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -291,6 +291,21 @@
 			<File>InGame/WorldTracker/QuickPanel_zh_Hans_CN.sql</File>
 			<File>InGame/WorldTracker/QuickPanel_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目8续：投降投票 Gameplay 侧——EXECUTE_SCRIPT(MPT_SurrenderVote) 汇总投票+过半判定+城市叛变自由城；
+			Game:SetProperty 记录发起标志/票数/判负（每时代每队一次）；参考乔尔定制玩法mod RegicideVictory/GiftKingGameplay -->
+		<AddGameplayScripts id="IG_SurrenderVote_Gameplay">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/SurrenderVote/SurrenderVote_Gameplay.lua</File>
+		</AddGameplayScripts>
+		<UpdateText id="IG_SurrenderVote_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/SurrenderVote/SurrenderVote_zh_Hans_CN.sql</File>
+			<File>InGame/SurrenderVote/SurrenderVote_en_US.sql</File>
+		</UpdateText>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -339,5 +354,8 @@
 		<File>InGame/WorldTracker/MPT_QuickPanel.lua</File>
 		<File>InGame/WorldTracker/QuickPanel_zh_Hans_CN.sql</File>
 		<File>InGame/WorldTracker/QuickPanel_en_US.sql</File>
+		<File>InGame/SurrenderVote/SurrenderVote_Gameplay.lua</File>
+		<File>InGame/SurrenderVote/SurrenderVote_zh_Hans_CN.sql</File>
+		<File>InGame/SurrenderVote/SurrenderVote_en_US.sql</File>
 	</Files>
 </Mod>
