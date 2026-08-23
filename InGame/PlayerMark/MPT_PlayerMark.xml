@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================ -->
+<!-- 条目11：游戏内玩家标记面板（移植条目4.4 PlayerMarkPanel 到 InGame）             -->
+<!-- 来源：FrontEnd/UI/StagingRoom/StagingRoom.xml 条目4.4 区块，整体复制零尺寸改动  -->
+<!-- （1024×parent 全高面板、左右列布局、全部控件原样；AddUserInterfaces 空 Context   -->
+<!--  根即屏幕尺寸，与前端 StagingRoom 根同为屏幕尺寸，故 parent 语义一致）。         -->
+<!-- 游戏内差异：                                                                    -->
+<!--   · 无打开按钮（前端 PlayerMarkButton 在 BottomLeftButtonStack）；游戏内由        -->
+<!--     QuickPanel（条目8）展开区「玩家标记」按钮经 LuaEvents.MPT_PlayerMark_Toggle   -->
+<!--     触发（见 MPT_PlayerMark.lua）；                                              -->
+<!--   · 数据走条目4.3 ModGroup 组名管线（Modding 组存储 API 游戏内可用，用户实证），  -->
+<!--     与前端 4.4 面板同一份存档双向互通；                                          -->
+<!--   · 确认框用 MakeInstance PopupDialog（游戏内 EndGameMenu.xml:234 同款）。        -->
+<!-- 注册：AddUserInterfaces(Context=InGame) + ImportFiles 同名 Lua 自动执行。        -->
+<!-- ============================================================================ -->
+<Context>
+
+	<!-- 条目4.4：点击面板外关闭（仿 ChangelogModalBlocker；声明在面板前，位于面板下层） -->
+	<GridButton ID="PlayerMarkModalBlocker" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1"/>
+	<!-- 条目4.4：玩家标记管理面板（纯本地玩家档案：好友/一般/黑名单标记+记事本；布局仿原版 Mods.xml 全页化——
+	     1024×parent，左列 402 过滤/搜索/排序/列表/添加，右列 parent-415 详情头+内联编辑；仅 关闭钮 / 点击面板外 / ESC 关闭） -->
+	<Container ID="PlayerMarkPanel" Anchor="C,C" Size="1024,parent" Hidden="1">
+		<!-- 底板 ConsumeMouse=1：拦截面板区域点击，防止穿透到下层遮挡层误关面板 -->
+		<Box Anchor="C,C" Size="parent,parent" Color="11,27,40,255" ConsumeMouse="1"/>
+		<!-- 头部（照 Mods.xml：DecoFrame + ShellHeader 标题 + 上下 Divider3Grid） -->
+		<Container Size="parent,54">
+			<Grid Anchor="C,T" Size="parent-10,39" Texture="Controls_DecoFrame" SliceCorner="19,18" SliceSize="1,1" SliceTextureSize="40,38" Color="41,74,108,255" Offset="0,6"/>
+			<Label Style="ShellHeader" Anchor="C,C" String="LOC_MPT_PLAYERMARK_TITLE"/>
+			<Grid Style="Divider3Grid" Size="parent+4,8" Anchor="L,B" Offset="-2,0"/>
+		</Container>
+
+		<Grid Anchor="C,C" Size="parent+9,parent+9" Style="WindowFrameTopOnly"/>
+		<Button ID="PlayerMarkCloseButton" Anchor="R,T" Offset="-3,-1" Size="44,44" Texture="Controls_CloseLarge"/>
+
+		<!-- 内容区（左列 402 + 右列 parent-415，比例同 Mods.xml InstalledTabPanel） -->
+		<Container Size="parent-30,parent-74" Anchor="C,T" Offset="0,64">
+
+			<!-- 左列：搜索框 + 排序(左)/三过滤复选框(右,垂直堆叠)同区块 + 玩家列表 + 添加按钮（结构照 Mods.xml 左列） -->
+			<Grid Style="SubContainer" Size="402,parent-6" Anchor="L,T" Offset="0,0">
+				<Stack Padding="5">
+					<Grid Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Offset="0,10" Size="parent,26">
+						<EditBox ID="PlayerMarkSearchEditBox" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-10,16" MaxLength="40" String="" ToolTip="LOC_MPT_PLAYERMARK_SEARCH_TT" CallOnChar="1"/>
+						<!-- 占位文本（Label 不吃鼠标事件；Lua 按焦点/内容控制显隐，替代 Mods.lua 的 Search 框架） -->
+						<Label ID="PlayerMarkSearchPlaceholder" Anchor="L,C" Offset="24,0" Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_SEARCH_NAME"/>
+					</Grid>
+					<!-- 排序切换（左侧垂直居中）+ 三个过滤复选框（右侧垂直堆叠）同一区块 -->
+					<Container Size="parent,80">
+						<GridButton ID="PlayerMarkSortButton" Style="ButtonControl" Anchor="L,C" Size="280,80" Offset="12,0" FontStyle="Stroke" ColorSet="ButtonCS" ToolTip="LOC_MPT_PLAYERMARK_SORT_TT"/>
+						<Stack ID="PlayerMarkFilterStack" Anchor="R,C" StackGrowth="Down" Padding="2" Offset="10,0">
+							<CheckBox ID="PlayerMarkFilterFriend" Style="CheckBoxModsControl" Anchor="R,T" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_FRIEND" ToolTip="LOC_MPT_PLAYERMARK_FILTER_FRIEND_TT"/>
+							<CheckBox ID="PlayerMarkFilterNormal" Style="CheckBoxModsControl" Anchor="R,T" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_NORMAL" ToolTip="LOC_MPT_PLAYERMARK_FILTER_NORMAL_TT"/>
+							<CheckBox ID="PlayerMarkFilterBlack" Style="CheckBoxModsControl" Anchor="R,T" Size="96,24" String="LOC_MPT_PLAYERMARK_FILTER_BLACK" ToolTip="LOC_MPT_PLAYERMARK_FILTER_BLACK_TT"/>
+						</Stack>
+					</Container>
+					<Box Color="10,60,78,255" Anchor="L,B" Size="parent,3" Offset="0,2"/>
+					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-216" AutoScrollBar="1">
+						<Stack ID="PlayerMarkListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
+						<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
+					</ScrollPanel>
+					<Box Color="10,60,78,255" Anchor="C,T" Size="parent+4,3" Offset="-4,0"/>
+				</Stack>
+				<Label ID="PlayerMarkListEmptyLabel" Anchor="C,C" Offset="0,60" Style="FontNormal16" Align="Center" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_LIST" Hidden="1"/>
+				<GridButton ID="PlayerMarkAddButton" Style="MainButtonSmall" Anchor="C,B" Offset="0,8" Size="parent-10,52" String="LOC_MPT_PLAYERMARK_ADD"/>
+			</Grid>
+
+			<!-- 右列：玩家信息（DecoGrid + 水印，照 Mods.xml 右列；未选中显示空态提示；改动暂存，保存才落盘） -->
+			<Grid Style="SubContainer" Size="parent-415,parent-6" Anchor="R,T" Offset="0,0">
+				<Grid Style="DecoGrid" Anchor="C,C" Size="parent-10,parent-10" Color="26,61,90,255">
+					<Image Anchor="C,C" Size="457,469" Texture="AdditionalContent_Watermark"/>
+					<Label ID="PlayerMarkEmptyHint" Anchor="C,C" Style="FontNormal16" Align="Center" WrapWidth="320" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_SELECT"/>
+					<Container ID="PlayerMarkEditor" Size="parent,parent" Hidden="1">
+
+						<!-- 详情头（仿 Mods.xml 详情头：IconBacking50 + CommunityContent_50 贴图 + 昵称标题 + 分隔条 + NetworkIdentifier） -->
+						<Grid Size="parent-20,90" Anchor="C,T" Offset="0,10" Style="SubContainer">
+							<Image Texture="AdditionalContent_IconBacking50" Size="70,70" Anchor="L,C" Offset="6,0">
+								<Image Anchor="C,C" Size="50,50" Offset="4,0" Texture="CommunityContent_50"/>
+							</Image>
+							<Stack Anchor="C,C" Offset="30,0" StackPadding="7">
+								<Label ID="PlayerMarkHeaderName" Anchor="C,C" Style="FontFlair20" SmallCaps="22" SmallCapsType="EveryWord" TruncateWidth="400" TruncatedTooltip="1"/>
+								<Box Color="10,60,78,255" Anchor="C,C" Size="parent-120,3"/>
+								<Label ID="PlayerMarkHeaderId" Style="FontNormal16" Anchor="C,C"/>
+							</Stack>
+						</Grid>
+
+						<!-- 编辑字段区（字段与顺序同改版前；ID 只读展示已上移至详情头；Stack 固定高 parent-190=顶110+底80之外剩余空间，详情 ScrollPanel 以 parent-235 撑满剩余高度——235=上方固定高控件累计200+7个间距35） -->
+						<Stack ID="PlayerMarkEditorStack" Anchor="C,T" Offset="0,110" StackGrowth="Down" Padding="5" Size="parent-40,parent-190">
+							<!-- 昵称标签行 + 右侧「最近修改」同行 -->
+							<Container Size="parent,18">
+								<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_NAME" Anchor="L,C"/>
+								<Label ID="PlayerMarkModifiedLabel" Style="FontNormal14" Color="GreatPeopleRow" Anchor="R,C" String="" Offset="6,0"/>
+							</Container>
+							<Grid Style="EditTextButton" Size="parent,36">
+								<EditBox ID="PlayerMarkNameEdit" Style="FontNormal20" Anchor="L,C" Offset="28,0" Size="parent-40,20" MaxLength="45" String="" CallOnChar="1"/>
+							</Grid>
+							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
+							<!-- 标签类型下拉 + Steam 主页按钮同一行（PullDownBlue 同 Mods.xml 排序下拉；容器高 24 与原下拉行一致，不影响详情 ScrollPanel parent-235 高度链；Steam 按钮仅 17 位纯数字 ID 可用，Lua 控制禁用态） -->
+							<Container Size="parent,24">
+								<PullDown ID="PlayerMarkTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,C" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
+								<GridButton ID="PlayerMarkSteamButton" Style="MainButtonSmall" Anchor="R,C" Size="110,24" String="LOC_MPT_PLAYERMARK_STEAM_PROFILE" ToolTip="LOC_MPT_PLAYERMARK_STEAM_PROFILE_TT"/>
+							</Container>
+							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
+							<Grid Style="EditTextButton" Size="parent,36">
+								<EditBox ID="PlayerMarkBriefEdit" Style="FontNormal20" Anchor="L,C" Offset="24,0" Size="parent-40,20" MaxLength="128" String="" CallOnChar="1"/>
+							</Grid>
+							<Label Style="FontNormal14" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_FIELD_DETAILS"/>
+							<!-- 详情输入行（在展示列表上方；回车或点添加即入暂存列表） -->
+							<Container Size="parent,32">
+								<Grid Style="EditTextButton" Anchor="L,C" Size="parent-70,36">
+									<EditBox ID="PlayerMarkDetailEdit" Style="FontNormal20" Anchor="L,C" Offset="24,0" Size="parent-34,20" MaxLength="128" String="" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_INPUT_TT"/>
+								</Grid>
+								<GridButton ID="PlayerMarkAddDetailButton" Style="MainButtonSmall" Anchor="R,C" Size="60,32" String="LOC_MPT_PLAYERMARK_ADD_DETAIL"/>
+							</Container>
+							<ScrollPanel ID="PlayerMarkDetailScrollPanel" Anchor="L,T" Offset="0,0" Size="parent,parent-235" Vertical="1" AutoScrollBar="1">
+								<Stack ID="PlayerMarkDetailStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
+								<ScrollBar Style="Slider_Blue" Anchor="R,T" AnchorSide="O,I" Offset="2,0"/>
+							</ScrollPanel>
+						</Stack>
+
+						<!-- 底部操作行（仿 Mods.xml Enable/Disable：分隔条 + 按钮横排居中） -->
+						<Box Color="10,60,78,255" Anchor="C,B" Size="parent,3" Offset="0,67"/>
+						<Stack Anchor="C,B" Offset="0,4" StackGrowth="Right" Padding="4">
+							<GridButton ID="PlayerMarkSaveButton" Style="MainButtonSmall" Size="170,52" String="LOC_MPT_PLAYERMARK_SAVE"/>
+							<GridButton ID="PlayerMarkCancelButton" Style="MainButtonSmall" Size="170,52" String="LOC_CANCEL"/>
+							<GridButton ID="PlayerMarkDeleteButton" Style="MainButtonSmall" Size="170,52" String="LOC_MPT_PLAYERMARK_DELETE" ToolTip="LOC_MPT_PLAYERMARK_DELETE_TT"/>
+						</Stack>
+					</Container>
+				</Grid>
+			</Grid>
+		</Container>
+	</Container>
+
+	<!-- 条目4.4：添加玩家弹窗（仿 1.67 NameModGroupPopup / 原版 Mods.xml 组名弹窗；创建按钮仅在 ID 合法且昵称非空时可用，校验提示显示在其 tooltip 上，重复 ID 自动转为编辑已有记录；标签选择为 PullDownBlue 下拉，同右侧面板） -->
+	<Box ID="PlayerMarkEditPopup" Color="0,0,0,150" Size="parent,parent" ConsumeMouseOver="1" Hidden="1" IgnoreTutorial="1">
+		<Grid Size="480,370" Anchor="C,C" Style="DropShadow2" Color="255,255,255,200">
+			<Grid ID="PlayerMarkEditPopupWindow" Size="parent-40,parent-20" Anchor="C,C" Style="WindowFrameTitle">
+				<Label Style="BlueGlow" Offset="0,16" Anchor="C,T" String="LOC_MPT_PLAYERMARK_ADD"/>
+				<Stack Offset="0,52" Size="parent-60,0" StackGrowth="Down" Anchor="C,T" Padding="8">
+					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_ID"/>
+					<Grid Style="EditTextButton" Size="parent,26">
+						<EditBox ID="PlayerMarkPopupIdEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="32" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_ID_TT" CallOnChar="1"/>
+					</Grid>
+					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_NAME"/>
+					<Grid Style="EditTextButton" Size="parent,26">
+						<EditBox ID="PlayerMarkPopupNameEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="45" String="" ToolTip="LOC_MPT_PLAYERMARK_POPUP_NAME_TT" CallOnChar="1"/>
+					</Grid>
+					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_TAG"/>
+					<Container Size="parent,24">
+						<PullDown ID="PlayerMarkPopupTagPullDown" Style="PullDownBlue" Size="180,24" Anchor="L,C" ScrollThreshold="110" AutoSizePopUp="1" SpaceForScroll="0"/>
+						<!-- Steam 主页按钮：以当前输入框 ID 打开 Steam 个人主页；仅 17 位纯数字 ID 可用（Epic 32 位禁用），禁用态随字段校验实时刷新 -->
+						<GridButton ID="PlayerMarkPopupSteamButton" Style="MainButtonSmall" Anchor="R,C" Size="110,24" String="LOC_MPT_PLAYERMARK_STEAM_PROFILE" ToolTip="LOC_MPT_PLAYERMARK_STEAM_PROFILE_TT"/>
+					</Container>
+					<Label Style="FontNormal16" Color="30,30,30,255" String="LOC_MPT_PLAYERMARK_FIELD_BRIEF"/>
+					<Grid Style="EditTextButton" Size="parent,26">
+						<EditBox ID="PlayerMarkPopupBriefEdit" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-34,16" MaxLength="128" String="" CallOnChar="1"/>
+					</Grid>
+					<Container Size="parent,50">
+						<GridButton ID="PlayerMarkPopupCancelButton" Style="ButtonRed" Size="180,41" Offset="0,0" Anchor="L,T" String="LOC_CANCEL"/>
+						<GridButton ID="PlayerMarkPopupCreateButton" Style="MainButton" Size="180,41" Offset="0,0" Anchor="R,T" String="LOC_MPT_PLAYERMARK_CREATE"/>
+					</Container>
+				</Stack>
+			</Grid>
+		</Grid>
+	</Box>
+
+	<!-- 条目11：确认框模板（游戏内 EndGameMenu.xml 同款；Lua 侧 PopupDialog:new("MPT_PlayerMark") 使用） -->
+	<MakeInstance Name="PopupDialog" />
+
+	<!-- Instances -->
+	<!-- 条目4.4：玩家标记列表行实例（整行按钮；标签图标(Image, Lua SetIcon 按 Tag 切换)+居中昵称，悬停 tooltip 显示 [ICON_YOU]+网络ID 与简要描述；点击右侧载入该记录；SelectedFrame 为选中态金色外框，仿准备房间本地玩家行 GoldFrame/Controls_OptionFrame，Lua 按 g_PlayerMarkSelectedId 控制显隐） -->
+	<Instance Name="PlayerMarkEntryInstance">
+		<Container ID="EntryRoot" Size="parent,52" Anchor="L,C">
+			<GridButton ID="RowButton" Style="ButtonControl" Size="parent,parent" Offset="-4,0">
+				<Image ID="TagIconLabel" Anchor="L,C" Offset="15,0" Size="22,22" Icon="OnlineYellowPingPig"/>
+				<ScrollTextField ID="NameLabel" Size="300,16" Anchor="C,C" Style="FontNormal19" FontStyle="stroke" String="Name"/>
+			</GridButton>
+			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
+		</Container>
+	</Instance>
+
+	<!-- 条目4.4：详细描述行实例（卡片仿更新公告 ChangelogEntryInstance：SubContainer2 底，日期左上、删除钮右上、文本换行显示，行高由 Lua 按文本高自适应；删除为暂存改动，保存生效/取消还原，不弹确认） -->
+	<Instance Name="PlayerMarkDetailEntryInstance">
+		<Grid ID="DetailRoot" Size="parent,60" Color="100,100,100,100" Style="SubContainer2">
+			<Label ID="DetailDateLabel" Anchor="L,T" Offset="10,4" Style="FontNormal14" Color="GreatPeopleRow" String=""/>
+			<Button ID="DetailDeleteButton" Anchor="R,C" Offset="8,0" Size="32,32" Texture="Controls_CloseButtonAlt" ToolTip="LOC_MPT_PLAYERMARK_DETAIL_DELETE_TT"/>
+			<Container Size="parent-60,parent" Offset="10,0">
+				<Label ID="DetailTextLabel" Anchor="L,T" Offset="0,26" Style="FontNormal16" WrapWidth="parent" String=""/>
+			</Container>
+		</Grid>
+	</Instance>
+
+</Context>

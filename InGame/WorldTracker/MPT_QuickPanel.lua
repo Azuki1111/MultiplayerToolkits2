@@ -14,6 +14,8 @@
 --   「重新开始」按钮响应暂未配置（TODO）。
 --   投票面板（VoteArea）独立于快捷面板：ChangeParent 到 PanelStack 作为平级子级
 --   （QuickPanel 之后），显隐只由投票状态驱动，不受快捷面板展开/收起影响。
+-- 条目11：「玩家标记」按钮 = LuaEvents.MPT_PlayerMark_Toggle() 打开/关闭游戏内
+--   玩家标记面板（InGame/PlayerMark/MPT_PlayerMark，移植条目4.4 前端面板）。
 -- ============================================================================
 
 include("SupportFunctions");	-- TruncateStringWithTooltip 等
@@ -632,9 +634,16 @@ local function MPT_QuickToggle()
 		m_quickExpanded = false;
 	else
 		UI.PlaySound("Tech_Tray_Slide_Open");
-		-- 展开高度固定：头部 25 + 展开区（30 偏移 + 32 按钮 + 4 + 32 按钮 + 4）≈ 102；
+		-- ============================================================================
+		-- 条目11：展开区新增「玩家标记」按钮（2 → 3 枚），展开高度 110 -> 146，
+		-- 底部分隔线随之下移 108 -> 144
+		-- 展开高度固定：头部 25 + 展开区（30 偏移 + 32 按钮 + 4 + 32 按钮 + 4 + 32 按钮 + 4）+ 8 尾距 = 146；
+		-- Controls.QuickPanel:SetSizeY(110);
+		Controls.QuickPanel:SetSizeY(146);
+		-- QuickSepBottom 原 XML Offset 0,108（两按钮态），展开时下移：
+		Controls.QuickSepBottom:SetOffsetY(144);
+		-- ----------------------------------------------------------------------------
 		-- 投票面板独立挂 PanelStack，不参与本面板高度
-		Controls.QuickPanel:SetSizeY(110);
 		Controls.ExpandStack:SetHide(false);
 		Controls.QuickSepBottom:SetHide(false);
 		m_quickExpanded = true;
@@ -794,6 +803,10 @@ local function MPT_QuickInitialize()
 
 	Controls.RestartButton:RegisterCallback(Mouse.eLClick, MPT_QuickRestart);
 	Controls.RestartButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+
+	-- 条目11：玩家标记按钮 → 打开/关闭游戏内玩家标记面板（LuaEvents 跨 Context，面板侧见 InGame/PlayerMark/MPT_PlayerMark.lua）
+	Controls.PlayerMarkButton:RegisterCallback(Mouse.eLClick, function() LuaEvents.MPT_PlayerMark_Toggle(); end);
+	Controls.PlayerMarkButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
 	Controls.VoteAgreeButton:RegisterCallback(Mouse.eLClick, function() MPT_QuickVote(true); end);
 	Controls.VoteAgreeButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);

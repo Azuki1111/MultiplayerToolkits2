@@ -4,7 +4,9 @@
 <!-- 空 Context，经 AddUserInterfaces(Context=InGame) 注册；同名 Lua              -->
 <!-- MPT_QuickPanel.lua 自动执行，LoadGameViewStateDone 时把本面板 ChangeParent   -->
 <!-- 挂进原版 /InGame/WorldTracker/PanelStack（仿作弊面板 mod 的挂载方式）。        -->
-<!-- 点击标题 HeaderTitle 展开/收起；展开后显示「投降」「重新开始」两按钮。          -->
+<!-- 点击标题 HeaderTitle 展开/收起；展开后显示「投降」「重新开始」「玩家标记」三按钮。          -->
+<!-- 条目11：「玩家标记」按钮打开游戏内玩家标记面板（InGame/PlayerMark/MPT_PlayerMark，     -->
+<!-- 经 LuaEvents.MPT_PlayerMark_Toggle 跨 Context 触发，面板与条目4.4 前端面板同尺寸同存档）。 -->
 <!-- 「投降」为团队投降投票（条目8续）：VoteArea 独立挂 PanelStack（QuickPanel 之下），  -->
 <!-- 仅投票进行中/已通过时显示，不受快捷面板展开/收起影响；                             -->
 <!-- 投票状态经 Game:SetProperty 跨端同步（见 SurrenderVote_Gameplay.lua）            -->
@@ -19,10 +21,12 @@
 				<Button ID="HeaderTitle" Anchor="C,C" Offset="0,5" ConsumeAllMouse="1" Size="250,23">
 					<Label ID="PanelTitle" Anchor="C,C" Offset="0,7" Align="Center" Size="200,90" WrapWidth="Parent-40" Style="FontFlair16" Color2="143,122,82,255" Color0="106,93,69,230" SmallCaps="20" SmallCapsLeading="0" SmallCapsType="EveryWord" KerningAdjustment="0" String="LOC_MPT_QUICK_HEADER"/>
 				</Button>
-				<!-- 展开区：投降 / 重新开始 两个按钮 -->
+				<!-- 展开区：投降 / 重新开始 / 玩家标记 三个按钮 -->
 				<Stack ID="ExpandStack" Anchor="C,T" Offset="0,30" StackGrowth="Down" Padding="4" Hidden="1">
 					<GridButton ID="SurrenderButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_SURRENDER"/>
 					<GridButton ID="RestartButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_RESTART"/>
+					<!-- 条目11：打开游戏内玩家标记面板（LuaEvents.MPT_PlayerMark_Toggle，见 MPT_QuickPanel.lua） -->
+					<GridButton ID="PlayerMarkButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_PLAYERMARK" ToolTip="LOC_MPT_QUICK_PLAYERMARK_TT"/>
 				</Stack>
 			</Container>
 		</Box>

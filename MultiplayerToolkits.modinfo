@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>28</Version>
+		<Version>29</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -354,6 +354,33 @@
 			<File>InGame/WorldTracker/QuickPanel_zh_Hans_CN.sql</File>
 			<File>InGame/WorldTracker/QuickPanel_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目11：游戏内玩家标记面板（移植条目4.4 PlayerMarkPanel，同尺寸 1024×parent）——空 Context +
+			同名 Lua 自动执行；面板/弹窗/确认框全在 MPT_PlayerMark.xml；QuickPanel 展开区「玩家标记」按钮
+			经 LuaEvents.MPT_PlayerMark_Toggle 开关；数据与前端 4.4 同一份 ModGroup 组名存档双向互通
+			（存储层 include Shared/MPT_DataStorage.lua，Modding 组存储 API 游戏内可用·用户实证） -->
+		<AddUserInterfaces id="IG_MPT_PlayerMark">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/PlayerMark/MPT_PlayerMark.xml</File>
+		</AddUserInterfaces>
+		<ImportFiles id="IG_MPT_PlayerMark_Import">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/PlayerMark/MPT_PlayerMark.lua</File>
+			<File>Shared/MPT_Serialize.lua</File>
+			<File>Shared/MPT_DataStorage.lua</File>
+		</ImportFiles>
+		<!-- 条目11：玩家标记文本游戏内注册（与前端 FE_PlayerMark_Text 同一批文件双环境注册） -->
+		<UpdateText id="IG_PlayerMark_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>Shared/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
+			<File>Shared/PlayerMark/PlayerMark_en_US.sql</File>
+		</UpdateText>
 		<!-- 条目8续：投降投票 Gameplay 侧——EXECUTE_SCRIPT(MPT_SurrenderVote) 汇总投票+过半判定+城市叛变自由城；
 			Game:SetProperty 记录发起标志/票数/判负（每时代每队一次）；参考乔尔定制玩法mod RegicideVictory/GiftKingGameplay -->
 		<AddGameplayScripts id="IG_SurrenderVote_Gameplay">
@@ -493,6 +520,8 @@
 		<File>InGame/WorldTracker/MPT_QuickPanel.lua</File>
 		<File>InGame/WorldTracker/QuickPanel_zh_Hans_CN.sql</File>
 		<File>InGame/WorldTracker/QuickPanel_en_US.sql</File>
+		<File>InGame/PlayerMark/MPT_PlayerMark.xml</File>
+		<File>InGame/PlayerMark/MPT_PlayerMark.lua</File>
 		<File>InGame/SurrenderVote/SurrenderVote_Gameplay.lua</File>
 		<File>InGame/SurrenderVote/SurrenderVote_zh_Hans_CN.sql</File>
 		<File>InGame/SurrenderVote/SurrenderVote_en_US.sql</File>
