@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>21</Version>
+		<Version>22</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -251,6 +251,13 @@
 			</Properties>
 			<File>InGame/RevealMapCorners/RevealMapCorners.xml</File>
 		</AddUserInterfaces>
+		<!-- 条目6：伟人名字更新——魔女环境下比赛纪念伟人改名（移植 1.67 GPN；条件插入，非魔女环境不生效） -->
+		<UpdateText id="IG_GreatPersonNames">
+			<Properties>
+				<LoadOrder>5000000</LoadOrder>
+			</Properties>
+			<File>InGame/GreatPersonNames/GreatPersonNames.sql</File>
+		</UpdateText>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -292,5 +299,6 @@
 		<File>Shared/MPT_DataStorage.lua</File>
 		<File>InGame/RevealMapCorners/RevealMapCorners.xml</File>
 		<File>InGame/RevealMapCorners/RevealMapCorners.lua</File>
+		<File>InGame/GreatPersonNames/GreatPersonNames.sql</File>
 	</Files>
 </Mod>

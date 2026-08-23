@@ -39,7 +39,9 @@
 | `Shared/PlayerMark/` | 条目4.4/4.8 玩家标记：专属文本（按钮/面板/弹窗/确认框 Tag；无数据表，数据走条目4.3 存储管线——ModGroup 组名 [MPT_DS][MPT_PlayerInfo][Players]）+ 条目4.8 数据表 `TPT_PlayerData`（`PlayerMark_Data.sql`，移植 1.67 全部类型有效行，去注释/过期/测试行）+ 3 张标记图片 DDS（AnDe/HuaMing/QingTian_Desc_Texture，经 ImportFiles 入 VFS 供 ToolTipType 用） |
 | `FrontEnd/IconViewer/` | 条目4.5 图标查看器：`MPT_IconCollection` 数据表（移植 EasyIconViewer 5056 图标，表名改 MPT_ 前缀）+ 专属文本 |
 | `FrontEnd/TextureViewer/` | 条目4.6 贴图查看器：`MPT_TextureCollection` 数据表（移植 TextureViewer 游戏本体+全部DLC UI 贴图 5017 行，表名改 MPT_ 前缀）+ 专属文本 |
-| `InGame/RevealMapCorners/` | 条目5 显示地图角落（移植 1.67 RMC）：`RevealMapCorners.xml`（空 Context）+ `RevealMapCorners.lua`（LoadScreenClose 时 `LuaEvents.MapPinPopup_RequestMapPin` 建两个极地真实地图钉 + `UIManager:DequeuePopup` 弹掉编辑弹窗，撑开引擎小地图世界矩形使全球比例；原理见踩坑记录「小地图矩形只认引擎数据」；副作用：留两个可见 pin；AddUserInterfaces Context=InGame 注册）；后续 InGame 功能每功能一个自包含子目录 |
+| `InGame/RevealMapCorners/` | 条目5 显示地图角落（移植 1.67 RMC）：`RevealMapCorners.xml`（空 Context）+ `RevealMapCorners.lua`（LoadScreenClose 时 `LuaEvents.MapPinPopup_RequestMapPin` 建两个极地真实地图钉 + `UIManager:DequeuePopup` 弹掉编辑弹窗，撑开引擎小地图世界矩形使全球比例；原理见踩坑记录「小地图矩形只认引擎数据」；副作用：留两个可见 pin；AddUserInterfaces Context=InGame 注册） |
+| `InGame/GreatPersonNames/` | 条目6 伟人名字更新（移植 1.67 GPN）：`GreatPersonNames.sql` 魔女环境检测（仅当 LocalizedText 已含魔女改写的伟人标记 IMHOTEPI='号码菌' 时）把炼金联赛纪念伟人名字写入 zh_Hans_CN，LoadOrder 5000000 压后覆盖，非魔女环境保护原版名字；UpdateText 注册（InGame） |
+| `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目7+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
 
 ## 加载机制（.modinfo）
 
