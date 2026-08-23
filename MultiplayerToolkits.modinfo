@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>27</Version>
+		<Version>28</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -56,6 +56,45 @@
 			<zh_Hans_CN>模组校验 / BP 功能改编自 Multiplayer Helper (MPH)，作者 Cisco, D. 与 Jack The Narrator，MIT 协议 © 2024 BetterBalancedGame。部分功能参考联机工具箱 1.67。</zh_Hans_CN>
 		</Text>
 	</LocalizedText>
+	<!-- 条目10：交易限制与外交限制（移植 1.67 DDV）条件注册（本 mod 首个 ActionCriteria 用例） -->
+	<ActionCriteria>
+		<!-- MPH 未启用时才注册本 mod 的交易参数与交易界面覆盖（MPH 定义同名参数，避免 Parameters 主键冲突） -->
+		<Criteria id="Disable_MPH">
+			<ModInUse inverse="1">619ac86e-d99d-4bf3-b8f0-8c5b8c402567</ModInUse>	<!--	Multiplayer Helper 1.7.2	-->
+		</Criteria>
+		<!-- 无代表团 -->
+		<Criteria id="Diplomatic_delegation_Off">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>TPT_NO_DELEGATION</ConfigurationId>
+				<Value>1</Value>
+			</ConfigurationValueMatches>
+		</Criteria>
+		<!-- 禁止宣布友谊 -->
+		<Criteria id="Diplomatic_FS_Off">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>TPT_NO_FRIENDSHIP</ConfigurationId>
+				<Value>1</Value>
+			</ConfigurationValueMatches>
+		</Criteria>
+		<!-- 允许和解 -->
+		<Criteria id="Diplomatic_MP_ON">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>TPT_NO_MAKE_PEACE</ConfigurationId>
+				<Value>CAN_MAKE_PEACE</Value>
+			</ConfigurationValueMatches>
+		</Criteria>
+		<!-- 无法和解 -->
+		<Criteria id="Diplomatic_MP_Off">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>TPT_NO_MAKE_PEACE</ConfigurationId>
+				<Value>NO_MAKE_PEACE</Value>
+			</ConfigurationValueMatches>
+		</Criteria>
+	</ActionCriteria>
 	<FrontEndActions>
 		<!-- 条目2：联机常用游戏设置预设（默认无蛮族开/回合60秒/允许重复文明领袖，新增禁用领袖池参数） -->
 		<UpdateDatabase id="FE_Config_Base">
@@ -64,6 +103,30 @@
 			</Properties>
 			<File>FrontEnd/Config/Config_Base.xml</File>
 		</UpdateDatabase>
+		<!-- 条目10：交易限制配置（移植 1.67 DDV）——交易设置四模式（常规/经典/独立/自定义）+ 8 个禁止项 + 无代表团 + 无友谊；
+			MPH 启用时不注册（同名参数冲突，由 MPH 提供） -->
+		<UpdateDatabase id="FE_DDV_Config" criteria="Disable_MPH">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/Config_Deal.xml</File>
+			<File>InGame/DealRestriction/Config_Friendship.xml</File>
+		</UpdateDatabase>
+		<!-- 条目10：和解设置配置（无法和解/允许和解/默认；同 1.67 Cfg_MP 不门控） -->
+		<UpdateDatabase id="FE_DDV_Config_MP">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/Config_MakePeace.xml</File>
+		</UpdateDatabase>
+		<!-- 条目10：交易限制专属文本（不门控：INSERT OR REPLACE 幂等，MPH 共存时和解设置选项仍有文本） -->
+		<UpdateText id="FE_DDV_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/DealRestriction_zh_Hans_CN.sql</File>
+			<File>InGame/DealRestriction/DealRestriction_en_US.sql</File>
+		</UpdateText>
 		<!-- 前端通用本地化文本（每语言一个文件，同时注册进游戏内上下文；功能专属文本随功能文件夹，如 FrontEnd/Changelog/） -->
 		<UpdateText id="FE_Text">
 			<Properties>
@@ -338,6 +401,50 @@
 			</Properties>
 			<File>InGame/TopPanelExt/TopPanelExt_TT.xml</File>
 		</AddUserInterfaces>
+		<!-- 条目10：交易限制文本游戏内注册（游戏内设置摘要显示参数名/描述用） -->
+		<UpdateText id="IG_DDV_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/DealRestriction_zh_Hans_CN.sql</File>
+			<File>InGame/DealRestriction/DealRestriction_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目10：交易限制执行层（移植 1.67 DDV）——DiplomacyDealView_MPT.lua 经原版 include("DiplomacyDealView_", true)
+			通配符注入交易界面上下文，按 MPT_ResolveTradeRules() 结果覆盖 PopulateAvailable* 隐藏/禁止对应类别；
+			MPT_TradeRules.lua 为统一解析器（TopPanel 条目9 与交易界面共用）；MPH 启用时不导入（MPH 自带执行层） -->
+		<ImportFiles id="IG_DDV_DealView" criteria="Disable_MPH">
+			<Properties>
+				<LoadOrder>1010</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/DiplomacyDealView_MPT.lua</File>
+			<File>InGame/DealRestriction/MPT_TradeRules.lua</File>
+		</ImportFiles>
+		<!-- 条目10：无代表团/禁止友谊执行 SQL（按 GameConfiguration 值条件执行） -->
+		<UpdateDatabase id="IG_DDV_NoDelegation" criteria="Diplomatic_delegation_Off">
+			<Properties>
+				<LoadOrder>20001</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/SQL/NoDelegation.sql</File>
+		</UpdateDatabase>
+		<UpdateDatabase id="IG_DDV_NoFriendship" criteria="Diplomatic_FS_Off">
+			<Properties>
+				<LoadOrder>20001</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/SQL/NoFriendship.sql</File>
+		</UpdateDatabase>
+		<!-- 条目10：和解设置执行 SQL（强制后置压过其他 mod 的 DIPLOMACY_WAR_MIN_TURNS 改动） -->
+		<UpdateDatabase id="IG_DDV_MakePeace_ON" criteria="Diplomatic_MP_ON">
+			<Properties>
+				<LoadOrder>999999</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/SQL/MakePeace.sql</File>
+		</UpdateDatabase>
+		<UpdateDatabase id="IG_DDV_MakePeace_Off" criteria="Diplomatic_MP_Off">
+			<Properties>
+				<LoadOrder>999999</LoadOrder>
+			</Properties>
+			<File>InGame/DealRestriction/SQL/MakePeace_Disable.sql</File>
+		</UpdateDatabase>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -395,5 +502,16 @@
 		<File>InGame/TopPanelExt/TopPanel.xml</File>
 		<File>InGame/TopPanelExt/TopPanelExt_zh_Hans_CN.sql</File>
 		<File>InGame/TopPanelExt/TopPanelExt_en_US.sql</File>
+		<File>InGame/DealRestriction/Config_Deal.xml</File>
+		<File>InGame/DealRestriction/Config_Friendship.xml</File>
+		<File>InGame/DealRestriction/Config_MakePeace.xml</File>
+		<File>InGame/DealRestriction/DealRestriction_zh_Hans_CN.sql</File>
+		<File>InGame/DealRestriction/DealRestriction_en_US.sql</File>
+		<File>InGame/DealRestriction/MPT_TradeRules.lua</File>
+		<File>InGame/DealRestriction/DiplomacyDealView_MPT.lua</File>
+		<File>InGame/DealRestriction/SQL/NoDelegation.sql</File>
+		<File>InGame/DealRestriction/SQL/NoFriendship.sql</File>
+		<File>InGame/DealRestriction/SQL/MakePeace.sql</File>
+		<File>InGame/DealRestriction/SQL/MakePeace_Disable.sql</File>
 	</Files>
 </Mod>

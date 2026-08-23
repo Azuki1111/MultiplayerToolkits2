@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目10：无友谊（移植 1.67 DDV/Comfig_Friendship.xml）；默认开启（竞技联机惯例），执行 SQL 经 criteria 条件触发 -->
+<GameInfo>
+	<Parameters>
+		<Row ParameterId="TPT_NO_FRIENDSHIP" 	Name="LOC_TPT_NO_FRIENDSHIP_NAME" 	Description="LOC_TPT_NO_FRIENDSHIP_DESC" 		Domain="bool" DefaultValue="1" ConfigurationGroup="Game" ConfigurationId="TPT_NO_FRIENDSHIP" 		GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2011" />
+	</Parameters>
+</GameInfo>

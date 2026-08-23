@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目10：和解设置（移植 1.67 DDV/Config_MakePeace.xml）；默认 DEFAULT 不执行任何 SQL（其他 mod/原版设置生效） -->
+<GameInfo>
+	<Parameters>
+		<Row ParameterId="TPT_NO_MAKE_PEACE" 	Name="LOC_DIPLOMACY_WAR_MAKE_PEACE_CONFIG" 	Domain="MAKE_PEACE_TPT" 	DefaultValue="DEFAULT_MAKE_PEACE" 	ConfigurationGroup="Game" ConfigurationId="TPT_NO_MAKE_PEACE" 	GroupId="AdvancedOptions" 	ChangeableAfterGameStart="0" 	SortIndex="2002" />
+	</Parameters>
+
+	<DomainValues>
+		<Row Domain="MAKE_PEACE_TPT" Value="NO_MAKE_PEACE" Name="LOC_DIPLOMACY_WAR_NO_MAKE_PEACE_NAME" Description="LOC_DIPLOMACY_WAR_NO_MAKE_PEACE_DESC" SortIndex="1"/>
+		<Row Domain="MAKE_PEACE_TPT" Value="CAN_MAKE_PEACE" Name="LOC_DIPLOMACY_WAR_CAN_MAKE_PEACE_NAME" Description="LOC_DIPLOMACY_WAR_CAN_MAKE_PEACE_DESC" SortIndex="2"/>
+		<Row Domain="MAKE_PEACE_TPT" Value="DEFAULT_MAKE_PEACE" Name="LOC_DIPLOMACY_WAR_DEFAULT_MAKE_PEACE_NAME" Description="LOC_DIPLOMACY_WAR_DEFAULT_MAKE_PEACE_DESC" SortIndex="3"/>
+	</DomainValues>
+</GameInfo>

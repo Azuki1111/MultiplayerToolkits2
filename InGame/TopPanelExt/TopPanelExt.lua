@@ -43,9 +43,16 @@ local m_FoodYieldButton = nil
 local m_PopulationYieldButton = nil
 local m_ProductionYieldButton = nil
 
--- 兼容禁止交易模式
-local isLuxuriesTradingAllowed = true
-local isStrategicsTradingAllowed = true
+-- ============================================================================
+-- 条目10：兼容禁止交易模式——接线统一解析器（修复条目9 恒 true 占位：
+-- 当时配置参数不存在，未接 GameConfiguration）
+-- local isLuxuriesTradingAllowed = true
+-- local isStrategicsTradingAllowed = true
+include("MPT_TradeRules");
+local tradeRules : table = MPT_ResolveTradeRules();
+local isLuxuriesTradingAllowed = tradeRules.Luxuries;
+local isStrategicsTradingAllowed = tradeRules.Strategics;
+-- ----------------------------------------------------------------------------
 
 -- FFA 时的奢侈品显示（默认 true：无任何队伍时视为 FFA，显示所有玩家的重复奢侈品）
 local IsFFA = true
