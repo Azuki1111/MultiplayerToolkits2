@@ -568,6 +568,10 @@ if BaseFile == "TopPanel_Expansion2" then
 
                                 instance.ResourceText:SetText(resourceText);
                                 instance.ResourceText:SetToolTipString(tooltip);
+                                -- 条目9续：战略资源点击发送交易（覆盖式注册，实例池复用安全；闭包捕获 ResourceType 拷贝
+                                -- 防迭代器行对象复用；回调内部自行判断 允许交易/有可接收队友，禁止交易模式不动作）
+                                local clickResourceType : string = resource.ResourceType;
+                                instance.ResourceText:RegisterCallback(Mouse.eLClick, function() MPT_TPE_OpenResourceSendPopup(clickResourceType) end);
                                 local instanceWidth : number = instance.ResourceText:GetSizeX();
                                 currSize = currSize + instanceWidth;
                             end
@@ -666,6 +670,8 @@ end
 function LateInitialize()
     TPT_BASE_LateInitialize()
 
+    MPT_TPE_RegisterSendPopupControls()		-- 条目9续：注册发送弹窗按钮回调（基类 LateInitialize 后控件已构建）
+
     Events.ResearchCompleted.Add(GetTeamVisibleResources);
     Events.CivicCompleted.Add(GetTeamVisibleResources);
 
@@ -681,4 +687,176 @@ function LateInitialize()
         end
     end
     GetTeamVisibleResources(Game.GetLocalPlayer())
+end
+
+-- ===========================================================================
+-- 条目9续：战略资源点击发送交易（本分区整体 do...end 包裹）
+-- 点击顶部面板战略资源 → 弹窗列出 我方持有量/各可接收队友空余/合计可发送量 → 确认后
+-- 按空余降序向每个可接收队友分别发起 PROPOSED 交易提案（对方手动接受，引擎无自动接受 API）。
+-- 兼容禁止交易模式：isStrategicsTradingAllowed==false 时点击不动作。
+-- 依赖 DealManager（与 Base/Assets/UI/DiplomacyDealView.lua 同款 API）：
+--   GetWorkingDeal / pDeal:AddItemOfType / pDealItem:SetValueType/SetAmount/SetDuration
+--   / pDealItem:IsValid / pDeal:RemoveItemByID / FindItemsByType / DealManager.SendWorkingDeal
+-- 弹窗控件 MPT_TPE_SendPopup 定义于 TopPanel.xml 覆盖版（内嵌本 Context，全屏居中）。
+-- ===========================================================================
+do
+    local SendPopupIM = nil				-- 队友列表行实例管理器（惰性创建）
+    local SendResourceType = nil		-- 当前弹窗对应的资源类型
+    local SendTeammates = nil			-- 当前弹窗的可接收队友列表快照（{playerID, leaderName, space}，空余降序）
+
+    -- 文本预加载缓存（条目9续：无参数纯文本 tag，运行时直接引用变量，带参数 tag 拆 PRE/SUF）
+    local SendTitlePRE		= Locale.Lookup("LOC_MPT_TPE_SEND_TITLE_PRE")
+    local SendTitleSUF		= Locale.Lookup("LOC_MPT_TPE_SEND_TITLE_SUF")
+    local SendYourAmountPRE	= Locale.Lookup("LOC_MPT_TPE_SEND_YOUR_AMOUNT_PRE")
+    local SendYourAmountSUF	= Locale.Lookup("LOC_MPT_TPE_SEND_YOUR_AMOUNT_SUF")
+    local SendSpacePRE		= Locale.Lookup("LOC_MPT_TPE_SEND_SPACE_PRE")
+    local SendSpaceSUF		= Locale.Lookup("LOC_MPT_TPE_SEND_SPACE_SUF")
+    local SendTotalPRE		= Locale.Lookup("LOC_MPT_TPE_SEND_TOTAL_PRE")
+    local SendTotalSUF		= Locale.Lookup("LOC_MPT_TPE_SEND_TOTAL_SUF")
+    local SendBannedStr		= Locale.Lookup("LOC_MPT_TPE_SEND_TRADE_BANNED")
+    local SendNoTeammateStr	= Locale.Lookup("LOC_MPT_TPE_SEND_NO_TEAMMATE")
+
+    -- 构建可接收队友列表：对方该资源「存储上限 - 当前持有量」> 0，且同队（g_StrategicTeamPlayerIDs
+    -- 已过滤）已相遇、非交战；按空余降序返回（先送空余大的，保证分配合理不超我方持有）
+    function MPT_TPE_BuildReceivableTeammates(resourceType)
+        local localPlayerID = Game.GetLocalPlayer()
+        local pDiplomacy = Players[localPlayerID]:GetDiplomacy()
+        local list = {}
+        for j, playerID in ipairs(g_StrategicTeamPlayerIDs) do
+            local pOtherRes = Players[playerID]:GetResources()
+            local space = pOtherRes:GetResourceStockpileCap(resourceType) - pOtherRes:GetResourceAmount(resourceType)
+            if space > 0 and pDiplomacy:HasMet(playerID) and not pDiplomacy:IsAtWarWith(playerID) then
+                local leaderType = PlayerConfigurations[playerID]:GetLeaderTypeName()
+                table.insert(list, {
+                    playerID = playerID,
+                    leaderName = Locale.Lookup(GameInfo.Leaders[leaderType].Name),
+                    space = space,
+                })
+            end
+        end
+        table.sort(list, function(a, b) return a.space > b.space end)
+        return list
+    end
+
+    -- 是否有可接收队友（供 RefreshResources 点击注册逻辑使用）
+    function MPT_TPE_HasReceivableTeammate(resourceType)
+        return #MPT_TPE_BuildReceivableTeammates(resourceType) > 0
+    end
+
+    -- 打开战略资源发送弹窗（点击资源实例触发）
+    function MPT_TPE_OpenResourceSendPopup(resourceType)
+        if isStrategicsTradingAllowed == false then return end		-- 禁止交易模式不响应
+        local localPlayerID = Game.GetLocalPlayer()
+        if localPlayerID == -1 then return end
+        local pPlayerResources = Players[localPlayerID]:GetResources()
+        local myAmount = pPlayerResources:GetResourceAmount(resourceType)
+        if myAmount <= 0 then return end								-- 无持有不弹
+
+        SendResourceType = resourceType
+        SendTeammates = MPT_TPE_BuildReceivableTeammates(resourceType)
+
+        -- 标题（资源图标+名）与 我方持有量
+        Controls.MPT_TPE_SendTitle:SetText(SendTitlePRE.."[ICON_"..resourceType.."] "..Locale.Lookup(GameInfo.Resources[resourceType].Name)..SendTitleSUF)
+        Controls.MPT_TPE_SendYourAmount:SetText(SendYourAmountPRE..myAmount..SendYourAmountSUF)
+
+        -- 队友列表（InstanceManager 动态行：领袖名 + 空余）
+        if SendPopupIM == nil then
+            SendPopupIM = InstanceManager:new("MPT_TPE_SendRow", "Top", Controls.MPT_TPE_SendList)
+        end
+        SendPopupIM:ResetInstances()
+        local totalSend = 0
+        for i, mate in ipairs(SendTeammates) do
+            local inst = SendPopupIM:GetInstance()
+            inst.LeaderName:SetText(mate.leaderName)
+            inst.SpaceText:SetText(SendSpacePRE..mate.space..SendSpaceSUF)
+            totalSend = totalSend + mate.space
+        end
+        -- 合计可发送量：队友空余总和 与 我方持有 取小
+        totalSend = math.min(totalSend, myAmount)
+        Controls.MPT_TPE_SendTotal:SetText(SendTotalPRE..totalSend..SendTotalSUF)
+
+        -- 无队友可接收时的提示
+        Controls.MPT_TPE_SendBanned:SetHide(true)
+        if #SendTeammates == 0 then
+            Controls.MPT_TPE_SendTotal:SetText(SendNoTeammateStr)
+        end
+
+        Controls.MPT_TPE_SendList:CalculateSize()
+        Controls.MPT_TPE_SendPopup:SetHide(false)
+        Controls.MPT_TPE_SendPopup:CalculateSize()
+    end
+
+    -- 确认发送：向每个可接收队友分别发起 PROPOSED 提案（对方手动接受；每对玩家一单）
+    function MPT_TPE_ConfirmSend()
+        if isStrategicsTradingAllowed == false then MPT_TPE_CloseSendPopup() return end
+        if SendResourceType == nil then MPT_TPE_CloseSendPopup() return end
+        local localPlayerID = Game.GetLocalPlayer()
+        local pPlayerResources = Players[localPlayerID]:GetResources()
+        local resourceType = SendResourceType
+        local remaining = pPlayerResources:GetResourceAmount(resourceType)		-- 我方剩余可送（硬上限）
+
+        for i, mate in ipairs(SendTeammates) do
+            if remaining <= 0 then break end
+            if not DealManager.HasPendingDeal(localPlayerID, mate.playerID) then		-- 已有在途交易则跳过该队友
+                local sendAmount = math.min(remaining, mate.space)
+                if sendAmount > 0 then
+                    local pDeal = DealManager.GetWorkingDeal(DealDirection.OUTGOING, localPlayerID, mate.playerID)
+                    if pDeal ~= nil then
+                        -- 清理该资源残留条目（防与既有交易条目冲突）
+                        local oldItems = pDeal:FindItemsByType(DealItemTypes.RESOURCES, DealItemSubTypes.NONE, localPlayerID)
+                        if oldItems ~= nil then
+                            for k, oldItem in ipairs(oldItems) do
+                                if oldItem:GetValueType() == resourceType then
+                                    pDeal:RemoveItemByID(oldItem:GetID())
+                                end
+                            end
+                        end
+                        local pDealItem = pDeal:AddItemOfType(DealItemTypes.RESOURCES, localPlayerID)
+                        if pDealItem ~= nil then
+                            pDealItem:SetValueType(resourceType)
+                            pDealItem:SetDuration(30)			-- 资源交易默认 30 回合（同原版 DiplomacyDealView）
+                            pDealItem:SetAmount(sendAmount)
+                            if pDealItem:IsValid() then
+                                DealManager.SendWorkingDeal(DealProposalAction.PROPOSED, localPlayerID, mate.playerID)
+                                remaining = remaining - sendAmount
+                            else
+                                -- 超出单笔上限则减半重试一次，仍无效则丢弃该条目
+                                local tryAmount = math.floor(sendAmount / 2)
+                                if tryAmount >= 1 then
+                                    pDealItem:SetAmount(tryAmount)
+                                    if pDealItem:IsValid() then
+                                        DealManager.SendWorkingDeal(DealProposalAction.PROPOSED, localPlayerID, mate.playerID)
+                                        remaining = remaining - tryAmount
+                                    else
+                                        pDeal:RemoveItemByID(pDealItem:GetID())
+                                    end
+                                else
+                                    pDeal:RemoveItemByID(pDealItem:GetID())
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        MPT_TPE_CloseSendPopup()
+    end
+
+    -- 关闭发送弹窗
+    function MPT_TPE_CloseSendPopup()
+        if Controls.MPT_TPE_SendPopup ~= nil then
+            Controls.MPT_TPE_SendPopup:SetHide(true)
+        end
+        if SendPopupIM ~= nil then SendPopupIM:ResetInstances() end
+        SendResourceType = nil
+        SendTeammates = nil
+    end
+
+    -- 注册弹窗按钮回调（由 LateInitialize 在基类初始化后调用，此时 Controls 已构建）
+    function MPT_TPE_RegisterSendPopupControls()
+        if Controls.MPT_TPE_SendPopup ~= nil then
+            Controls.MPT_TPE_SendConfirm:RegisterCallback(Mouse.eLClick, MPT_TPE_ConfirmSend)
+            Controls.MPT_TPE_SendCancel:RegisterCallback(Mouse.eLClick, MPT_TPE_CloseSendPopup)
+        end
+    end
 end

@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>26</Version>
+		<Version>27</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -329,6 +329,7 @@
 			</Properties>
 			<File>InGame/TopPanelExt/TopPanelExt.lua</File>
 			<File>InGame/TopPanelExt/TopPanelExt_TT.lua</File>
+			<File>InGame/TopPanelExt/TopPanel.xml</File>
 		</ImportFiles>
 		<AddUserInterfaces id="IG_TopPanelExt_TT">
 			<Properties>
@@ -391,6 +392,7 @@
 		<File>InGame/TopPanelExt/TopPanelExt.lua</File>
 		<File>InGame/TopPanelExt/TopPanelExt_TT.lua</File>
 		<File>InGame/TopPanelExt/TopPanelExt_TT.xml</File>
+		<File>InGame/TopPanelExt/TopPanel.xml</File>
 		<File>InGame/TopPanelExt/TopPanelExt_zh_Hans_CN.sql</File>
 		<File>InGame/TopPanelExt/TopPanelExt_en_US.sql</File>
 	</Files>
