@@ -22,19 +22,6 @@
 				<Stack ID="ExpandStack" Anchor="C,T" Offset="0,30" StackGrowth="Down" Padding="4" Hidden="1">
 					<GridButton ID="SurrenderButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_SURRENDER"/>
 					<GridButton ID="RestartButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_RESTART"/>
-					<!-- 条目8续：投降投票状态区（仅投票进行中/已通过时显示；背景用原版 Emergency 贴图 EMERGENCY_BACKSTAB_BG3，
-						原图 553x523，等比缩放到 296 宽（高 296*523/553≈280），内容叠于其上，仿原版 WorldCrisisPopup 的 CrisisBG 用法） -->
-					<Container ID="VoteArea" Anchor="C,T" Size="296,280" Hidden="1">
-						<Image ID="VoteBacking" Anchor="C,T" Size="296,280" Texture="EMERGENCY_BACKSTAB_BG3" StretchMode="Fill" Color="255,255,255,255"/>
-						<Stack ID="VoteContent" Anchor="C,T" Offset="0,30" StackGrowth="Down" Padding="8">
-							<Label ID="VoteStatusLabel" Anchor="C,T" Style="FontNormal12" Color="255,255,255,255" String="LOC_MPT_VOTE_TITLE" WrapWidth="270" Align="Center"/>
-							<Label ID="VoteProgressLabel" Anchor="C,T" Style="FontNormal12" Color="208,212,217,255" WrapWidth="270" Align="Center"/>
-							<Stack Anchor="C,T" StackGrowth="Right" StackPadding="6">
-								<GridButton ID="VoteAgreeButton" Style="ButtonConfirm" Anchor="C,T" String="LOC_MPT_VOTE_AGREE" Size="130,28"/>
-								<GridButton ID="VoteDisagreeButton" Style="ButtonRed" Anchor="C,T" String="LOC_MPT_VOTE_DISAGREE" Size="130,28"/>
-							</Stack>
-						</Stack>
-					</Container>
 				</Stack>
 			</Container>
 		</Box>
@@ -47,5 +34,19 @@
 			<Box Color="0,0,0,200" Anchor="L,T" Size="parent,1" AnchorSide="I,O"/>
 			<Box Color="0,0,0,200" Anchor="L,B" Size="parent,1" AnchorSide="I,O"/>
 		</Box>
+		<!-- 条目8续：投降投票状态区（独立于 ExpandStack 绝对定位，不参与按钮 Stack 堆叠；
+			仅投票进行中/已通过时显示；背景用原版 Emergency 贴图 EMERGENCY_BACKSTAB_BG3，
+			原图 553x523，等比缩放到 296 宽（高 296*523/553≈280），内容叠于其上，仿原版 WorldCrisisPopup 的 CrisisBG 用法） -->
+		<Container ID="VoteArea" Anchor="L,T" Offset="0,100" Size="296,280" Hidden="1">
+			<Image ID="VoteBacking" Anchor="C,T" Offset="2,0" Size="296,280" Texture="EMERGENCY_BACKSTAB_BG3" StretchMode="Fill" Color="255,255,255,255"/>
+			<Stack ID="VoteContent" Anchor="C,T" Offset="0,30" StackGrowth="Down" Padding="8">
+				<Label ID="VoteStatusLabel" Anchor="C,T" Style="FontNormal12" Color="255,255,255,255" String="LOC_MPT_VOTE_TITLE" WrapWidth="270" Align="Center"/>
+				<Label ID="VoteProgressLabel" Anchor="C,T" Style="FontNormal12" Color="208,212,217,255" WrapWidth="270" Align="Center"/>
+				<Stack Anchor="C,T" StackGrowth="Right" StackPadding="6">
+					<GridButton ID="VoteAgreeButton" Style="ButtonConfirm" Anchor="C,T" String="LOC_MPT_VOTE_AGREE" Size="130,28"/>
+					<GridButton ID="VoteDisagreeButton" Style="ButtonRed" Anchor="C,T" String="LOC_MPT_VOTE_DISAGREE" Size="130,28"/>
+				</Stack>
+			</Stack>
+		</Container>
 	</Grid>
 </Context>
