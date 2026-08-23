@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>22</Version>
+		<Version>23</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -258,6 +258,16 @@
 			</Properties>
 			<File>InGame/GreatPersonNames/GreatPersonNames.sql</File>
 		</UpdateText>
+		<!-- 条目7：战败后观战按钮——整文件同名覆盖原版 EndGameMenu.xml（在底部按钮栈加「观看」按钮），
+			EndGameMenu_MPT.lua 经原版 include("EndGameMenu_", true) 通配符注入 EndGameMenu 上下文注册按钮逻辑。
+			移植 1.67 EGM 并修复其「仅 SetHide 导致战败画面反复弹出」bug：点击真正切观察者 + 完整 Close() 释放暂停 -->
+		<ImportFiles id="IG_EndGameMenu">
+			<Properties>
+				<LoadOrder>30000</LoadOrder>
+			</Properties>
+			<File>InGame/EndGameMenu/EndGameMenu.xml</File>
+			<File>InGame/EndGameMenu/EndGameMenu_MPT.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -300,5 +310,7 @@
 		<File>InGame/RevealMapCorners/RevealMapCorners.xml</File>
 		<File>InGame/RevealMapCorners/RevealMapCorners.lua</File>
 		<File>InGame/GreatPersonNames/GreatPersonNames.sql</File>
+		<File>InGame/EndGameMenu/EndGameMenu.xml</File>
+		<File>InGame/EndGameMenu/EndGameMenu_MPT.lua</File>
 	</Files>
 </Mod>
