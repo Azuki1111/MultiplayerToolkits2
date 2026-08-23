@@ -11,6 +11,9 @@
 -- 调试：保留 print 日志供实验观测，定稿后按需移除。
 -- ============================================================================
 print( "[MPT_RMC] RevealMapCorners.lua 顶层执行（实验版：单独控制 pin 实例）" );
+-- 【VM 归属诊断】确认 AddUserInterfaces 上下文与 InGame LuaContext 是否共享全局
+print( "[MPT_RMC] VM诊断: type(GetMapPinFlag)=" .. tostring(type(GetMapPinFlag)) .. " type(MapPinFlag)=" .. tostring(type(MapPinFlag)) .. " type(InstanceManager)=" .. tostring(type(InstanceManager)) );
+print( "[MPT_RMC] VM诊断: ContextPtr=" .. tostring(ContextPtr) .. " 父控件=" .. tostring(ContextPtr:GetParent()) );
 
 -- 幂等守卫：进游戏只打一次钉（Lua 状态跨房间存续，防止反复创建）
 local m_anchored : boolean = false;
@@ -72,10 +75,10 @@ end
 -- PlayerInfoChanged 触发（MapPinManager 刷新建 flag 的时机）：尝试应用偏移
 function OnPlayerInfoChanged()
 	Events.PlayerInfoChanged.Remove( OnPlayerInfoChanged );
-	print( "[MPT_RMC] PlayerInfoChanged 触发，尝试偏移首格 pin" );
-	if not OffsetFirstPin() then
-		Events.UIIdle.Add( OnUIIdleRetry );   -- 兜底轮询
-	end
+	print( "[MPT_RMC] PlayerInfoChanged 触发（VM 诊断阶段：跳过偏移）" );
+	-- if not OffsetFirstPin() then
+	-- 	Events.UIIdle.Add( OnUIIdleRetry );
+	-- end
 end
 
 -- ============================================================================
@@ -113,7 +116,7 @@ function OnLoadScreenClose()
 			UIManager:DequeuePopup( popup );
 		end
 		print( "[MPT_RMC] 两个 pin 已创建，注册 PlayerInfoChanged 等待 flag 实例" );
-		DumpPinState( plotFirst, plotLast );   -- 此时 flag 多半还没建
+		-- DumpPinState( plotFirst, plotLast );   -- 暂时禁用（VM 诊断期间先跳过，避免 GetMapPinFlag nil 崩溃）
 		Events.PlayerInfoChanged.Remove( OnPlayerInfoChanged );
 		Events.PlayerInfoChanged.Add( OnPlayerInfoChanged );
 	end
