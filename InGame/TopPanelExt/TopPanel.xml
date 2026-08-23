@@ -154,6 +154,8 @@
   <!-- 可接收队友列表（InstanceManager 动态行）/合计可发送量/确认取消按钮/禁止交易提示 -->
   <!-- ============================================================================ -->
   <Grid ID="MPT_TPE_SendPopup" Anchor="C,C" Size="460,auto" Texture="Controls_WindowFrame" SliceCorner="55,55" SliceSize="1,1" SliceTextureSize="118,118" MinSize="118,118" InnerPadding="25,25" InnerOffset="10,10" Hidden="1" ConsumeMouseOver="1">
+    <!-- 背景底图（Shell_MinimapBacking 为纯纹理，铺满 Grid 内部；声明在内容之前 → 渲染在内容下层） -->
+    <Image Texture="Shell_MinimapBacking" Anchor="C,C" Size="parent-10,parent-10" Color="255,255,255,255" StretchMode="Fill"/>
     <Stack Anchor="C,T" Offset="0,20" StackGrowth="Down" Padding="4">
       <Label ID="MPT_TPE_SendTitle" Anchor="C,T" Style="FontFlair18" SmallCaps="20" SmallCapsType="EveryWord" WrapWidth="410" Align="Center"/>
       <Label ID="MPT_TPE_SendYourAmount" Anchor="C,T" Offset="0,6" Style="FontNormal18" WrapWidth="410" Align="Center"/>
