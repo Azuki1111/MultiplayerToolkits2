@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>23</Version>
+		<Version>24</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -260,7 +260,7 @@
 		</UpdateText>
 		<!-- 条目7：战败后观战按钮——整文件同名覆盖原版 EndGameMenu.xml（在底部按钮栈加「观看」按钮），
 			EndGameMenu_MPT.lua 经原版 include("EndGameMenu_", true) 通配符注入 EndGameMenu 上下文注册按钮逻辑。
-			移植 1.67 EGM 并修复其「仅 SetHide 导致战败画面反复弹出」bug：点击真正切观察者 + 完整 Close() 释放暂停 -->
+			移植 1.67 EGM 并修复其「仅 SetHide 导致战败画面反复弹出」bug：点击置屏蔽标志 + 完整 Close() 释放暂停 + 替换 OnPlayerDefeat 拦截重入 -->
 		<ImportFiles id="IG_EndGameMenu">
 			<Properties>
 				<LoadOrder>30000</LoadOrder>
@@ -268,6 +268,29 @@
 			<File>InGame/EndGameMenu/EndGameMenu.xml</File>
 			<File>InGame/EndGameMenu/EndGameMenu_MPT.lua</File>
 		</ImportFiles>
+		<!-- 条目8：WorldTracker 快捷操作面板（投降/重新开始）——空 Context 挂载到原版 WorldTracker.PanelStack（仿作弊面板 mod 方式）；
+			面板与同名 Lua 经 AddUserInterfaces + ImportFiles 注册，LoadGameViewStateDone 时挂载，点击标题展开/收起；
+			按钮响应暂未配置（空回调 TODO） -->
+		<AddUserInterfaces id="IG_MPT_QuickPanel">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/WorldTracker/MPT_QuickPanel.xml</File>
+		</AddUserInterfaces>
+		<ImportFiles id="IG_MPT_QuickPanel_Import">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/WorldTracker/MPT_QuickPanel.lua</File>
+		</ImportFiles>
+		<UpdateText id="IG_MPT_QuickPanel_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/WorldTracker/QuickPanel_zh_Hans_CN.sql</File>
+			<File>InGame/WorldTracker/QuickPanel_en_US.sql</File>
+		</UpdateText>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -312,5 +335,9 @@
 		<File>InGame/GreatPersonNames/GreatPersonNames.sql</File>
 		<File>InGame/EndGameMenu/EndGameMenu.xml</File>
 		<File>InGame/EndGameMenu/EndGameMenu_MPT.lua</File>
+		<File>InGame/WorldTracker/MPT_QuickPanel.xml</File>
+		<File>InGame/WorldTracker/MPT_QuickPanel.lua</File>
+		<File>InGame/WorldTracker/QuickPanel_zh_Hans_CN.sql</File>
+		<File>InGame/WorldTracker/QuickPanel_en_US.sql</File>
 	</Files>
 </Mod>
