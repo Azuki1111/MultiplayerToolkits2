@@ -5371,6 +5371,85 @@ function MPT_Storage_DeleteFile(fileName : string, callback)
 	local found = StorageDeleteGroupsByPrefix(STORAGE_GROUP_PREFIX .. fileName .. "][");
 	if callback ~= nil then pcall(callback, found); end
 end
+-- ============================================================================
+-- 对外（复合）：写——多 key 数据合并为一张总表，整体序列化进单一组名（同一 ModGroup 行）。
+--   dataTable：{ key1=数据1, key2=数据2, ... }，key 成为总表字段名（不再拼进组名）。
+--   组名格式：[size_0][color:0,0,0,0][MPT_DS][fileName][len]return {...}
+--   （区别于单 key 组的 [fileName][key][len]：无 key 段，多份数据同组承载）
+--   写前按 [MPT_DS][fileName][ 前缀删除该命名空间全部旧组（含旧单 key 组与旧复合组）。
+-- callback(success:boolean) 可选，同步调用。
+-- ============================================================================
+function MPT_Storage_SaveComposite(fileName : string, dataTable : table, callback)
+	if not StorageValidateName(fileName) then
+		print("MPT_DS: 非法 fileName", tostring(fileName));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	if type(dataTable) ~= "table" then
+		print("MPT_DS: SaveComposite 数据必须是表", tostring(fileName));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	local ok, encoded = pcall(MPT_Serialize, dataTable);
+	if not ok or type(encoded) ~= "string" then
+		print("MPT_DS: 复合序列化失败", fileName);
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][";	-- 覆盖该命名空间全部组（旧单 key 组 + 旧复合组）
+	StorageDeleteGroupsByPrefix(prefix);
+	StorageCreateCleanGroup(prefix .. #encoded .. "]" .. encoded);
+	if callback ~= nil then pcall(callback, true); end
+end
+
+-- ============================================================================
+-- 对外（复合）：读——从复合组读出总表，按 keys 逐个取子字段回调。
+--   keys：{ "key1", "key2", ... }；callback(v1, v2, ...) 必填，同步调用；
+--   缺失/无复合组 → 对应字段回调 nil。只查复合组（无 key 段）：旧单 key 组
+--   首段是 key 名 tonumber=nil，跳过（不迁移场景下不兼容读取）。
+-- ============================================================================
+function MPT_Storage_LoadComposite(fileName : string, keys : table, callback)
+	if not StorageValidateName(fileName) then
+		print("MPT_DS: 非法 fileName", tostring(fileName));
+		if callback ~= nil then pcall(callback); end
+		return;
+	end
+	if type(keys) ~= "table" or type(callback) ~= "function" then
+		print("MPT_DS: LoadComposite 缺少 keys/callback", fileName);
+		return;
+	end
+	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][";
+	local data = nil;
+	for i, v in ipairs(Modding.GetModGroups()) do
+		if string.sub(v.Name, 1, #prefix) == prefix then
+			local rest : string = string.sub(v.Name, #prefix + 1);
+			local closePos = string.find(rest, "]", 1, true);	-- len 定界符（plain find：] 是模式魔法字符）
+			if closePos ~= nil then
+				local len = tonumber(string.sub(rest, 1, closePos - 1));
+				if len ~= nil then	-- len 为纯数字：复合组（旧单 key 组首段是 key 名，tonumber=nil，跳过）
+					local encoded : string = string.sub(rest, closePos + 1);
+					if len == #encoded then
+						local d = MPT_Deserialize(encoded);
+						if type(d) == "table" then
+							data = d;
+							break;
+						end
+					else
+						print("MPT_DS: 复合组长度校验失败", fileName);
+					end
+				end
+			end
+		end
+	end
+	local results : table = {};
+	if type(data) == "table" then
+		for i, key in ipairs(keys) do
+			results[i] = data[key];
+		end
+	end
+	pcall(callback, table.unpack(results));
+end
+
 end	-- 条目4.3预备 do 块结束（寄存器上限适配）
 
 -- ############################################################################
@@ -5544,16 +5623,25 @@ end
 -- ============================================================================
 -- MPT_PlayerMark_LoadFromDisk(callback) / MPT_PlayerMark_SaveToDisk(callback)
 -- 条目4.3 存储管线包装：真实读盘刷新 g_PlayerMarkList / 把工作副本落盘。
+-- 复合存储（条目4.8续）：Players+Settings 同组承载，单一 ModGroup 行。
 -- ============================================================================
 function MPT_PlayerMark_LoadFromDisk(callback)
-	MPT_Storage_LoadData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_KEY, function(data)
-		g_PlayerMarkList = (type(data) == "table") and data or {};
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Players", "Settings" }, function(players, settings)
+		g_PlayerMarkList = (type(players) == "table") and players or {};
+		if type(settings) == "table" and type(settings.HiddenSqlMark) == "boolean" then
+			g_MPT_MarkHidden = settings.HiddenSqlMark;
+		else
+			g_MPT_MarkHidden = true;
+		end
 		if callback ~= nil then callback(); end
 	end);
 end
 
 function MPT_PlayerMark_SaveToDisk(callback)
-	MPT_Storage_SaveData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_KEY, g_PlayerMarkList, function(ok)
+	MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
+		Players = g_PlayerMarkList,
+		Settings = { HiddenSqlMark = g_MPT_MarkHidden },
+	}, function(ok)
 		if ok then
 			MPT_PlayerMark_RefreshLocalCache();	-- 条目4.8：面板保存后同步房间标记缓存（定义见文件末尾条目4.8分区）
 		end
@@ -5589,9 +5677,12 @@ end
 -- MPT_PlayerMark_LoadSettings()：读 Settings 存档刷新 g_MPT_MarkHidden 并应用 UI+广播
 --   （无存档/字段缺失 → 默认 true 开启隐身；读完广播一次保证他人视角即时生效）
 function MPT_PlayerMark_LoadSettings()
-	MPT_Storage_LoadData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_SETTINGS_KEY, function(data)
-		if type(data) == "table" and type(data.HiddenSqlMark) == "boolean" then
-			g_MPT_MarkHidden = data.HiddenSqlMark;
+	-- 读 Settings（复合组内字段）；无复合组/字段缺失 → 默认 true 开启隐身（继承 1.67）。
+	-- 注：真实读库入口是 LoadFromDisk（LoadComposite 一次读回 Players+Settings）；
+	--   本函数保留为打开面板时的独立刷新（读复合组 Settings 字段）。
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(settings)
+		if type(settings) == "table" and type(settings.HiddenSqlMark) == "boolean" then
+			g_MPT_MarkHidden = settings.HiddenSqlMark;
 		else
 			g_MPT_MarkHidden = true;	-- 默认开启隐身（继承 1.67）
 		end
@@ -5606,7 +5697,10 @@ function MPT_PlayerMark_OnHiddenMarkCheck()
 	g_MPT_MarkHidden = not g_MPT_MarkHidden;
 	MPT_PlayerMark_ApplyHiddenMarkUI();
 	MPT_PlayerMark_BroadcastHiddenMark();
-	MPT_Storage_SaveData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_SETTINGS_KEY, { HiddenSqlMark = g_MPT_MarkHidden }, function(ok)
+	MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
+		Players = g_PlayerMarkList,
+		Settings = { HiddenSqlMark = g_MPT_MarkHidden },
+	}, function(ok)
 		if not ok then
 			print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
 		end
@@ -6676,7 +6770,8 @@ end
 --   无标记则显示 SQL 标记/就绪文本（可接受）。4.4 面板保存成功回调内也会调本函数（见 SaveToDisk）。
 -- ============================================================================
 function MPT_PlayerMark_RefreshLocalCache()
-	MPT_Storage_LoadData("MPT_PlayerInfo", "Players", function(data)
+	MPT_Storage_LoadComposite("MPT_PlayerInfo", { "Players" }, function(players)
+		local data = players;
 		g_MPT_MarkLocal = {};
 		if type(data) == "table" then
 			for _, mptMarkRec in ipairs(data) do

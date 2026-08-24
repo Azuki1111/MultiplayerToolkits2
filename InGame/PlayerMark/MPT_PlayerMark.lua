@@ -219,14 +219,14 @@ end
 -- 条目4.3 存储管线包装：真实读盘刷新 g_PlayerMarkList / 把工作副本落盘。
 -- ============================================================================
 function MPT_PlayerMark_LoadFromDisk(callback)
-	MPT_Storage_LoadData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_KEY, function(data)
-		g_PlayerMarkList = (type(data) == "table") and data or {};
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Players" }, function(players)
+		g_PlayerMarkList = (type(players) == "table") and players or {};
 		if callback ~= nil then callback(); end
 	end);
 end
 
 function MPT_PlayerMark_SaveToDisk(callback)
-	MPT_Storage_SaveData(PLAYERMARK_STORAGE_FILE, PLAYERMARK_STORAGE_KEY, g_PlayerMarkList, function(ok)
+	MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, { Players = g_PlayerMarkList }, function(ok)
 		-- ============================================================================
 		-- 条目11 差异2：删 MPT_PlayerMark_RefreshLocalCache() 调用（条目4.8 房间显示层刷新，游戏内无此层）
 		-- if ok then

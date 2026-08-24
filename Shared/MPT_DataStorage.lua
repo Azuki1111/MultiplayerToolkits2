@@ -161,5 +161,84 @@ function MPT_Storage_DeleteFile(fileName : string, callback)
 	if callback ~= nil then pcall(callback, found); end
 end
 
+-- ============================================================================
+-- 对外（复合）：写——多 key 数据合并为一张总表，整体序列化进单一组名（同一 ModGroup 行）。
+--   dataTable：{ key1=数据1, key2=数据2, ... }，key 成为总表字段名（不再拼进组名）。
+--   组名格式：[size_0][color:0,0,0,0][MPT_DS][fileName][len]return {...}
+--   （区别于单 key 组的 [fileName][key][len]：无 key 段，多份数据同组承载）
+--   写前按 [MPT_DS][fileName][ 前缀删除该命名空间全部旧组（含旧单 key 组与旧复合组）。
+-- callback(success:boolean) 可选，同步调用。
+-- ============================================================================
+function MPT_Storage_SaveComposite(fileName : string, dataTable : table, callback)
+	if not StorageValidateName(fileName) then
+		print("MPT_DS: 非法 fileName", tostring(fileName));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	if type(dataTable) ~= "table" then
+		print("MPT_DS: SaveComposite 数据必须是表", tostring(fileName));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	local ok, encoded = pcall(MPT_Serialize, dataTable);
+	if not ok or type(encoded) ~= "string" then
+		print("MPT_DS: 复合序列化失败", fileName);
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][";	-- 覆盖该命名空间全部组（旧单 key 组 + 旧复合组）
+	StorageDeleteGroupsByPrefix(prefix);
+	StorageCreateCleanGroup(prefix .. #encoded .. "]" .. encoded);
+	if callback ~= nil then pcall(callback, true); end
+end
+
+-- ============================================================================
+-- 对外（复合）：读——从复合组读出总表，按 keys 逐个取子字段回调。
+--   keys：{ "key1", "key2", ... }；callback(v1, v2, ...) 必填，同步调用；
+--   缺失/无复合组 → 对应字段回调 nil。只查复合组（无 key 段）：旧单 key 组
+--   首段是 key 名 tonumber=nil，跳过（不迁移场景下不兼容读取）。
+-- ============================================================================
+function MPT_Storage_LoadComposite(fileName : string, keys : table, callback)
+	if not StorageValidateName(fileName) then
+		print("MPT_DS: 非法 fileName", tostring(fileName));
+		if callback ~= nil then pcall(callback); end
+		return;
+	end
+	if type(keys) ~= "table" or type(callback) ~= "function" then
+		print("MPT_DS: LoadComposite 缺少 keys/callback", fileName);
+		return;
+	end
+	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][";
+	local data = nil;
+	for i, v in ipairs(Modding.GetModGroups()) do
+		if string.sub(v.Name, 1, #prefix) == prefix then
+			local rest : string = string.sub(v.Name, #prefix + 1);
+			local closePos = string.find(rest, "]", 1, true);	-- len 定界符（plain find：] 是模式魔法字符）
+			if closePos ~= nil then
+				local len = tonumber(string.sub(rest, 1, closePos - 1));
+				if len ~= nil then	-- len 为纯数字：复合组（旧单 key 组首段是 key 名，tonumber=nil，跳过）
+					local encoded : string = string.sub(rest, closePos + 1);
+					if len == #encoded then
+						local d = MPT_Deserialize(encoded);
+						if type(d) == "table" then
+							data = d;
+							break;
+						end
+					else
+						print("MPT_DS: 复合组长度校验失败", fileName);
+					end
+				end
+			end
+		end
+	end
+	local results : table = {};
+	if type(data) == "table" then
+		for i, key in ipairs(keys) do
+			results[i] = data[key];
+		end
+	end
+	pcall(callback, table.unpack(results));
+end
+
 -- 幂等守卫置位（放在文件末尾：只有全部定义成功才置位，半加载状态可由下次 include 自愈）
 MPT_Storage_Loaded = true;
