@@ -5321,7 +5321,10 @@ function MPT_Storage_SaveData(fileName : string, key : string, data, callback)
 	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][" .. key .. "][";
 	StorageDeleteGroupsByPrefix(prefix);
 	StorageCreateCleanGroup(prefix .. #encoded .. "]" .. encoded);
-	if callback ~= nil then pcall(callback, true); end
+	if callback ~= nil then
+		local ok, err = pcall(callback, true);
+		if not ok and err ~= nil then print("MPT_DS: SaveData 回调错误", key, tostring(err)); end
+	end
 end
 
 -- ============================================================================
@@ -5356,7 +5359,8 @@ function MPT_Storage_LoadData(fileName : string, key : string, callback)
 			end
 		end
 	end
-	pcall(callback, data);
+	local ok, err = pcall(callback, data);
+	if not ok and err ~= nil then print("MPT_DS: LoadData 回调错误", key, tostring(err)); end
 end
 
 -- ============================================================================
@@ -5399,7 +5403,10 @@ function MPT_Storage_SaveComposite(fileName : string, dataTable : table, callbac
 	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][";	-- 覆盖该命名空间全部组（旧单 key 组 + 旧复合组）
 	StorageDeleteGroupsByPrefix(prefix);
 	StorageCreateCleanGroup(prefix .. #encoded .. "]" .. encoded);
-	if callback ~= nil then pcall(callback, true); end
+	if callback ~= nil then
+		local ok, err = pcall(callback, true);
+		if not ok and err ~= nil then print("MPT_DS: SaveComposite 回调错误", fileName, tostring(err)); end
+	end
 end
 
 -- ============================================================================
@@ -5447,7 +5454,34 @@ function MPT_Storage_LoadComposite(fileName : string, keys : table, callback)
 			results[i] = data[key];
 		end
 	end
-	pcall(callback, table.unpack(results));
+	-- 显式展开回调参数：不依赖 table.unpack（Civ6 前端 Lua 环境无此 API，实测 1.67 用全局 unpack）。
+	--   当前调用方 keys 数量 1-2 个；超过 8 个才退到全局 unpack 兜底（正常不触发）。
+	--   pcall 保留保护（回调异常不中断存储层），但错误打印留痕 Lua.log（避免静默吞错）。
+	local pcallOk, err = nil, nil;
+	if #keys == 0 then
+		pcallOk, err = pcall(callback);
+	elseif #keys == 1 then
+		pcallOk, err = pcall(callback, results[1]);
+	elseif #keys == 2 then
+		pcallOk, err = pcall(callback, results[1], results[2]);
+	elseif #keys == 3 then
+		pcallOk, err = pcall(callback, results[1], results[2], results[3]);
+	elseif #keys == 4 then
+		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4]);
+	elseif #keys == 5 then
+		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4], results[5]);
+	elseif #keys == 6 then
+		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4], results[5], results[6]);
+	elseif #keys == 7 then
+		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4], results[5], results[6], results[7]);
+	elseif #keys == 8 then
+		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8]);
+	else
+		pcallOk, err = pcall(callback, unpack(results));
+	end
+	if not pcallOk and err ~= nil then
+		print("MPT_DS: LoadComposite 回调错误", fileName, tostring(err));
+	end
 end
 
 end	-- 条目4.3预备 do 块结束（寄存器上限适配）
