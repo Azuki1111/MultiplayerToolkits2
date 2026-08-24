@@ -22,7 +22,9 @@
 --   4) 打开入口改 LuaEvents.MPT_PlayerMark_Toggle（前端为 XML 内 PlayerMarkButton）；
 --   5) AddUserInterfaces 上下文引擎以 isHidden=true 加载（InGame.lua 硬编码挂
 --      AdditionalUserInterfaces），Open/Close 首尾带 ContextPtr:SetHide 切换；
---   6) 控件注册段删 PlayerMarkButton 回调（本 Context XML 无此控件）。
+--   6) 控件注册段删 PlayerMarkButton 回调（本 Context XML 无此控件）；
+--   7) 条目4.8续：同步隐身开关复选框与设置（与前端 StagingRoom.xml 同款 XML、Lua 同构函数
+--      与接入点；无差异，仅控件上下文不同——本 Context XML 内 PlayerMarkHiddenMarkCheck）。
 -- ============================================================================
 
 include("InstanceManager");
@@ -64,6 +66,7 @@ local PLAYERMARK_TAG_ICONS : table = { "[ICON_OnlineGreenPingPip]", "[ICON_Onlin
 local PLAYERMARK_TAG_ICON_NAMES : table = { "OnlineGreenPingPip", "OnlineYellowPingPig", "OnlineRedPingPig" };	-- 下标即 Tag；列表行 Image:SetIcon 用（FontIcons.xml 的裸 Name——SetIcon/Icon= 内部自动拼 ICON_ 前缀，不可再带）
 
 g_PlayerMarkList        = {};		-- 玩家记录数组（磁盘内容的工作副本）
+g_MPT_MarkHidden        = true;		-- 条目4.8续：隐身设置内存态（默认开启=隐藏自身 SQL 公共标记；与前端 4.4 同语义）
 g_PlayerMarkSelectedId  = nil;		-- 当前选中玩家 Id（nil=未选中）
 g_PlayerMarkSortAsc     = false;	-- 排序方向：false=最新修改在前（默认）
 g_PlayerMarkFilterTag   = { true, true, true };	-- 三个过滤复选框勾选态（下标即 Tag）
@@ -219,14 +222,22 @@ end
 -- 条目4.3 存储管线包装：真实读盘刷新 g_PlayerMarkList / 把工作副本落盘。
 -- ============================================================================
 function MPT_PlayerMark_LoadFromDisk(callback)
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Players" }, function(players)
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Players", "Settings" }, function(players, settings)
 		g_PlayerMarkList = (type(players) == "table") and players or {};
+		if type(settings) == "table" and type(settings.HiddenSqlMark) == "boolean" then
+			g_MPT_MarkHidden = settings.HiddenSqlMark;
+		else
+			g_MPT_MarkHidden = true;
+		end
 		if callback ~= nil then callback(); end
 	end);
 end
 
 function MPT_PlayerMark_SaveToDisk(callback)
-	MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, { Players = g_PlayerMarkList }, function(ok)
+	MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
+		Players = g_PlayerMarkList,
+		Settings = { HiddenSqlMark = g_MPT_MarkHidden },
+	}, function(ok)
 		-- ============================================================================
 		-- 条目11 差异2：删 MPT_PlayerMark_RefreshLocalCache() 调用（条目4.8 房间显示层刷新，游戏内无此层）
 		-- if ok then
@@ -234,6 +245,62 @@ function MPT_PlayerMark_SaveToDisk(callback)
 		-- end
 		-- ----------------------------------------------------------------------------
 		if callback ~= nil then callback(ok); end
+	end);
+end
+
+-- ============================================================================
+-- 条目4.8续：隐身设置（隐藏自身 SQL 公共标记）——与前端 4.4 同步（StagingRoom.lua 同款）。
+-- 语义：勾选 = 隐藏自己，房间内其他玩家加载我的配置后跳过我的 SQL 公共标记
+--   （Admin/Normal/Honor；Ban 强制显示）。默认开启（继承 1.67 IsHiddenPlayerInfo_STR="T"）。
+-- 存储：与 Players 同命名空间 MPT_PlayerInfo 下复合组 Settings 字段（LoadFromDisk 已一并读回）。
+-- 广播：设置/进房时写 PlayerConfigurations[我]:SetValue("HiddenPlayerInfo","T"/"F")
+--   + Network.BroadcastPlayerInfo（游戏内 PlayerConfigurations/Network 可用，QuickPanel 已验证）。
+-- ============================================================================
+
+-- MPT_PlayerMark_ApplyHiddenMarkUI()：复选框 UI 状态 <- 内存设置（g_MPT_MarkHidden）
+function MPT_PlayerMark_ApplyHiddenMarkUI()
+	Controls.PlayerMarkHiddenMarkCheck:SetCheck(g_MPT_MarkHidden);
+end
+
+-- MPT_PlayerMark_BroadcastHiddenMark()：把内存设置写入本机 PlayerConfigurations 并广播
+--   （打开面板/勾选后调用；PlayerConfigurations[我] 不可用时静默跳过）
+function MPT_PlayerMark_BroadcastHiddenMark()
+	local localPlayerID : number = Network.GetLocalPlayerID();
+	if localPlayerID ~= nil and PlayerConfigurations[localPlayerID] ~= nil then
+		PlayerConfigurations[localPlayerID]:SetValue("HiddenPlayerInfo", g_MPT_MarkHidden and "T" or "F");
+		Network.BroadcastPlayerInfo(localPlayerID);
+	end
+end
+
+-- MPT_PlayerMark_LoadSettings()：读 Settings 存档刷新 g_MPT_MarkHidden 并应用 UI+广播
+--   （无存档/字段缺失 → 默认 true 开启隐身；读完广播一次保证他人视角即时生效）
+--   注：真实读库入口是 LoadFromDisk（LoadComposite 一次读回 Players+Settings）；
+--   本函数保留为打开面板时的独立刷新（读复合组 Settings 字段）。
+function MPT_PlayerMark_LoadSettings()
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(settings)
+		if type(settings) == "table" and type(settings.HiddenSqlMark) == "boolean" then
+			g_MPT_MarkHidden = settings.HiddenSqlMark;
+		else
+			g_MPT_MarkHidden = true;	-- 默认开启隐身（继承 1.67）
+		end
+		MPT_PlayerMark_ApplyHiddenMarkUI();
+		MPT_PlayerMark_BroadcastHiddenMark();
+	end);
+end
+
+-- MPT_PlayerMark_OnHiddenMarkCheck()：复选框勾选回调（NoStateChange 手动维护勾选态）
+--   取反 → 广播 → 落盘（复合写 Players+Settings）→ 重刷 UI
+function MPT_PlayerMark_OnHiddenMarkCheck()
+	g_MPT_MarkHidden = not g_MPT_MarkHidden;
+	MPT_PlayerMark_ApplyHiddenMarkUI();
+	MPT_PlayerMark_BroadcastHiddenMark();
+	MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
+		Players = g_PlayerMarkList,
+		Settings = { HiddenSqlMark = g_MPT_MarkHidden },
+	}, function(ok)
+		if not ok then
+			print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
+		end
 	end);
 end
 
@@ -552,6 +619,7 @@ function MPT_PlayerMark_Open()
 	Controls.PlayerMarkPanel:SetHide(false);
 	UI.PlaySound("UI_Screen_Open");
 	MPT_PlayerMark_LoadFromDisk(function()
+		MPT_PlayerMark_LoadSettings();	-- 条目4.8续：读隐身设置存档并应用 UI+广播（异步回调，不阻塞）
 		MPT_PlayerMark_RebuildList();
 		MPT_PlayerMark_RefreshEditor();
 	end);
@@ -593,6 +661,8 @@ end
 -- ----------------------------------------------------------------------------
 Controls.PlayerMarkCloseButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Close);
 Controls.PlayerMarkModalBlocker:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Close);
+Controls.PlayerMarkHiddenMarkCheck:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnHiddenMarkCheck);	-- 条目4.8续：隐身开关
+MPT_PlayerMark_ApplyHiddenMarkUI();	-- 条目4.8续：初始勾选态（默认隐身；LoadSettings 读盘后会再刷）
 
 -- 左列：过滤复选框 / 排序切换 / 搜索框
 local function PlayerMarkOnFilterChanged()

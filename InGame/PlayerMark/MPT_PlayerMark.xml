@@ -28,6 +28,10 @@
 		<Container Size="parent,54">
 			<Grid Anchor="C,T" Size="parent-10,39" Texture="Controls_DecoFrame" SliceCorner="19,18" SliceSize="1,1" SliceTextureSize="40,38" Color="41,74,108,255" Offset="0,6"/>
 			<Label Style="ShellHeader" Anchor="C,C" String="LOC_MPT_PLAYERMARK_TITLE"/>
+			<!-- 条目4.8续：隐身开关复选框（头部左侧；勾选=隐藏自身 SQL 公共标记，设置存 MPT_PlayerInfo/Settings 并广播 HiddenPlayerInfo；样式仿 1.67 HiddenPlayerInfoCheck，与前端 StagingRoom.xml 同款） -->
+			<CheckBox ID="PlayerMarkHiddenMarkCheck" Anchor="L,C" ConsumeMouseOver="1" Offset="24,0" ButtonSize="35,35" BoxOnLeft="1" ButtonTexture="Controls_CheckboxCircle" CheckTexture="Controls_CheckboxCircle" CheckSize="35,35" CheckTextureOffset="0,35" Style="FontNormal16" NoStateChange="1" ToolTip="LOC_MPT_PLAYERMARK_HIDDEN_MARK_TT">
+				<Label Offset="32,0" Anchor="L,C" String="LOC_MPT_PLAYERMARK_HIDDEN_MARK" Style="FontNormal16"/>
+			</CheckBox>
 			<Grid Style="Divider3Grid" Size="parent+4,8" Anchor="L,B" Offset="-2,0"/>
 		</Container>
 
