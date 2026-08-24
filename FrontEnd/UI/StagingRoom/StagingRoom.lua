@@ -5567,7 +5567,7 @@ end
 --   （Admin/Normal/Honor；Ban 强制显示）。默认开启（继承 1.67 IsHiddenPlayerInfo_STR="T"）。
 -- 存储：与 Players 同命名空间 MPT_PlayerInfo 下新增 Settings key（组名各异互不覆盖），
 --   存 { HiddenSqlMark=boolean }；每次打开面板真实读库（同 4.4 惯例）。
--- 广播：设置/进房时写 PlayerConfigurations[我]:SetValue("HiddenPkayerInfo","T"/"F")
+-- 广播：设置/进房时写 PlayerConfigurations[我]:SetValue("HiddenPlayerInfo","T"/"F")
 --   + Network.BroadcastPlayerInfo（1.67 同款：键为 1.67 自定义配置键，随房间同步）。
 -- ============================================================================
 
@@ -5581,7 +5581,7 @@ end
 function MPT_PlayerMark_BroadcastHiddenMark()
 	local localPlayerID : number = Network.GetLocalPlayerID();
 	if localPlayerID ~= nil and PlayerConfigurations[localPlayerID] ~= nil then
-		PlayerConfigurations[localPlayerID]:SetValue("HiddenPkayerInfo", g_MPT_MarkHidden and "T" or "F");
+		PlayerConfigurations[localPlayerID]:SetValue("HiddenPlayerInfo", g_MPT_MarkHidden and "T" or "F");
 		Network.BroadcastPlayerInfo(localPlayerID);
 	end
 end
@@ -6639,7 +6639,7 @@ end	-- 条目4.7 do 块结束（寄存器上限适配）
 --      StagingRoom.xml ContextDefaults 条目4.8），否则 Desc，空则 Name/Icon 兜底。
 -- 效率：数据预加载时一次性构建 [SteamID]=记录 哈希表（SQL 顶层同步、本地档案异步读盘），
 --   运行时 O(1) 直查，替代 1.67 的每次刷新线性遍历；零新增事件，刷新全由 UpdatePlayerEntry 驱动。
--- 隐身判定（HiddenPkayerInfo）仅保留显示层逻辑；隐身设置按钮后续条目另加。
+-- 隐身判定（HiddenPlayerInfo）仅保留显示层逻辑；隐身设置按钮后续条目另加。
 -- ############################################################################
 do	-- 寄存器上限适配：分区整体块级 do...end 包裹（同条目4.3预备/4.4）
 -- ============================================================================
@@ -6757,10 +6757,10 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 	local sqlRec = g_MPT_MarkSql[netId];
 	if sqlRec ~= nil and MPT_PlayerMark_DateAllowed(sqlRec) then
 		-- 条目4.8续：本机玩家配置键兜底同步（进房广播的同步保险；他人视角由广播驱动，本行仅保证本机视角自洽）
-		if playerID == Network.GetLocalPlayerID() and cfg:GetValue("HiddenPkayerInfo") ~= (g_MPT_MarkHidden and "T" or "F") then
-			cfg:SetValue("HiddenPkayerInfo", g_MPT_MarkHidden and "T" or "F");
+		if playerID == Network.GetLocalPlayerID() and cfg:GetValue("HiddenPlayerInfo") ~= (g_MPT_MarkHidden and "T" or "F") then
+			cfg:SetValue("HiddenPlayerInfo", g_MPT_MarkHidden and "T" or "F");
 		end
-		local isHidden : boolean = cfg:GetValue("HiddenPkayerInfo") == "T";
+		local isHidden : boolean = cfg:GetValue("HiddenPlayerInfo") == "T";
 		local isPublic : boolean = (sqlRec.Type == "Admin" or sqlRec.Type == "Normal" or sqlRec.Type == "Honor");
 		if not (isHidden and isPublic) then	-- 隐身隐藏公共标记；Ban 与未隐身仍显示
 			entry.StatusLabel:SetText(sqlRec.Icon or "");
