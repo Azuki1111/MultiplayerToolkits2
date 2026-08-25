@@ -381,23 +381,6 @@
 			<File>Shared/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
 			<File>Shared/PlayerMark/PlayerMark_en_US.sql</File>
 		</UpdateText>
-		<!-- 条目4.8续：ChatPanel 玩家名点击 → 玩家标记「添加玩家」弹窗——仿 1.67 ChatPanel 覆盖
-			（ReplaceUIScript 注入 ChatPanel_MPT.lua：多文件探测 include 原版后包裹 UpdatePlayerEntry 给
-			PlayerNameButton 挂回调；ImportFiles 同名 XML 覆盖加透明按钮；点击经 LuaEvents 桥接 PlayerMark） -->
-		<ReplaceUIScript id="IG_ChatPanel_MPT">
-			<Properties>
-				<LoadOrder>5</LoadOrder>
-				<LuaContext>ChatPanel</LuaContext>
-				<LuaReplace>InGame/ChatPanel/ChatPanel_MPT.lua</LuaReplace>
-			</Properties>
-		</ReplaceUIScript>
-		<ImportFiles id="IG_ChatPanel_Import">
-			<Properties>
-				<LoadOrder>6</LoadOrder>
-			</Properties>
-			<File>InGame/ChatPanel/ChatPanel.xml</File>
-			<File>InGame/ChatPanel/ChatPanel_MPT.lua</File>
-		</ImportFiles>
 		<!-- 条目8续：投降投票 Gameplay 侧——EXECUTE_SCRIPT(MPT_SurrenderVote) 汇总投票+过半判定+城市叛变自由城；
 			Game:SetProperty 记录发起标志/票数/判负（每时代每队一次）；参考乔尔定制玩法mod RegicideVictory/GiftKingGameplay -->
 		<AddGameplayScripts id="IG_SurrenderVote_Gameplay">
@@ -559,7 +542,5 @@
 		<File>InGame/DealRestriction/SQL/NoFriendship.sql</File>
 		<File>InGame/DealRestriction/SQL/MakePeace.sql</File>
 		<File>InGame/DealRestriction/SQL/MakePeace_Disable.sql</File>
-		<File>InGame/ChatPanel/ChatPanel.xml</File>
-		<File>InGame/ChatPanel/ChatPanel_MPT.lua</File>
 	</Files>
 </Mod>

@@ -774,23 +774,6 @@ end
 LuaEvents.MPT_PlayerMark_Toggle.Add(MPT_PlayerMark_Toggle);
 
 -- ============================================================================
--- 条目4.8续：玩家名点击桥接——ChatPanel 玩家列表点玩家名 → 打开本面板「添加玩家」弹窗。
--- ChatPanel_MPT.lua（注入）发 LuaEvents.MPT_PlayerMark_OpenAddPopupForPlayer(playerID)，
--- 本处查 PlayerConfigurations 拿网络ID/昵称并打开弹窗（面板未开先开）。
--- ============================================================================
-LuaEvents.MPT_PlayerMark_OpenAddPopupForPlayer.Add(function(playerID : number)
-	if playerID == nil then return; end
-	local pConfig = PlayerConfigurations[playerID];
-	if pConfig == nil then return; end
-	local nid = pConfig:GetNetworkIdentifer();
-	if nid == nil or nid == "" then return; end
-	if Controls.PlayerMarkPanel:IsHidden() then
-		MPT_PlayerMark_Open();
-	end
-	MPT_PlayerMark_OpenAddPopup(nid, Locale.Lookup(pConfig:GetPlayerName()));
-end);
-
--- ============================================================================
 -- 输入处理（EndGameMenu.lua:1294 同款模式）：ESC 优先关闭本面板——
 --   添加弹窗开 → 先关弹窗；面板开 → 关面板；均消费（return true）。
 --   其余按键/面板未开时 return false 放行，不挡游戏菜单与其他界面。
