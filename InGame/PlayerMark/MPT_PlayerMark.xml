@@ -224,6 +224,7 @@
 			</GridButton>
 			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
 		</Container>
+	</Instance>
 	<Instance Name="MarkRoomEntryInstance">
 		<Container ID="RootContainer" Size="parent,46" Anchor="L,C">
 			<Label ID="RoomLeaderIcon" Anchor="L,C" Offset="4,0" Size="22,22" Style="FontNormal13" String="[ICON_ICON_LEADER_DEFAULT]"/>
@@ -234,7 +235,6 @@
 		</Container>
 	</Instance>
 
-	</Instance>
 
 	<!-- 条目4.4：详细描述行实例（卡片仿更新公告 ChangelogEntryInstance：SubContainer2 底，日期左上、删除钮右上、文本换行显示，行高由 Lua 按文本高自适应；删除为暂存改动，保存生效/取消还原，不弹确认） -->
 	<Instance Name="PlayerMarkDetailEntryInstance">
