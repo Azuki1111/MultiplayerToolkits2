@@ -69,4 +69,5 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_HIDDEN_MARK_TT', 'en_US', 'When checked, other players in the room will not see your special marks (Admin/Normal/Honor marks; Ban marks always show)'),
 -- 条目4.9：左列双页签
 ('LOC_MPT_PLAYERMARK_TAB_SAVED', 'en_US', 'Saved Marks'),
-('LOC_MPT_PLAYERMARK_TAB_ROOM', 'en_US', 'Room Players');
+('LOC_MPT_PLAYERMARK_TAB_ROOM', 'en_US', 'Room Players'),
+('LOC_MPT_PLAYERMARK_EMPTY_ROOM', 'en_US', 'No players in the room to mark');

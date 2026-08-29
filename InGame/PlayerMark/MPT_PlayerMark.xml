@@ -80,6 +80,8 @@
 					</ScrollPanel>
 					<Box Color="10,60,78,255" Anchor="C,T" Size="parent+4,3" Offset="-4,0"/>
 				</Stack>
+				<Label ID="PlayerMarkListEmptyLabel" Anchor="C,C" Offset="0,60" Style="FontNormal16" Align="Center" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_LIST" Hidden="1"/>
+				<GridButton ID="PlayerMarkAddButton" Style="MainButtonSmall" Anchor="C,B" Offset="0,8" Size="parent-10,52" String="LOC_MPT_PLAYERMARK_ADD"/>
 				</Container>
 				<!-- 房间页：房间玩家列表（SetProperty 快照；含观察者/不在线，排除自己） -->
 				<Container ID="PlayerMarkRoomContent" Size="parent,parent-61" Anchor="L,T" Offset="0,61" Hidden="1">

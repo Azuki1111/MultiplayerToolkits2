@@ -14,6 +14,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 条目4.9：左列双页签
 ('LOC_MPT_PLAYERMARK_TAB_SAVED', 'zh_Hans_CN', '存储标签'),
 ('LOC_MPT_PLAYERMARK_TAB_ROOM', 'zh_Hans_CN', '房间玩家'),
+('LOC_MPT_PLAYERMARK_EMPTY_ROOM', 'zh_Hans_CN', '当前房间没有可标记的玩家'),
 -- 搜索框（占位文本/提示）
 ('LOC_MPT_PLAYERMARK_SEARCH_NAME', 'zh_Hans_CN', '搜索昵称或ID'),
 ('LOC_MPT_PLAYERMARK_SEARCH_TT', 'zh_Hans_CN', '按昵称或 NetworkIdentifier 过滤左侧列表'),
