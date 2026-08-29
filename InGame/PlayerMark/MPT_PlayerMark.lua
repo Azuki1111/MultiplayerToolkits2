@@ -423,13 +423,33 @@ function MPT_PlayerMark_RebuildRoomList()
 	if m_playerMarkRoomIM == nil then return; end
 	m_playerMarkRoomIM:ResetInstances();
 	if Controls.PlayerMarkRoomListStack == nil then return; end
-	local list = Game:GetProperty("MPT_RoomPlayerList");
-	if type(list) ~= "table" then list = {}; end
+
+	-- ========== 临时测试数据：20 个虚拟玩家（调整控件尺寸用，调完即删） ==========
+	-- 用测试数据替代 Game:GetProperty 读档，便于调控件尺寸/滚动/添加按钮显隐。
+	--   字段对齐真实快照 {nid,name,leader}，额外加 online/marked 两个测试专用布尔：
+	--   snap.online 非 nil 时优先用（替代实时 PlayerConfigurations 判断）；否则实时判断。
+	--   snap.marked 非 nil 时优先用（替代 MPT_PlayerMark_IsMarked）；否则按 nid 查 g_PlayerMarkList。
+	local testList : table = {};
+	local testSnap : table = {};
+	local leaderPool : table = { "TRAJAN", "CLEOPATRA", "GANDHI", "VICTORIA", "ALEXANDER", "SALADIN", "PETER", "HOJO", "KUPE", "TAMAR" };
+	for i = 1, 20 do
+		local pid : number = 1000 + i;
+		table.insert(testList, pid);
+		testSnap[pid] = {
+			nid = "76561198" .. string.format("%08d", i),
+			name = "测试玩家" .. i,
+			leader = leaderPool[(i - 1) % #leaderPool + 1],
+			online = (i % 2 == 0),	-- 偶数在线、奇数离线
+			marked = (i % 3 == 0),	-- 每 3 个标记一个（隐藏添加按钮）
+		};
+	end
+	-- ========== 测试数据结束 ==========
+
 	local localPlayer = Game.GetLocalPlayer();
 	local count : number = 0;
-	for _, playerID in ipairs(list) do
+	for _, playerID in ipairs(testList) do
 		if playerID ~= localPlayer then	-- 排除自己（用户确认）
-			local snap = Game:GetProperty("MPT_RoomPlayer_" .. playerID);
+			local snap = testSnap[playerID];
 			if type(snap) == "table" then
 				local inst = m_playerMarkRoomIM:GetInstance();
 				if inst ~= nil then
@@ -440,15 +460,25 @@ function MPT_PlayerMark_RebuildRoomList()
 					else
 						inst.RoomLeaderIcon:SetText("[ICON_ICON_LEADER_DEFAULT]");
 					end
-					-- 在线状态：实时 PlayerConfigurations 判断（含观察者/掉线槽位判离线）
+					-- 在线状态：测试数据 snap.online 优先，否则实时 PlayerConfigurations 判断
 					local online : boolean = false;
-					local cfg = PlayerConfigurations[playerID];
-					if cfg ~= nil then
-						online = cfg:IsAlive() or (GameConfiguration.IsNetworkMultiplayer() and Network.IsPlayerConnected(playerID) and cfg:GetSlotStatus() == 4);
+					if snap.online ~= nil then
+						online = snap.online;
+					else
+						local cfg = PlayerConfigurations[playerID];
+						if cfg ~= nil then
+							online = cfg:IsAlive() or (GameConfiguration.IsNetworkMultiplayer() and Network.IsPlayerConnected(playerID) and cfg:GetSlotStatus() == 4);
+						end
 					end
 					inst.RoomConnLabel:SetText(online and "[icon_CheckmarkBlue]在线" or "[icon_Exclamation]离线");
 					-- 添加按钮：未标记显示点击打开弹窗，已标记隐藏
-					if MPT_PlayerMark_IsMarked(snap.nid) then
+					local isMarked : boolean;
+					if snap.marked ~= nil then
+						isMarked = snap.marked;
+					else
+						isMarked = MPT_PlayerMark_IsMarked(snap.nid);
+					end
+					if isMarked then
 						inst.RoomAddMarkButton:SetHide(true);
 					else
 						inst.RoomAddMarkButton:SetHide(false);
