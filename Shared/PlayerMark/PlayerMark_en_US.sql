@@ -55,6 +55,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- Validation / notices (embedded [color:] tags; Label SetColor does not work on text)
 ('LOC_MPT_PLAYERMARK_HINT_ID_INVALID', 'en_US', '[color:255,100,100,255]Invalid ID: must be 17 digits (Steam) or 32 characters (Epic)[ENDCOLOR]'),
 ('LOC_MPT_PLAYERMARK_HINT_NAME_EMPTY', 'en_US', '[color:255,100,100,255]Nickname cannot be empty[ENDCOLOR]'),
+('LOC_MPT_PLAYERMARK_HINT_ID_UNAVAILABLE', 'en_US', 'Unable to retrieve ID'),
 ('LOC_MPT_PLAYERMARK_NOTICE_TITLE', 'en_US', 'Notice'),
 -- Duplicate ID notice
 ('LOC_MPT_PLAYERMARK_EXISTS_TITLE', 'en_US', 'Record Exists'),

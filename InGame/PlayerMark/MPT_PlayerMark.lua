@@ -43,6 +43,7 @@ local PlayerMarkSortDescStr			: string = Locale.Lookup("LOC_MPT_PLAYERMARK_SORT_
 local PlayerMarkSortAscStr			: string = Locale.Lookup("LOC_MPT_PLAYERMARK_SORT_ASC");
 local PlayerMarkModifiedPrefixStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_MODIFIED_PREFIX");
 local PlayerMarkIdInvalidStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_ID_INVALID");
+local PlayerMarkIdUnavailableStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_ID_UNAVAILABLE");
 local PlayerMarkNameEmptyStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_NAME_EMPTY");
 local PlayerMarkNoticeTitleStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_NOTICE_TITLE");
 local PlayerMarkExistsTitleStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_EXISTS_TITLE");
@@ -68,6 +69,7 @@ local PLAYERMARK_TAG_ICON_NAMES : table = { "OnlineGreenPingPip", "OnlineYellowP
 g_PlayerMarkList        = {};		-- 玩家记录数组（磁盘内容的工作副本）
 g_MPT_MarkHidden        = true;		-- 条目4.8续：隐身设置内存态（默认开启=隐藏自身 SQL 公共标记；与前端 4.4 同语义）
 g_PlayerMarkSelectedId  = nil;		-- 当前选中玩家 Id（nil=未选中）
+g_PlayerMarkRightHidden = false;	-- 房间页选中非法网络ID玩家时右侧详情整体隐藏（第三态）
 g_RoomSelectedId     = nil;		-- 房间玩家行选中 playerID（nil=未选中；选中显示 SelectedFrame 金框）
 g_PlayerMarkSortAsc     = false;	-- 排序方向：false=最新修改在前（默认）
 g_PlayerMarkFilterTag   = { true, true, true };	-- 三个过滤复选框勾选态（下标即 Tag）
@@ -404,9 +406,10 @@ function MPT_PlayerMark_SelectTab(tab : string)
 	Controls.MarkRoomTabSelected:SetHide(isSaved);
 	Controls.MarkRoomTabButton:SetSelected(not isSaved);
 
-	-- 切换页时清空右侧详情到默认（取消选中存储记录，显示空态提示；未保存改动直接丢弃）
-	if g_PlayerMarkSelectedId ~= nil then
+	-- 切换页时清空右侧详情到默认（取消选中存储记录/非法ID隐藏态，显示空态提示；未保存改动直接丢弃）
+	if g_PlayerMarkSelectedId ~= nil or g_PlayerMarkRightHidden then
 		g_PlayerMarkSelectedId = nil;
+		g_PlayerMarkRightHidden = false;
 		MPT_PlayerMark_RefreshEditor();
 	end
 end
@@ -420,6 +423,17 @@ local function MPT_PlayerMark_IsMarked(nid : string)
 		if rec.Id == nid then return true; end
 	end
 	return false;
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_IsValidNetID(nid)：网络ID是否合法（17位 SteamID64 或 32 位平台ID）。
+--   空/过短/异常 → false（UI 显示 ICON_EXCLAMATION 排除警告）。
+-- ============================================================================
+local function MPT_PlayerMark_IsValidNetID(nid : string)
+	if type(nid) ~= "string" or nid == "" then return false; end
+	local len : number = #nid;
+	if len ~= 17 and len ~= 32 then return false; end
+	return true;
 end
 
 -- ============================================================================
@@ -491,12 +505,19 @@ function MPT_PlayerMark_RebuildRoomList()
 					inst.RowBg:SetVoid1(playerID);
 					inst.RowBg:RegisterCallback(Mouse.eLClick, function()
 						g_RoomSelectedId = playerID;
-						local rec = nil;
-						for _, r in ipairs(g_PlayerMarkList) do if r.Id == snap.nid then rec = r; break; end end
-						if rec ~= nil then
-							g_PlayerMarkSelectedId = rec.Id;	-- 已标记：右侧载入该记录信息
+						if not MPT_PlayerMark_IsValidNetID(snap.nid) then
+							-- 非法网络ID：右侧详情页整体隐藏（不载入详情/空态）
+							g_PlayerMarkSelectedId = nil;
+							g_PlayerMarkRightHidden = true;
 						else
-							g_PlayerMarkSelectedId = nil;	-- 未标记：右侧清空到默认
+							g_PlayerMarkRightHidden = false;
+							local rec = nil;
+							for _, r in ipairs(g_PlayerMarkList) do if r.Id == snap.nid then rec = r; break; end end
+							if rec ~= nil then
+								g_PlayerMarkSelectedId = rec.Id;	-- 已标记：右侧载入该记录信息
+							else
+								g_PlayerMarkSelectedId = nil;	-- 未标记：右侧清空到默认
+							end
 						end
 						MPT_PlayerMark_RefreshEditor();
 						MPT_PlayerMark_RebuildRoomList();
@@ -519,7 +540,13 @@ function MPT_PlayerMark_RebuildRoomList()
 					if isMarked then
 						inst.RoomAddMarkButton:SetHide(true);
 						inst.RoomTagIcon:SetHide(false);
-						inst.RoomTagIcon:SetIcon(PLAYERMARK_TAG_ICON_NAMES[markTag] or PLAYERMARK_TAG_ICON_NAMES[2], 24);
+						if MPT_PlayerMark_IsValidNetID(snap.nid) then
+							inst.RoomTagIcon:SetIcon(PLAYERMARK_TAG_ICON_NAMES[markTag] or PLAYERMARK_TAG_ICON_NAMES[2], 24);
+							inst.RoomTagIcon:SetToolTipString("");	-- 合法网络ID：ToolTip 为空
+						else
+							inst.RoomTagIcon:SetIcon("Exclamation", 24);	-- ICON_EXCLAMATION：FontIcons 裸名 Exclamation（SetIcon 自动拼 ICON_ 前缀）
+							inst.RoomTagIcon:SetToolTipString(PlayerMarkIdUnavailableStr);	-- 非法：提示无法获取ID
+						end
 					else
 						inst.RoomAddMarkButton:SetHide(false);
 						inst.RoomTagIcon:SetHide(true);
@@ -544,6 +571,13 @@ end
 --   装载期间置 g_PlayerMarkLoading 屏蔽文本改动回调（防 SetText 误标 dirty）。
 -- ============================================================================
 function MPT_PlayerMark_RefreshEditor()
+	if g_PlayerMarkRightHidden then
+		Controls.PlayerMarkEmptyHint:SetHide(true);
+		Controls.PlayerMarkEditor:SetHide(true);
+		g_PlayerMarkDirty = false;
+		PlayerMarkUpdateSaveButton();
+		return;
+	end
 	local rec = MPT_PlayerMark_GetSelected();
 	Controls.PlayerMarkEmptyHint:SetHide(rec ~= nil);
 	Controls.PlayerMarkEditor:SetHide(rec == nil);
@@ -586,6 +620,7 @@ function MPT_PlayerMark_Select(id)
 		end);
 		return;
 	end
+	g_PlayerMarkRightHidden = false;
 	g_PlayerMarkSelectedId = id;
 	MPT_PlayerMark_RefreshEditor();
 	MPT_PlayerMark_RebuildList();	-- 重刷列表以更新选中行金色外框

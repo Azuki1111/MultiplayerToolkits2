@@ -62,6 +62,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 校验/提示（内嵌 [color:] 颜色标签，Label SetColor 对文本无效为实测坑）
 ('LOC_MPT_PLAYERMARK_HINT_ID_INVALID', 'zh_Hans_CN', '[color:255,100,100,255]ID 格式无效：需 17 位纯数字（Steam）或 32 位字符（Epic）[ENDCOLOR]'),
 ('LOC_MPT_PLAYERMARK_HINT_NAME_EMPTY', 'zh_Hans_CN', '[color:255,100,100,255]昵称不能为空[ENDCOLOR]'),
+('LOC_MPT_PLAYERMARK_HINT_ID_UNAVAILABLE', 'zh_Hans_CN', '无法获取ID'),
 ('LOC_MPT_PLAYERMARK_NOTICE_TITLE', 'zh_Hans_CN', '提示'),
 -- 重复 ID 提示
 ('LOC_MPT_PLAYERMARK_EXISTS_TITLE', 'zh_Hans_CN', '记录已存在'),
