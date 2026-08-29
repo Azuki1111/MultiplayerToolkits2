@@ -43,18 +43,20 @@
 
 			<!-- 左列：搜索框 + 排序(左)/三过滤复选框(右,垂直堆叠)同区块 + 玩家列表 + 添加按钮（结构照 Mods.xml 左列） -->
 			<Grid Style="SubContainer" Size="402,parent-6" Anchor="L,T" Offset="0,0">
-				<!-- 条目4.9 双页签：Tab 台（左「存储标签」右「房间玩家」）；仿前端 4.5/4.6 查看器页签台 -->
+				<!-- 条目4.9 双页签：Tab 台（左「存储标签」右「房间玩家」）；仿 GreatPeoplePopup 的 Controls_TabLedge2_Fill(平铺底)+Controls_TabLedge2(九宫格边) 双层组合 -->
 				<Container Anchor="C,T" Offset="0,0" Size="402,61">
-					<Grid Anchor="C,T" Size="402,61" Texture="Controls_TabLedge2" SliceCorner="194,18" SliceSize="52,26" SliceTextureSize="438,61">
-						<Stack ID="PlayerMarkTabStack" Anchor="C,C" StackGrowth="Right" Padding="0" Size="340,34">
-							<GridButton ID="MarkSavedTabButton" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2" String="LOC_MPT_PLAYERMARK_TAB_SAVED">
-								<GridButton ID="MarkSavedTabSelected" Size="parent,parent" Style="TabButtonSelected"/>
-							</GridButton>
-							<GridButton ID="MarkRoomTabButton" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2" String="LOC_MPT_PLAYERMARK_TAB_ROOM">
-								<GridButton ID="MarkRoomTabSelected" Size="parent,parent" Style="TabButtonSelected" Hidden="1"/>
-							</GridButton>
-						</Stack>
-					</Grid>
+					<Image Anchor="C,T" Size="402,27" Texture="Controls_TabLedge2_Fill" StretchMode="Tile">
+						<Grid Anchor="C,T" Offset="0,-17" Size="402,61" Texture="Controls_TabLedge2" SliceCorner="194,18" SliceSize="52,26" SliceTextureSize="438,61">
+							<Stack ID="PlayerMarkTabStack" Anchor="C,C" StackGrowth="Right" Padding="0" Size="340,34">
+								<GridButton ID="MarkSavedTabButton" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2" String="LOC_MPT_PLAYERMARK_TAB_SAVED">
+									<GridButton ID="MarkSavedTabSelected" Size="parent,parent" Style="TabButtonSelected"/>
+								</GridButton>
+								<GridButton ID="MarkRoomTabButton" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2" String="LOC_MPT_PLAYERMARK_TAB_ROOM">
+									<GridButton ID="MarkRoomTabSelected" Size="parent,parent" Style="TabButtonSelected" Hidden="1"/>
+								</GridButton>
+							</Stack>
+						</Grid>
+					</Image>
 				</Container>
 				<!-- 存储页：现有存储标签列表（搜索/排序/过滤/添加） -->
 				<Container ID="PlayerMarkSavedContent" Size="parent,parent-61" Anchor="L,T" Offset="0,61">
