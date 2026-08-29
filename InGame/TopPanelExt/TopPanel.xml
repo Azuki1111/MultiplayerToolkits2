@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================ -->
-<!-- 条目9续：战略资源点击发送交易                                                 -->
-<!-- 整文件同名覆盖 Base/Assets/UI/TopPanel.xml（游戏内唯一加载的 TopPanel 布局，   -->
-<!-- Expansion1/2 均复用此 xml，仅覆盖 Lua）。                                     -->
-<!-- 唯一结构性改动：ResourceInstance 模板中保持 Label ResourceText 原版渲染，         -->
-<!-- 新增透明 BoxButton ResourceClick 覆盖层（Color 0,0,0,0 NoStateChange 无纹理，     -->
-<!-- 接收点击 + 同步 Tooltip，供条目9续 发送交易弹窗使用；Container 高度固定 24）。      -->
-<!-- 弹窗控件 MPT_TPE_SendPopup 直接内嵌于本 Context（Anchor="C,C" 全屏居中覆盖，  -->
-<!-- TopPanel 为 HUD 常驻层，子控件可覆盖全屏；Lua 经 Controls.xxx 访问）。          -->
-<!-- 发送逻辑见同目录 TopPanelExt.lua 条目9续 分区。                                -->
+<!-- 条目9：顶部面板布局同名覆盖（Base/Assets/UI/TopPanel.xml）                     -->
+<!-- 该文件在游戏内为唯一加载的 TopPanel 布局，Expansion1/2 均复用此 xml，仅覆盖 Lua。-->
+<!-- 说明：条目9续「战略资源点击发送交易」已移除，本文件不再含 ResourceClick 点击层      -->
+<!-- 与 MPT_TPE_SendPopup 弹窗，内容等价于原版 TopPanel.xml，仅作为导入占位保留。       -->
+<!-- 相关 Lua 逻辑见同目录 TopPanelExt.lua（条目9 统计按钮 / 战略资源 Tooltip）。       -->
 <!-- ============================================================================ -->
 <Context >
 
@@ -101,20 +97,9 @@
 		</SlideAnim>
 	</Tutorial>
 
-	<!-- ============================================================================ -->
-	<!-- 条目9续：ResourceInstance 模板改造                                             -->
-	<!-- 原版 ResourceText 为 Label（不支持点击回调）；保持 Label 原版渲染完全不变       -->
-	<!-- （Style/ColorSet/尺寸，Lua 端 SetText/SetToolTipString/GetSizeX 行为一致），     -->
-	<!-- 在其上方叠一层透明 BoxButton（ResourceClick）作为点击层，供条目9续 点击战略资源 -->
-	<!-- 打开发送交易弹窗。Container 高度固定 24 与 Resources Grid(48,24) 匹配，不变形。  -->
-	<!-- 注意：点击层宽度由 Lua 显式 SetSizeX(文本宽)（Size="parent" 在 Stack 末位实例    -->
-	<!-- 上会被误解析延伸到屏幕右缘）；XML 里 parent 仅为初始占位。                        -->
-	<!-- 原版：Label ID=ResourceText Style=FontNormal14 ColorSet=TopBarValueCS             -->
-	<!-- ============================================================================ -->
 	<Instance			Name="ResourceInstance">
-    <Container	ID="Top"								Anchor="L,C" Offset="0,2" Size="auto,24">
-      <Label		ID="ResourceText" Style="FontNormal14" ColorSet="TopBarValueCS" Anchor="L,C"/>
-      <BoxButton	ID="ResourceClick" Anchor="L,C" Size="parent,parent" Color="0,0,0,0" NoStateChange="1" ConsumeAllMouse="1"/>
+    <Container	ID="Top"								Anchor="L,C" Offset="0,2" Size="auto,auto">
+      <Label		ID="ResourceText" Style="FontNormal14" ColorSet="TopBarValueCS"/>
       <Image		ID="ResourceVelocity"		Anchor="L,B" Offset="10,-1" Size="12,12" Hidden="1"/>
     </Container>		
 	</Instance>
@@ -150,48 +135,4 @@
     </Container>
   </Instance>
 
-  <!-- ============================================================================ -->
-  <!-- 条目9续：战略资源发送确认弹窗（内嵌本 Context，全屏暗化模态、居中）               -->
-  <!-- 默认 Hidden，由 TopPanelExt.lua 条目9续 分区控制显隐。                          -->
-  <!-- 样式照抄原版 Popups/PopupDialog.xml 通用简约对话框结构：全屏暗化 Box +          -->
-  <!-- DropShadow2 阴影 + WindowFrameTitle 窗口（Controls_WindowTitle 纹理）+          -->
-  <!-- WindowHeader 标题 + BodyTextDark18 正文 + MainButton/ButtonConfirm 底部按钮。   -->
-  <!-- 高度全自动（Size auto + AutoSizePadding 随内容自适应），无需 Lua SetSizeY；     -->
-  <!-- 淡入/下滑入场动画同原版（Cycle Once，每次显示自动重播）。                       -->
-  <!-- ============================================================================ -->
-  <Box ID="MPT_TPE_SendPopup" Color="0,0,0,150" Size="parent,parent" ConsumeMouse="1" Hidden="1">
-    <AlphaAnim ID="MPT_TPE_SendAlphaIn" Size="parent,parent" AlphaBegin="0" AlphaEnd="1" Speed="3" Function="Root" Cycle="Once">
-      <SlideAnim ID="MPT_TPE_SendSlideIn" Size="parent,parent" Start="0,-20" End="0,0" Speed="3" Function="Root" Cycle="Once">
-        <Grid Size="auto,auto" Anchor="C,C" Style="DropShadow2" Color="255,255,255,200" AutoSizePadding="25,25" ConsumeMouse="1">
-          <Grid ID="MPT_TPE_SendBox" Size="480,auto" Anchor="C,C" Style="WindowFrameTitle" AutoSizePadding="0,10">
-            <!-- 标题栏（38 高标题区 + 内容自 Offset 0,50 起排，同原版 PopupDialog） -->
-            <Container Size="parent,38" Offset="0,4">
-              <Label ID="MPT_TPE_SendTitle" Style="WindowHeader" Anchor="C,C"/>
-            </Container>
-            <!-- 内容列（持有量/队友列表/合计/按钮，垂直排列，高度自适应） -->
-            <Stack ID="MPT_TPE_SendContent" Size="parent,auto" Anchor="C,T" Offset="0,50" StackGrowth="Down" StackPadding="8">
-              <Label ID="MPT_TPE_SendYourAmount" Anchor="C,T" Style="BodyTextDark18" Align="Center" WrapWidth="400"/>
-              <!-- 禁止交易模式提示（默认隐藏，Lua 检测 isStrategicsTradingAllowed==false 时显示并禁用确认） -->
-              <Label ID="MPT_TPE_SendBanned" Anchor="C,T" Style="BodyTextDark18" Color="200,40,40,255" Align="Center" WrapWidth="400" Hidden="1"/>
-              <Stack ID="MPT_TPE_SendList" Anchor="C,T" StackGrowth="Down" StackPadding="4"/>
-              <Label ID="MPT_TPE_SendTotal" Anchor="C,T" Style="BodyTextDark18" Align="Center" WrapWidth="400"/>
-              <!-- 底部按钮（确认在左/取消在右并排，同原版 PopupDialog 按钮区） -->
-              <Stack Anchor="C,T" Offset="0,6" StackGrowth="Right" StackPadding="15">
-                <GridButton ID="MPT_TPE_SendConfirm" Style="ButtonConfirm" String="LOC_MPT_TPE_SEND_CONFIRM" Size="200,41"/>
-                <GridButton ID="MPT_TPE_SendCancel" Style="MainButton" String="LOC_MPT_TPE_SEND_CANCEL" Size="200,41"/>
-              </Stack>
-            </Stack>
-          </Grid>
-        </Grid>
-      </SlideAnim>
-    </AlphaAnim>
-  </Box>
-  <!-- 条目9续：发送弹窗队友列表行实例（每行：领袖名 + 空余存储上限；浅色窗面配深色文字） -->
-  <Instance Name="MPT_TPE_SendRow">
-    <Grid ID="Top" Size="400,26">
-      <Label ID="LeaderName" Anchor="L,C" Style="BodyTextDark18" TruncateWidth="250"/>
-      <Label ID="SpaceText" Anchor="R,C" Style="BodyTextDark18"/>
-    </Grid>
-  </Instance>
-  
 </Context>

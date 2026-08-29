@@ -14,17 +14,4 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 	('LOC_MPT_TPE_TOOLTIP_FOOD_HEADER_PRE', 'en_US', '+'),
 	('LOC_MPT_TPE_TOOLTIP_FOOD_HEADER_SUF', 'en_US', ' [Icon_FoodLarge] Food'),
 	('LOC_MPT_TPE_TOOLTIP_POPULATION_HEADER_PRE', 'en_US', ''),
-	('LOC_MPT_TPE_TOOLTIP_POPULATION_HEADER_SUF', 'en_US', ' [Icon_Citizen] Population'),
-	-- 条目9续：战略资源点击发送交易弹窗
-	('LOC_MPT_TPE_SEND_TITLE_PRE', 'en_US', 'Send '),
-	('LOC_MPT_TPE_SEND_TITLE_SUF', 'en_US', ' to Teammates'),
-	('LOC_MPT_TPE_SEND_YOUR_AMOUNT_PRE', 'en_US', 'You have: '),
-	('LOC_MPT_TPE_SEND_YOUR_AMOUNT_SUF', 'en_US', ''),
-	('LOC_MPT_TPE_SEND_SPACE_PRE', 'en_US', 'Space: '),
-	('LOC_MPT_TPE_SEND_SPACE_SUF', 'en_US', ''),
-	('LOC_MPT_TPE_SEND_TOTAL_PRE', 'en_US', 'Total Sendable: '),
-	('LOC_MPT_TPE_SEND_TOTAL_SUF', 'en_US', ''),
-	('LOC_MPT_TPE_SEND_CONFIRM', 'en_US', 'Send'),
-	('LOC_MPT_TPE_SEND_CANCEL', 'en_US', 'Cancel'),
-	('LOC_MPT_TPE_SEND_TRADE_BANNED', 'en_US', 'Trading is banned: cannot send resources'),
-	('LOC_MPT_TPE_SEND_NO_TEAMMATE', 'en_US', 'No teammate can receive');
+	('LOC_MPT_TPE_TOOLTIP_POPULATION_HEADER_SUF', 'en_US', ' [Icon_Citizen] Population');

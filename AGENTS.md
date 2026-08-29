@@ -44,7 +44,7 @@
 | `InGame/EndGameMenu/` | 条目7 战败后观战按钮（移植 1.67 EGM 并修复反复弹出 bug）：整文件同名覆盖 + 通配 include 注入 |
 | `InGame/WorldTracker/` | 条目8 WorldTracker 快捷操作面板：空 Context + ChangeParent 挂载，展开区「投降」「重新开始」「玩家标记」三按钮 + 投票区；「重新开始」响应未配置 TODO |
 | `InGame/SurrenderVote/` | 条目8续 团队投降投票（Gameplay 侧）：AddGameplayScripts 注册，EXECUTE_SCRIPT 收 UI 指令，票数 ≥ 半数 → 该队城市全部叛变自由城；每时代每队一次 |
-| `InGame/TopPanelExt/` | 条目9 顶部面板扩展（移植 1.67 TPE）：ReplaceUIScript 覆盖，追加食物/生产力/人口/奢侈品统计按钮与 Tooltip、战略资源 Tooltip 追加队友清单；条目9续 战略资源点击发交易（透明覆盖层 + DealManager PROPOSED 提案弹窗） |
+| `InGame/TopPanelExt/` | 条目9 顶部面板扩展（移植 1.67 TPE）：ReplaceUIScript 覆盖，追加食物/生产力/人口/奢侈品统计按钮与 Tooltip、战略资源 Tooltip 追加队友清单 |
 | `InGame/DealRestriction/` | 条目10 交易限制与外交限制（移植 1.67 DDV 整模块）：交易四模式/无友谊默认开/和解三模式；`MPT_TradeRules.lua` 统一解析器；SQL 经 ActionCriteria（ConfigurationValueMatches）条件执行；参数定义与 DealView 导入门控 `Disable_MPH` |
 | `InGame/PlayerMark/` | 条目11 游戏内玩家标记面板（移植条目4.4 到 InGame）：include Shared/MPT_DataStorage.lua 与前端同一份存档互通；QuickPanel 按钮打开 |
 | `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目12+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
