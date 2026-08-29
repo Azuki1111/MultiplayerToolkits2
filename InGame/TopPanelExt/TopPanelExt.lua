@@ -38,6 +38,7 @@ local g_TopPanelResources : table = {}			-- 顶部面板显示的战略资源轻
 local g_TeamVisibleResources : table = {}		-- 队友已解锁的战略资源（Index => true）
 local g_LuxuryTeamPlayerIDs : table = nil		-- 奢侈品队友列表（FFA 时含全部存活玩家；每刷新周期构建一次）
 local g_StrategicTeamPlayerIDs : table = nil	-- 战略资源队友列表（仅同队；每刷新周期构建一次）
+local g_StrategicTeamLeaderNames : table = {}	-- 战略资源队友 leader 名缓存（playerID => Name，避免资源循环内重复查询）
 
 local m_FoodYieldButton = nil
 local m_PopulationYieldButton = nil
@@ -65,6 +66,10 @@ local LuxuryResourcesSUF	= Locale.Lookup("LOC_MPT_TPE_LUXURY_RESOURCES_SUF")			-
 local MoreLuxuryNameStr		= Locale.Lookup("LOC_MPT_TPE_MORE_LUXURY_NAME")				-- "自己的额外奢侈品"
 local TeamMoreLuxuryNameStr	= Locale.Lookup("LOC_MPT_TPE_TEAM_MORE_LUXURY_NAME")		-- "其他玩家的重复奢侈品"
 local TeamMoreStrategicStr	= Locale.Lookup("LOC_MPT_TPE_TEAM_MORE_STRATEGIC_NAME")		-- "队友可用的战略"
+-- 条目9 战略资源 Tooltip 无参数常量文本预加载（RefreshResources 资源循环内避免反复 Locale.Lookup；
+-- 带 {1} 占位符的 tag（ACCUMULATION_PER_TURN_* / CONSUMPTION 等）须原地 带值 调用，不在此预加载）
+local ResourceItemInStockpileStr	= Locale.Lookup("LOC_RESOURCE_ITEM_IN_STOCKPILE")				-- "库存中"
+local ResourceItemInReserveStr		= Locale.Lookup("LOC_RESOURCE_ITEM_IN_RESERVE")					-- "储备中"
 
 -- ===========================================================================
 -- 构建奢侈品队友列表（IsFFA 时含全部存活玩家，否则仅同队；排除自己）
@@ -86,11 +91,14 @@ end
 -- ===========================================================================
 function BuildStrategicTeamPlayerIDs()
     g_StrategicTeamPlayerIDs = {}
+    g_StrategicTeamLeaderNames = {}
     local localPlayerID : number = Game.GetLocalPlayer()
     local localPlayer : table = Players[localPlayerID]
     for j, playerID in ipairs(PlayerManager.GetAliveMajorIDs()) do
         if localPlayer:GetTeam() == Players[playerID]:GetTeam() and localPlayerID ~= playerID then
             table.insert(g_StrategicTeamPlayerIDs, playerID)
+            local leaderType = PlayerConfigurations[playerID]:GetLeaderTypeName();
+            g_StrategicTeamLeaderNames[playerID] = Locale.Lookup(GameInfo.Leaders[leaderType].Name);
         end
     end
 end
@@ -486,80 +494,82 @@ if BaseFile == "TopPanel_Expansion2" then
             for resource in GameInfo.Resources() do
                 if (resource.ResourceClassType ~= nil and resource.ResourceClassType ~= "RESOURCECLASS_BONUS" and resource.ResourceClassType ~="RESOURCECLASS_LUXURY" and resource.ResourceClassType ~="RESOURCECLASS_ARTIFACT") then
 
+                    -- 显示判定所需 getter（轻量提前；不显示则跳过后续 cap/reserved/Tooltip/队友循环）
                     local stockpileAmount : number = pPlayerResources:GetResourceAmount(resource.ResourceType);
-                    local stockpileCap : number = pPlayerResources:GetResourceStockpileCap(resource.ResourceType);
-                    local reservedAmount : number = pPlayerResources:GetReservedResourceAmount(resource.ResourceType);
                     local accumulationPerTurn : number = pPlayerResources:GetResourceAccumulationPerTurn(resource.ResourceType);
                     local importPerTurn : number = pPlayerResources:GetResourceImportPerTurn(resource.ResourceType);
                     local bonusPerTurn : number = pPlayerResources:GetBonusResourcePerTurn(resource.ResourceType);
                     local unitConsumptionPerTurn : number = pPlayerResources:GetUnitResourceDemandPerTurn(resource.ResourceType);
                     local powerConsumptionPerTurn : number = pPlayerResources:GetPowerResourceDemandPerTurn(resource.ResourceType);
-                    local totalConsumptionPerTurn : number = unitConsumptionPerTurn + powerConsumptionPerTurn;
-                    local totalAmount : number = stockpileAmount + reservedAmount;
-
-                    if (totalAmount > stockpileCap) then
-                        totalAmount = stockpileCap;
-                    end
-
-                    local iconName : string = "[ICON_"..resource.ResourceType.."]";
-
                     local totalAccumulationPerTurn : number = accumulationPerTurn + importPerTurn + bonusPerTurn;
+                    local totalConsumptionPerTurn : number = unitConsumptionPerTurn + powerConsumptionPerTurn;
 
-                    local resourceText : string = iconName .. " " .. stockpileAmount;
-
-                    local numDigits : number = 3;
-                    if (stockpileAmount >= 10) then
-                        numDigits = 4;
-                    end
-                    local guessinstanceWidth : number = math.ceil(numDigits * FONT_MULTIPLIER);
-
-                    local tooltip : string = iconName .. " " .. Locale.Lookup(resource.Name);
-                    if (reservedAmount ~= 0) then
-                        tooltip = tooltip .. "[NEWLINE]" .. totalAmount .. "/" .. stockpileCap .. " " .. Locale.Lookup("LOC_RESOURCE_ITEM_IN_STOCKPILE");
-                        tooltip = tooltip .. "[NEWLINE]-" .. reservedAmount .. " " .. Locale.Lookup("LOC_RESOURCE_ITEM_IN_RESERVE");
-                    else
-                        tooltip = tooltip .. "[NEWLINE]" .. totalAmount .. "/" .. stockpileCap .. " " .. Locale.Lookup("LOC_RESOURCE_ITEM_IN_STOCKPILE");
-                    end
-                    if (totalAccumulationPerTurn >= 0) then
-                        tooltip = tooltip .. "[NEWLINE]" .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN", totalAccumulationPerTurn);
-                    else
-                        tooltip = tooltip .. "[NEWLINE][COLOR_RED]" .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN", totalAccumulationPerTurn) .. "[ENDCOLOR]";
-                    end
-                    if (accumulationPerTurn > 0) then
-                        tooltip = tooltip .. "[NEWLINE] " .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN_EXTRACTED", accumulationPerTurn);
-                    end
-                    if (importPerTurn > 0) then
-                        tooltip = tooltip .. "[NEWLINE] " .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN_FROM_CITY_STATES", importPerTurn);
-                    end
-                    if (bonusPerTurn > 0) then
-                        tooltip = tooltip .. "[NEWLINE] " .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN_FROM_BONUS_SOURCES", bonusPerTurn);
-                    end
-                    if (totalConsumptionPerTurn > 0) then
-                        tooltip = tooltip .. "[NEWLINE]" .. Locale.Lookup("LOC_RESOURCE_CONSUMPTION", totalConsumptionPerTurn);
-                        if (unitConsumptionPerTurn > 0) then
-                            tooltip = tooltip .. "[NEWLINE]" .. Locale.Lookup("LOC_RESOURCE_UNIT_CONSUMPTION_PER_TURN", unitConsumptionPerTurn);
-                        end
-                        if (powerConsumptionPerTurn > 0) then
-                            tooltip = tooltip .. "[NEWLINE]" .. Locale.Lookup("LOC_RESOURCE_POWER_CONSUMPTION_PER_TURN", powerConsumptionPerTurn);
-                        end
-                    end
-                    -------------------------------------------------------------
-                    -- 追加队友可用战略资源清单
-                    local TeamStrategicYtext = TeamMoreStrategicStr
-                    local TeamMore = false
-                    for j, playerID in ipairs(g_StrategicTeamPlayerIDs) do
-                        local Strategicstr = GetMoreStrategicstr(playerID, resource)
-                        if Strategicstr ~= 0 then
-                            TeamMore = true
-                            TeamStrategicYtext = TeamStrategicYtext..Strategicstr
-                        end
-                    end
-
-                    if TeamMore == true and isStrategicsTradingAllowed == true then
-                        tooltip = tooltip .. "[NEWLINE]" .. TeamStrategicYtext
-                    end
-                    ------------------------------------
                     if (stockpileAmount > 0 or totalAccumulationPerTurn > 0 or totalConsumptionPerTurn > 0 or g_TeamVisibleResources[resource.Index]) then		-- 当解锁时显示
+                        -- 仅显示时再取 cap/reserved、拼 Tooltip、跑队友循环（不可见资源跳过全部重活）
+                        local stockpileCap : number = pPlayerResources:GetResourceStockpileCap(resource.ResourceType);
+                        local reservedAmount : number = pPlayerResources:GetReservedResourceAmount(resource.ResourceType);
+                        local totalAmount : number = stockpileAmount + reservedAmount;
+
+                        if (totalAmount > stockpileCap) then
+                            totalAmount = stockpileCap;
+                        end
+
+                        local iconName : string = "[ICON_"..resource.ResourceType.."]";
+
+                        local resourceText : string = iconName .. " " .. stockpileAmount;
+
+                        local numDigits : number = 3;
+                        if (stockpileAmount >= 10) then
+                            numDigits = 4;
+                        end
+                        local guessinstanceWidth : number = math.ceil(numDigits * FONT_MULTIPLIER);
+
+                        local tooltip : string = iconName .. " " .. Locale.Lookup(resource.Name);
+                        if (reservedAmount ~= 0) then
+                            tooltip = tooltip .. "[NEWLINE]" .. totalAmount .. "/" .. stockpileCap .. " " .. ResourceItemInStockpileStr;
+                            tooltip = tooltip .. "[NEWLINE]-" .. reservedAmount .. " " .. ResourceItemInReserveStr;
+                        else
+                            tooltip = tooltip .. "[NEWLINE]" .. totalAmount .. "/" .. stockpileCap .. " " .. ResourceItemInStockpileStr;
+                        end
+                        if (totalAccumulationPerTurn >= 0) then
+                            tooltip = tooltip .. "[NEWLINE]" .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN", totalAccumulationPerTurn);
+                        else
+                            tooltip = tooltip .. "[NEWLINE][COLOR_RED]" .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN", totalAccumulationPerTurn) .. "[ENDCOLOR]";
+                        end
+                        if (accumulationPerTurn > 0) then
+                            tooltip = tooltip .. "[NEWLINE] " .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN_EXTRACTED", accumulationPerTurn);
+                        end
+                        if (importPerTurn > 0) then
+                            tooltip = tooltip .. "[NEWLINE] " .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN_FROM_CITY_STATES", importPerTurn);
+                        end
+                        if (bonusPerTurn > 0) then
+                            tooltip = tooltip .. "[NEWLINE] " .. Locale.Lookup("LOC_RESOURCE_ACCUMULATION_PER_TURN_FROM_BONUS_SOURCES", bonusPerTurn);
+                        end
+                        if (totalConsumptionPerTurn > 0) then
+                            tooltip = tooltip .. "[NEWLINE]" .. Locale.Lookup("LOC_RESOURCE_CONSUMPTION", totalConsumptionPerTurn);
+                            if (unitConsumptionPerTurn > 0) then
+                                tooltip = tooltip .. "[NEWLINE]" .. Locale.Lookup("LOC_RESOURCE_UNIT_CONSUMPTION_PER_TURN", unitConsumptionPerTurn);
+                            end
+                            if (powerConsumptionPerTurn > 0) then
+                                tooltip = tooltip .. "[NEWLINE]" .. Locale.Lookup("LOC_RESOURCE_POWER_CONSUMPTION_PER_TURN", powerConsumptionPerTurn);
+                            end
+                        end
+                        -------------------------------------------------------------
+                        -- 追加队友可用战略资源清单
+                        local TeamStrategicYtext = TeamMoreStrategicStr
+                        local TeamMore = false
+                        for j, playerID in ipairs(g_StrategicTeamPlayerIDs) do
+                            local Strategicstr = GetMoreStrategicstr(playerID, resource)
+                            if Strategicstr ~= 0 then
+                                TeamMore = true
+                                TeamStrategicYtext = TeamStrategicYtext..Strategicstr
+                            end
+                        end
+
+                        if TeamMore == true and isStrategicsTradingAllowed == true then
+                            tooltip = tooltip .. "[NEWLINE]" .. TeamStrategicYtext
+                        end
+                        ------------------------------------
                         if(currSize + guessinstanceWidth < maxSize and not isOverflow) then
                             if (stockpileCap > 0) then
                                 local instance : table = m_kResourceIM:GetInstance();
@@ -614,8 +624,7 @@ if BaseFile == "TopPanel_Expansion2" then
 
         local MoreStrategicstr = ""
 
-        local leaderType = PlayerConfigurations[playerID]:GetLeaderTypeName();
-        local LeaderName = Locale.Lookup(GameInfo.Leaders[leaderType].Name);					-- 获取领袖名字
+        local LeaderName = g_StrategicTeamLeaderNames[playerID];		-- leader 名缓存（BuildStrategicTeamPlayerIDs 填充，避免每资源重查）
 
         local pPlayerResources : table = Players[playerID]:GetResources();
         local stockpileAmount : number = pPlayerResources:GetResourceAmount(resource.ResourceType);
