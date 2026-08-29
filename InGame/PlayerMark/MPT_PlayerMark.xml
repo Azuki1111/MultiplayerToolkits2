@@ -86,8 +86,8 @@
 				<GridButton ID="PlayerMarkAddButton" Style="MainButtonSmall" Anchor="C,B" Offset="0,8" Size="parent-10,52" String="LOC_MPT_PLAYERMARK_ADD"/>
 				</Container>
 				<!-- 房间页：房间玩家列表（SetProperty 快照；含观察者/不在线，排除自己） -->
-				<Container ID="PlayerMarkRoomContent" Size="parent,parent-61" Anchor="L,T" Offset="0,61" Hidden="1">
-					<ScrollPanel ID="PlayerMarkRoomListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-155" AutoScrollBar="1">
+				<Container ID="PlayerMarkRoomContent" Size="parent,parent-50" Anchor="L,T" Offset="0,50" Hidden="1">
+					<ScrollPanel ID="PlayerMarkRoomListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-14" AutoScrollBar="1">
 						<Stack ID="PlayerMarkRoomListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
 						<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
 					</ScrollPanel>
@@ -226,15 +226,17 @@
 		</Container>
 	</Instance>
 	<Instance Name="MarkRoomEntryInstance">
-		<Container ID="RootContainer" Size="parent,46" Anchor="L,C">
+		<Container ID="RootContainer" Size="parent,60" Anchor="L,C">
 			<!-- 方形底条（仿存储标签行 ButtonControl）：整行背景条；头像/名字/状态/添加按钮叠在其上 -->
 			<GridButton ID="RowBg" Style="ButtonControl" Size="parent,parent" Offset="-4,0"/>
 			<Image ID="RoomLeaderIconBacking" Anchor="L,C" Offset="5,0" Size="51,51" Texture="Controls_CircleBacking45"/>
 			<Image ID="RoomLeaderIcon" Anchor="L,C" Offset="8,0" Size="45,45"/>
-			<Label ID="RoomPlayerName" Style="WhiteSemiBold14" Anchor="L,C" Offset="62,0" TruncateWidth="170"/>
-			<Label ID="RoomConnLabel" Style="WhiteSemiBold12" Anchor="L,B" Offset="62,0"/>
+			<Label ID="RoomPlayerName" Style="WhiteSemiBold14" Anchor="L,C" Offset="62,-10" TruncateWidth="300"/>
+			<Label ID="RoomConnLabel" Style="WhiteSemiBold12" Anchor="L,C" Offset="62,10"/>
 			<!-- 添加标记按钮：仅未标记玩家显示（Lua 按 g_PlayerMarkList 判断显隐）；点击打开添加弹窗并预填该玩家 ID/昵称 -->
-			<Button ID="RoomAddMarkButton" Anchor="R,C" Offset="6,0" Size="24,24" Style="ArrowButtonRight" ToolTip="LOC_MPT_PLAYERMARK_MARK_THIS_TT"/>
+			<Button ID="RoomAddMarkButton" Anchor="R,C" Offset="16,0" Size="24,24" Style="ArrowButtonRight" ToolTip="LOC_MPT_PLAYERMARK_MARK_THIS_TT"/>
+			<!-- ä¸­éç¶éæ¡ï¼ä»¿å­å¨æ ç­¾è¡ SelectedFrameï¼Lua æ g_RoomSelectedId æ§å¶æ¾éï¼ -->
+			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
 		</Container>
 	</Instance>
 

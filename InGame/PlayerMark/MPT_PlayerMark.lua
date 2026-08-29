@@ -68,6 +68,7 @@ local PLAYERMARK_TAG_ICON_NAMES : table = { "OnlineGreenPingPip", "OnlineYellowP
 g_PlayerMarkList        = {};		-- 玩家记录数组（磁盘内容的工作副本）
 g_MPT_MarkHidden        = true;		-- 条目4.8续：隐身设置内存态（默认开启=隐藏自身 SQL 公共标记；与前端 4.4 同语义）
 g_PlayerMarkSelectedId  = nil;		-- 当前选中玩家 Id（nil=未选中）
+g_RoomSelectedId     = nil;		-- 房间玩家行选中 playerID（nil=未选中；选中显示 SelectedFrame 金框）
 g_PlayerMarkSortAsc     = false;	-- 排序方向：false=最新修改在前（默认）
 g_PlayerMarkFilterTag   = { true, true, true };	-- 三个过滤复选框勾选态（下标即 Tag）
 g_PlayerMarkSearchStr   = "";		-- 搜索框当前内容（已转小写）
@@ -443,12 +444,12 @@ function MPT_PlayerMark_RebuildRoomList()
 		end
 	end
 	if #realLeaders == 0 then realLeaders = { "LEADER_DEFAULT" }; end
-	for i = 1, 20 do
+	for i = 1, 30 do
 		local pid : number = 1000 + i;
 		table.insert(testList, pid);
 		testSnap[pid] = {
 			nid = "76561198" .. string.format("%08d", i),
-			name = "测试玩家" .. i,
+			name = "测试玩家AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" .. i,
 			leader = realLeaders[(i - 1) % #realLeaders + 1],
 			online = (i % 2 == 0),	-- 偶数在线、奇数离线
 			marked = (i % 3 == 0),	-- 每 3 个标记一个（隐藏添加按钮）
@@ -478,7 +479,11 @@ function MPT_PlayerMark_RebuildRoomList()
 							online = cfg:IsAlive() or (GameConfiguration.IsNetworkMultiplayer() and Network.IsPlayerConnected(playerID) and cfg:GetSlotStatus() == 4);
 						end
 					end
-					inst.RoomConnLabel:SetText(online and "[icon_CheckmarkBlue]在线" or "[icon_Exclamation]离线");
+					inst.RoomConnLabel:SetText(online and "[icon_CheckmarkBlue]在线" or "[ICON_BULLETGLOW]离线");
+					-- 选中态金框：按 g_RoomSelectedId 显隐；点击行（RowBg）选中并重刷
+					inst.SelectedFrame:SetHide(playerID ~= g_RoomSelectedId);
+					inst.RowBg:SetVoid1(playerID);
+					inst.RowBg:RegisterCallback(Mouse.eLClick, function() g_RoomSelectedId = playerID; MPT_PlayerMark_RebuildRoomList(); end);
 					-- 添加按钮：未标记显示点击打开弹窗，已标记隐藏
 					local isMarked : boolean;
 					if snap.marked ~= nil then
