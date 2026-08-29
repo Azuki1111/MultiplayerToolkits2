@@ -403,6 +403,12 @@ function MPT_PlayerMark_SelectTab(tab : string)
 	if roomText ~= nil then roomText:SetColor((not isSaved) and m_tabSelectedFontColor or m_tabDefaultFontColor); end
 	Controls.MarkRoomTabSelected:SetHide(isSaved);
 	Controls.MarkRoomTabButton:SetSelected(not isSaved);
+
+	-- 切换页时清空右侧详情到默认（取消选中存储记录，显示空态提示；未保存改动直接丢弃）
+	if g_PlayerMarkSelectedId ~= nil then
+		g_PlayerMarkSelectedId = nil;
+		MPT_PlayerMark_RefreshEditor();
+	end
 end
 
 -- ============================================================================
