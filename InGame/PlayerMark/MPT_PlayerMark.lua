@@ -382,13 +382,24 @@ end
 
 -- ============================================================================
 -- MPT_PlayerMark_SelectTab(tab)：Tab 台切换——"saved"=存储标签 / "room"=房间玩家。
+--   文字颜色随选中态变化（对齐 CreateTabs/TabSupport.lua 逻辑）：未选中用默认浅白
+--   0xFFefe7e1，选中用深色 0xFF331D05（同 GreatPeoplePopup 配色）；背景覆盖控件显隐。
 -- ============================================================================
+local m_tabDefaultFontColor	: number = UI.GetColorValueFromHexLiteral(0xFFefe7e1);
+local m_tabSelectedFontColor	: number = UI.GetColorValueFromHexLiteral(0xFF331D05);
+
 function MPT_PlayerMark_SelectTab(tab : string)
 	local isSaved = (tab == "saved");
 	Controls.PlayerMarkSavedContent:SetHide(not isSaved);
 	Controls.PlayerMarkRoomContent:SetHide(isSaved);
+	-- 存储标签按钮
+	local savedText = Controls.MarkSavedTabButton:GetTextControl();
+	if savedText ~= nil then savedText:SetColor(isSaved and m_tabSelectedFontColor or m_tabDefaultFontColor); end
 	Controls.MarkSavedTabSelected:SetHide(not isSaved);
 	Controls.MarkSavedTabButton:SetSelected(isSaved);
+	-- 房间玩家按钮
+	local roomText = Controls.MarkRoomTabButton:GetTextControl();
+	if roomText ~= nil then roomText:SetColor((not isSaved) and m_tabSelectedFontColor or m_tabDefaultFontColor); end
 	Controls.MarkRoomTabSelected:SetHide(isSaved);
 	Controls.MarkRoomTabButton:SetSelected(not isSaved);
 end
