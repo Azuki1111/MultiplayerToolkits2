@@ -44,8 +44,8 @@
 			<!-- 左列：搜索框 + 排序(左)/三过滤复选框(右,垂直堆叠)同区块 + 玩家列表 + 添加按钮（结构照 Mods.xml 左列） -->
 			<Grid Style="SubContainer" Size="402,parent-6" Anchor="L,T" Offset="0,0">
 				<!-- 条目4.9 双页签：Tab 台（左「存储标签」右「房间玩家」）；仿 GreatPeoplePopup 的 Controls_TabLedge2_Fill(平铺底)+Controls_TabLedge2(九宫格边) 双层组合 -->
-				<Container Anchor="C,T" Offset="0,0" Size="402,61">
-					<Image Anchor="C,T" Size="402,27" Texture="Controls_TabLedge2_Fill" StretchMode="Tile">
+				<Container Anchor="C,T" Offset="0,8" Size="402,61">
+					<Image Anchor="C,T" Size="300,27" Texture="Controls_TabLedge2_Fill" StretchMode="Tile">
 						<Grid Anchor="C,T" Offset="0,-17" Size="402,61" Texture="Controls_TabLedge2" SliceCorner="194,18" SliceSize="52,26" SliceTextureSize="438,61">
 							<Stack ID="PlayerMarkTabStack" Anchor="C,C" StackGrowth="Right" Padding="0" Size="340,34">
 								<GridButton ID="MarkSavedTabButton" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2" String="LOC_MPT_PLAYERMARK_TAB_SAVED">
@@ -59,7 +59,7 @@
 					</Image>
 				</Container>
 				<!-- 存储页：现有存储标签列表（搜索/排序/过滤/添加） -->
-				<Container ID="PlayerMarkSavedContent" Size="parent,parent-61" Anchor="L,T" Offset="0,61">
+				<Container ID="PlayerMarkSavedContent" Size="parent,parent-36" Anchor="L,T" Offset="0,36">
 					<Stack Padding="5">
 					<Grid Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Offset="0,10" Size="parent,26">
 						<EditBox ID="PlayerMarkSearchEditBox" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-10,16" MaxLength="40" String="" ToolTip="LOC_MPT_PLAYERMARK_SEARCH_TT" CallOnChar="1"/>
@@ -76,7 +76,7 @@
 						</Stack>
 					</Container>
 					<Box Color="10,60,78,255" Anchor="L,B" Size="parent,3" Offset="0,2"/>
-					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-155" AutoScrollBar="1">
+					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-210" AutoScrollBar="1">
 						<Stack ID="PlayerMarkListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
 						<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
 					</ScrollPanel>
