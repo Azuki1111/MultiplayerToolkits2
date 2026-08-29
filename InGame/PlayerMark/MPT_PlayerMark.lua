@@ -447,43 +447,11 @@ function MPT_PlayerMark_RebuildRoomList()
 	m_playerMarkRoomIM:ResetInstances();
 	if Controls.PlayerMarkRoomListStack == nil then return; end
 
-	-- ========== 临时测试数据：20 个虚拟玩家（调整控件尺寸用，调完即删） ==========
-	-- 用测试数据替代 Game:GetProperty 读档，便于调控件尺寸/滚动/添加按钮显隐。
-	--   字段对齐真实快照 {nid,name,leader}，额外加 online/marked 两个测试专用布尔：
-	--   snap.online 非 nil 时优先用（替代实时 PlayerConfigurations 判断）；否则实时判断。
-	--   snap.marked 非 nil 时优先用（替代 MPT_PlayerMark_IsMarked）；否则按 nid 查 g_PlayerMarkList。
-	local testList : table = {};
-	local testSnap : table = {};
-	-- 头像样品：取当前对局真实存在的领袖（从 PlayerConfigurations 收集，跳过观察者），
-	--   20 个测试玩家轮流使用；对局无玩家时兜底 LEADER_DEFAULT。
-	local realLeaders : table = {};
-	for pid, cfg in pairs(PlayerConfigurations) do
-		if cfg ~= nil then
-			local lt : string = cfg:GetLeaderTypeName();
-			if lt ~= nil and lt ~= "" and lt ~= "LEADER_SPECTATOR" then
-				table.insert(realLeaders, lt);
-			end
-		end
-	end
-	if #realLeaders == 0 then realLeaders = { "LEADER_DEFAULT" }; end
-	for i = 1, 30 do
-		local pid : number = 1000 + i;
-		table.insert(testList, pid);
-		testSnap[pid] = {
-			nid = "76561198" .. string.format("%08d", i),
-			name = "测试玩家AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" .. i,
-			leader = realLeaders[(i - 1) % #realLeaders + 1],
-			online = (i % 2 == 0),	-- 偶数在线、奇数离线
-			marked = (i % 3 == 0),	-- 每 3 个标记一个（隐藏添加按钮）
-		};
-	end
-	-- ========== 测试数据结束 ==========
-
 	local localPlayer = Game.GetLocalPlayer();
 	local count : number = 0;
-	for _, playerID in ipairs(testList) do
+	for _, playerID in ipairs(Game:GetProperty("MPT_RoomPlayerList") or {}) do
 		if playerID ~= localPlayer then	-- 排除自己（用户确认）
-			local snap = testSnap[playerID];
+			local snap = Game:GetProperty("MPT_RoomPlayer_" .. playerID);
 			if type(snap) == "table" then
 				local inst = m_playerMarkRoomIM:GetInstance();
 				if inst ~= nil then
@@ -491,15 +459,11 @@ function MPT_PlayerMark_RebuildRoomList()
 					local leader = snap.leader or "";
 					local iconName : string = (leader ~= "" and ("ICON_" .. leader)) or "ICON_LEADER_DEFAULT";
 					inst.RoomLeaderIcon:SetTexture(IconManager:FindIconAtlas(iconName, 45));
-					-- 在线状态：测试数据 snap.online 优先，否则实时 PlayerConfigurations 判断
+					-- 在线状态：实时 PlayerConfigurations 判断
 					local online : boolean = false;
-					if snap.online ~= nil then
-						online = snap.online;
-					else
-						local cfg = PlayerConfigurations[playerID];
-						if cfg ~= nil then
-							online = cfg:IsAlive() or (GameConfiguration.IsNetworkMultiplayer() and Network.IsPlayerConnected(playerID) and cfg:GetSlotStatus() == 4);
-						end
+					local cfg = PlayerConfigurations[playerID];
+					if cfg ~= nil then
+						online = cfg:IsAlive() or (GameConfiguration.IsNetworkMultiplayer() and Network.IsPlayerConnected(playerID) and cfg:GetSlotStatus() == 4);
 					end
 					inst.RoomConnLabel:SetText(online and PlayerMarkConnOnlineStr or PlayerMarkConnOfflineStr);
 					-- 选中态金框：按 g_RoomSelectedId 显隐；点击行（RowBg）选中并重刷
@@ -532,13 +496,8 @@ function MPT_PlayerMark_RebuildRoomList()
 					end
 					local markTag : number = 2;
 					local isMarked : boolean;
-					if snap.marked ~= nil then
-						isMarked = snap.marked;	-- 测试数据覆盖
-						if snap.markTag ~= nil then markTag = snap.markTag; end
-					else
-						isMarked = (markRec ~= nil);
-						if markRec ~= nil then markTag = markRec.Tag or 2; end
-					end
+					isMarked = (markRec ~= nil);
+					if markRec ~= nil then markTag = markRec.Tag or 2; end
 					if isMarked then
 						inst.RoomAddMarkButton:SetHide(true);
 						inst.RoomTagIcon:SetHide(false);
