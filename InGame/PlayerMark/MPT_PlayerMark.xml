@@ -235,6 +235,8 @@
 			<Label ID="RoomConnLabel" Style="WhiteSemiBold12" Anchor="L,C" Offset="62,10"/>
 			<!-- 添加标记按钮：仅未标记玩家显示（Lua 按 g_PlayerMarkList 判断显隐）；点击打开添加弹窗并预填该玩家 ID/昵称 -->
 			<Button ID="RoomAddMarkButton" Anchor="R,C" Offset="16,0" Size="24,24" Style="ArrowButtonRight" ToolTip="LOC_MPT_PLAYERMARK_MARK_THIS_TT"/>
+			<!-- å·²æ è®°ç©å®¶ï¼å¨æ·»å æé®ä½ç½®æ¾ç¤ºæ è®°ç±»åå¾æ ï¼ä»¿å­å¨è¡ TagIconLabelï¼Lua æ æ è®° Tag æ¾ç¤ºç»¿/é»/çº¢ï¼ -->
+			<Image ID="RoomTagIcon" Anchor="R,C" Offset="16,0" Size="24,24" Hidden="1"/>
 			<!-- ä¸­éç¶éæ¡ï¼ä»¿å­å¨æ ç­¾è¡ SelectedFrameï¼Lua æ g_RoomSelectedId æ§å¶æ¾éï¼ -->
 			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
 		</Container>

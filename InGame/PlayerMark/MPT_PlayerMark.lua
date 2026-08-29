@@ -489,18 +489,40 @@ function MPT_PlayerMark_RebuildRoomList()
 					-- 选中态金框：按 g_RoomSelectedId 显隐；点击行（RowBg）选中并重刷
 					inst.SelectedFrame:SetHide(playerID ~= g_RoomSelectedId);
 					inst.RowBg:SetVoid1(playerID);
-					inst.RowBg:RegisterCallback(Mouse.eLClick, function() g_RoomSelectedId = playerID; MPT_PlayerMark_RebuildRoomList(); end);
+					inst.RowBg:RegisterCallback(Mouse.eLClick, function()
+						g_RoomSelectedId = playerID;
+						local rec = nil;
+						for _, r in ipairs(g_PlayerMarkList) do if r.Id == snap.nid then rec = r; break; end end
+						if rec ~= nil then
+							g_PlayerMarkSelectedId = rec.Id;	-- 已标记：右侧载入该记录信息
+						else
+							g_PlayerMarkSelectedId = nil;	-- 未标记：右侧清空到默认
+						end
+						MPT_PlayerMark_RefreshEditor();
+						MPT_PlayerMark_RebuildRoomList();
+					end);
 					-- 添加按钮：未标记显示点击打开弹窗，已标记隐藏
+					-- 查询该玩家是否已标记（g_PlayerMarkList 里 Id == snap.nid）
+					local markRec : table = nil;
+					for _, r in ipairs(g_PlayerMarkList) do
+						if r.Id == snap.nid then markRec = r; break; end
+					end
+					local markTag : number = 2;
 					local isMarked : boolean;
 					if snap.marked ~= nil then
-						isMarked = snap.marked;
+						isMarked = snap.marked;	-- 测试数据覆盖
+						if snap.markTag ~= nil then markTag = snap.markTag; end
 					else
-						isMarked = MPT_PlayerMark_IsMarked(snap.nid);
+						isMarked = (markRec ~= nil);
+						if markRec ~= nil then markTag = markRec.Tag or 2; end
 					end
 					if isMarked then
 						inst.RoomAddMarkButton:SetHide(true);
+						inst.RoomTagIcon:SetHide(false);
+						inst.RoomTagIcon:SetIcon(PLAYERMARK_TAG_ICON_NAMES[markTag] or PLAYERMARK_TAG_ICON_NAMES[2], 24);
 					else
 						inst.RoomAddMarkButton:SetHide(false);
+						inst.RoomTagIcon:SetHide(true);
 						inst.RoomAddMarkButton:SetVoid1(playerID);
 						local nid = snap.nid; local nm = snap.name;
 						inst.RoomAddMarkButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_OpenAddPopup(nid, Locale.Lookup(nm or "")); end);
