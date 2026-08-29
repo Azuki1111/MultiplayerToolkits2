@@ -227,8 +227,10 @@
 	</Instance>
 	<Instance Name="MarkRoomEntryInstance">
 		<Container ID="RootContainer" Size="parent,46" Anchor="L,C">
-			<Image ID="RoomLeaderIconBacking" Anchor="L,C" Offset="2,0" Size="51,51" Texture="Controls_CircleBacking45"/>
-			<Image ID="RoomLeaderIcon" Anchor="L,C" Offset="5,0" Size="45,45"/>
+			<!-- 方形底条（仿存储标签行 ButtonControl）：整行背景条；头像/名字/状态/添加按钮叠在其上 -->
+			<GridButton ID="RowBg" Style="ButtonControl" Size="parent,parent" Offset="-4,0"/>
+			<Image ID="RoomLeaderIconBacking" Anchor="L,C" Offset="5,0" Size="51,51" Texture="Controls_CircleBacking45"/>
+			<Image ID="RoomLeaderIcon" Anchor="L,C" Offset="8,0" Size="45,45"/>
 			<Label ID="RoomPlayerName" Style="WhiteSemiBold14" Anchor="L,C" Offset="62,0" TruncateWidth="170"/>
 			<Label ID="RoomConnLabel" Style="WhiteSemiBold12" Anchor="L,B" Offset="62,0"/>
 			<!-- 添加标记按钮：仅未标记玩家显示（Lua 按 g_PlayerMarkList 判断显隐）；点击打开添加弹窗并预填该玩家 ID/昵称 -->
