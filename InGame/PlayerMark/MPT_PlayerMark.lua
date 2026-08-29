@@ -456,7 +456,7 @@ function MPT_PlayerMark_RebuildRoomList()
 					inst.RoomPlayerName:SetText(Locale.Lookup(snap.name or ""));
 					local leader = snap.leader or "";
 					local iconName : string = (leader ~= "" and ("ICON_" .. leader)) or "ICON_LEADER_DEFAULT";
-					inst.RoomLeaderIcon:SetTexture(IconManager:FindIconAtlas(iconName, 40));
+					inst.RoomLeaderIcon:SetTexture(IconManager:FindIconAtlas(iconName, 45));
 					-- 在线状态：测试数据 snap.online 优先，否则实时 PlayerConfigurations 判断
 					local online : boolean = false;
 					if snap.online ~= nil then
