@@ -44,6 +44,8 @@ local PlayerMarkSortAscStr			: string = Locale.Lookup("LOC_MPT_PLAYERMARK_SORT_A
 local PlayerMarkModifiedPrefixStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_MODIFIED_PREFIX");
 local PlayerMarkIdInvalidStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_ID_INVALID");
 local PlayerMarkIdUnavailableStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_ID_UNAVAILABLE");
+local PlayerMarkConnOnlineStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONN_ONLINE");
+local PlayerMarkConnOfflineStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONN_OFFLINE");
 local PlayerMarkNameEmptyStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_NAME_EMPTY");
 local PlayerMarkNoticeTitleStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_NOTICE_TITLE");
 local PlayerMarkExistsTitleStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_EXISTS_TITLE");
@@ -499,7 +501,7 @@ function MPT_PlayerMark_RebuildRoomList()
 							online = cfg:IsAlive() or (GameConfiguration.IsNetworkMultiplayer() and Network.IsPlayerConnected(playerID) and cfg:GetSlotStatus() == 4);
 						end
 					end
-					inst.RoomConnLabel:SetText(online and "[icon_CheckmarkBlue]在线" or "[ICON_BULLETGLOW]离线");
+					inst.RoomConnLabel:SetText(online and PlayerMarkConnOnlineStr or PlayerMarkConnOfflineStr);
 					-- 选中态金框：按 g_RoomSelectedId 显隐；点击行（RowBg）选中并重刷
 					inst.SelectedFrame:SetHide(playerID ~= g_RoomSelectedId);
 					inst.RowBg:SetVoid1(playerID);

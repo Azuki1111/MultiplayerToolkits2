@@ -63,6 +63,9 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_HINT_ID_INVALID', 'zh_Hans_CN', '[color:255,100,100,255]ID 格式无效：需 17 位纯数字（Steam）或 32 位字符（Epic）[ENDCOLOR]'),
 ('LOC_MPT_PLAYERMARK_HINT_NAME_EMPTY', 'zh_Hans_CN', '[color:255,100,100,255]昵称不能为空[ENDCOLOR]'),
 ('LOC_MPT_PLAYERMARK_HINT_ID_UNAVAILABLE', 'zh_Hans_CN', '无法获取ID'),
+-- 房间玩家连接状态（图标内嵌 LOC 值；[icon_*]/[ICON_*] 为 UI 图标 tag）
+('LOC_MPT_PLAYERMARK_CONN_ONLINE', 'zh_Hans_CN', '[icon_CheckmarkBlue]在线'),
+('LOC_MPT_PLAYERMARK_CONN_OFFLINE', 'zh_Hans_CN', '[ICON_BULLETGLOW]离线'),
 ('LOC_MPT_PLAYERMARK_NOTICE_TITLE', 'zh_Hans_CN', '提示'),
 -- 重复 ID 提示
 ('LOC_MPT_PLAYERMARK_EXISTS_TITLE', 'zh_Hans_CN', '记录已存在'),
