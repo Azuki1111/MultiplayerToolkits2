@@ -18,7 +18,7 @@
 <Context>
 
 	<!-- 条目4.4：点击面板外关闭（仿 ChangelogModalBlocker；声明在面板前，位于面板下层） -->
-	<GridButton ID="PlayerMarkModalBlocker" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1"/>
+	<GridButton ID="PlayerMarkModalBlocker" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1" Style="FullScreenVignetteConsumer"/>
 	<!-- 条目4.4：玩家标记管理面板（纯本地玩家档案：好友/一般/黑名单标记+记事本；布局仿原版 Mods.xml 全页化——
 	     1024×parent，左列 402 过滤/搜索/排序/列表/添加，右列 parent-415 详情头+内联编辑；仅 关闭钮 / 点击面板外 / ESC 关闭） -->
 	<Container ID="PlayerMarkPanel" Anchor="C,C" Size="1024,parent" Hidden="1">
@@ -76,7 +76,7 @@
 						</Stack>
 					</Container>
 					<Box Color="10,60,78,255" Anchor="L,B" Size="parent,3" Offset="0,2"/>
-					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-210" AutoScrollBar="1">
+					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-216" AutoScrollBar="1">
 						<Stack ID="PlayerMarkListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
 						<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
 					</ScrollPanel>
@@ -199,10 +199,10 @@
 	     确定/取消两按钮，Lua 侧 MPT_PlayerMark_Confirm（确认）/ MPT_PlayerMark_Notify（仅提示）控制） -->
 	<Box ID="MPT_PMConfirmPopup" Color="0,0,0,150" Size="parent,parent" ConsumeMouseOver="1" Hidden="1" IgnoreTutorial="1">
 		<Grid Size="480,240" Anchor="C,C" Style="DropShadow2" Color="255,255,255,200">
-			<Grid ID="MPT_PMConfirmWindow" Size="parent-40,parent-20" Anchor="C,C" Style="WindowFrameTitle">
+			<Grid ID="MPT_PMConfirmWindow" Size="parent-40,parent-40" Anchor="C,C" Style="WindowFrameTitle">
 				<Label ID="MPT_PMConfirmTitle" Style="BlueGlow" Offset="0,16" Anchor="C,T"/>
 				<Label ID="MPT_PMConfirmText" Style="FontNormal16" Color="30,30,30,255" Offset="0,56" Anchor="C,T" WrapWidth="parent-80" Align="Center"/>
-				<Stack Anchor="C,B" Offset="0,16" StackGrowth="Right" Padding="8">
+				<Stack Anchor="C,B" Offset="0,26" StackGrowth="Right" Padding="8">
 					<GridButton ID="MPT_PMConfirmOkButton" Style="MainButton" Size="150,41" String="LOC_OK"/>
 					<GridButton ID="MPT_PMConfirmCancelButton" Style="ButtonRed" Size="150,41" String="LOC_CANCEL"/>
 				</Stack>
