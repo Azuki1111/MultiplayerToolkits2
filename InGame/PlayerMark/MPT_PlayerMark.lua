@@ -899,9 +899,12 @@ LuaEvents.MPT_PlayerMark_Toggle.Add(MPT_PlayerMark_Toggle);
 -- ============================================================================
 -- 条目4.9：房间玩家列表刷新——玩家加入/离开/对局信息更新时重建（数据源为 Gameplay 侧 Game:SetProperty 快照）
 -- ============================================================================
-Events.PlayerJoined.Add(function() if Controls.PlayerMarkPanel ~= nil and not Controls.PlayerMarkPanel:IsHidden() then MPT_PlayerMark_RebuildRoomList(); end end);
-Events.MultiplayerPostPlayerDisconnected.Add(function() if Controls.PlayerMarkPanel ~= nil and not Controls.PlayerMarkPanel:IsHidden() then MPT_PlayerMark_RebuildRoomList(); end end);
-Events.GameInfoUpdated.Add(function() if Controls.PlayerMarkPanel ~= nil and not Controls.PlayerMarkPanel:IsHidden() then MPT_PlayerMark_RebuildRoomList(); end end);
+-- 只订阅存在的引擎事件（PlayerJoined 不存在会索引 nil；用 PlayerInfoChanged——玩家配置变化含加入。
+--   每个事件 nil 守卫，避免任一不存在的键导致 main chunk 崩溃。）
+local function MPT_RoomRefreshIfOpen() if Controls.PlayerMarkPanel ~= nil and not Controls.PlayerMarkPanel:IsHidden() then MPT_PlayerMark_RebuildRoomList(); end end;
+if Events.PlayerInfoChanged ~= nil then Events.PlayerInfoChanged.Add(MPT_RoomRefreshIfOpen); end
+if Events.MultiplayerPostPlayerDisconnected ~= nil then Events.MultiplayerPostPlayerDisconnected.Add(MPT_RoomRefreshIfOpen); end
+if Events.GameInfoUpdated ~= nil then Events.GameInfoUpdated.Add(MPT_RoomRefreshIfOpen); end
 
 -- ============================================================================
 -- 输入处理（EndGameMenu.lua:1294 同款模式）：ESC 优先关闭本面板——
