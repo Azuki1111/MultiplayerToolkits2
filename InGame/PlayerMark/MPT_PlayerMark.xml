@@ -227,8 +227,8 @@
 	</Instance>
 	<Instance Name="MarkRoomEntryInstance">
 		<Container ID="RootContainer" Size="parent,46" Anchor="L,C">
-			<Label ID="RoomLeaderIcon" Anchor="L,C" Offset="4,0" Size="22,22" Style="FontNormal13" String="[ICON_ICON_LEADER_DEFAULT]"/>
-			<Label ID="RoomPlayerName" Style="WhiteSemiBold14" Anchor="L,C" Offset="28,0" TruncateWidth="180"/>
+			<Image ID="RoomLeaderIcon" Anchor="L,C" Offset="4,0" Size="40,40"/>
+			<Label ID="RoomPlayerName" Style="WhiteSemiBold14" Anchor="L,C" Offset="52,0" TruncateWidth="180"/>
 			<Label ID="RoomConnLabel" Style="WhiteSemiBold12" Anchor="L,B" Offset="28,0"/>
 			<!-- 添加标记按钮：仅未标记玩家显示（Lua 按 g_PlayerMarkList 判断显隐）；点击打开添加弹窗并预填该玩家 ID/昵称 -->
 			<Button ID="RoomAddMarkButton" Anchor="R,C" Offset="6,0" Size="24,24" Style="ArrowButtonRight" ToolTip="LOC_MPT_PLAYERMARK_MARK_THIS_TT"/>
