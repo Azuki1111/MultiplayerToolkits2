@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>31</Version>
+		<Version>32</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -384,6 +384,14 @@
 		<!-- 条目8续：投降投票 Gameplay 侧——EXECUTE_SCRIPT(MPT_SurrenderVote) 汇总投票+过半判定+城市叛变自由城；
 			Game:SetProperty 记录发起标志/票数/判负（每时代每队一次）；参考乔尔定制玩法mod RegicideVictory/GiftKingGameplay -->
 		<AddGameplayScripts id="IG_SurrenderVote_Gameplay">
+
+		<!-- 条目4.9：房间玩家集合快照（Gameplay 侧 Game:SetProperty 存玩家信息，供 InGame 玩家标记「房间玩家」页签读） -->
+		<AddGameplayScripts id="IG_RoomPlayers_Gameplay">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/PlayerMark/MPT_RoomPlayers_Gameplay.lua</File>
+		</AddGameplayScripts>
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 			</Properties>
@@ -471,6 +479,7 @@
 				<LoadOrder>999999</LoadOrder>
 			</Properties>
 			<File>InGame/DealRestriction/SQL/MakePeace_Disable.sql</File>
+		<File>InGame/PlayerMark/MPT_RoomPlayers_Gameplay.lua</File>
 		</UpdateDatabase>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->

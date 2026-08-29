@@ -79,6 +79,7 @@ g_PlayerMarkLoading     = false;	-- 右侧编辑区装载中（屏蔽 SetText �
 
 local m_playerMarkEntryIM  = InstanceManager:new("PlayerMarkEntryInstance", "EntryRoot", Controls.PlayerMarkListStack);
 local m_playerMarkDetailIM = InstanceManager:new("PlayerMarkDetailEntryInstance", "DetailRoot", Controls.PlayerMarkDetailStack);
+local m_playerMarkRoomIM = InstanceManager:new("MarkRoomEntryInstance", "RootContainer", Controls.PlayerMarkRoomListStack);
 local g_playerMarkEntryIds : table = {};	-- 左列实例序号 -> 玩家 Id（点击行时反查，列表过滤/排序后下标不稳定）
 
 -- ============================================================================
@@ -284,6 +285,9 @@ function MPT_PlayerMark_LoadSettings()
 			g_MPT_MarkHidden = true;	-- 默认开启隐身（继承 1.67）
 		end
 		MPT_PlayerMark_ApplyHiddenMarkUI();
+		-- 条目4.9：双页签按钮（存储标签/房间玩家）
+		Controls.MarkSavedTabButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_SelectTab("saved"); end);
+		Controls.MarkRoomTabButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_SelectTab("room"); end);
 		MPT_PlayerMark_BroadcastHiddenMark();
 	end);
 end
@@ -374,6 +378,83 @@ function MPT_PlayerMark_RebuildList()
 	Controls.PlayerMarkListEmptyLabel:SetHide(#filtered > 0);
 	Controls.PlayerMarkListStack:CalculateSize();
 	Controls.PlayerMarkListScrollPanel:CalculateSize();
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_SelectTab(tab)：Tab 台切换——"saved"=存储标签 / "room"=房间玩家。
+-- ============================================================================
+function MPT_PlayerMark_SelectTab(tab : string)
+	local isSaved = (tab == "saved");
+	Controls.PlayerMarkSavedContent:SetHide(not isSaved);
+	Controls.PlayerMarkRoomContent:SetHide(isSaved);
+	Controls.MarkSavedTabSelected:SetHide(not isSaved);
+	Controls.MarkSavedTabButton:SetSelected(isSaved);
+	Controls.MarkRoomTabSelected:SetHide(isSaved);
+	Controls.MarkRoomTabButton:SetSelected(not isSaved);
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_IsMarked(nid)：该玩家网络ID是否已在 g_PlayerMarkList 中被标记。
+-- ============================================================================
+local function MPT_PlayerMark_IsMarked(nid : string)
+	if nid == nil or nid == "" then return false; end
+	for _, rec in ipairs(g_PlayerMarkList) do
+		if rec.Id == nid then return true; end
+	end
+	return false;
+end
+
+-- ============================================================================
+-- MPT_PlayerMark_RebuildRoomList()：重建「房间玩家」列表（读 Gameplay 侧 Game:SetProperty 快照）。
+--   显示所有非自己玩家（含观察者/不在线）；未标记显示添加按钮；文明头像+在线状态。
+-- ============================================================================
+function MPT_PlayerMark_RebuildRoomList()
+	if m_playerMarkRoomIM == nil then return; end
+	m_playerMarkRoomIM:ResetInstances();
+	if Controls.PlayerMarkRoomListStack == nil then return; end
+	local list = Game:GetProperty("MPT_RoomPlayerList");
+	if type(list) ~= "table" then list = {}; end
+	local localPlayer = Game.GetLocalPlayer();
+	local count : number = 0;
+	for _, playerID in ipairs(list) do
+		if playerID ~= localPlayer then	-- 排除自己（用户确认）
+			local snap = Game:GetProperty("MPT_RoomPlayer_" .. playerID);
+			if type(snap) == "table" then
+				local inst = m_playerMarkRoomIM:GetInstance();
+				if inst ~= nil then
+					inst.RoomPlayerName:SetText(Locale.Lookup(snap.name or ""));
+					local leader = snap.leader or "";
+					if leader ~= "" then
+						inst.RoomLeaderIcon:SetText("[ICON_ICON_" .. leader .. "]");
+					else
+						inst.RoomLeaderIcon:SetText("[ICON_ICON_LEADER_DEFAULT]");
+					end
+					-- 在线状态：实时 PlayerConfigurations 判断（含观察者/掉线槽位判离线）
+					local online : boolean = false;
+					local cfg = PlayerConfigurations[playerID];
+					if cfg ~= nil then
+						online = cfg:IsAlive() or (GameConfiguration.IsNetworkMultiplayer() and Network.IsPlayerConnected(playerID) and cfg:GetSlotStatus() == 4);
+					end
+					inst.RoomConnLabel:SetText(online and "[icon_CheckmarkBlue]在线" or "[icon_Exclamation]离线");
+					-- 添加按钮：未标记显示点击打开弹窗，已标记隐藏
+					if MPT_PlayerMark_IsMarked(snap.nid) then
+						inst.RoomAddMarkButton:SetHide(true);
+					else
+						inst.RoomAddMarkButton:SetHide(false);
+						inst.RoomAddMarkButton:SetVoid1(playerID);
+						local nid = snap.nid; local nm = snap.name;
+						inst.RoomAddMarkButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_OpenAddPopup(nid, Locale.Lookup(nm or "")); end);
+					end
+					count = count + 1;
+				end
+			end
+		end
+	end
+	Controls.PlayerMarkRoomEmptyLabel:SetHide(count > 0);
+	Controls.PlayerMarkRoomListStack:CalculateSize();
+	if Controls.PlayerMarkRoomListScrollPanel ~= nil then
+		Controls.PlayerMarkRoomListScrollPanel:CalculateSize();
+	end
 end
 
 -- ============================================================================
@@ -620,6 +701,7 @@ function MPT_PlayerMark_Open()
 	UI.PlaySound("UI_Screen_Open");
 	MPT_PlayerMark_LoadFromDisk(function()
 		MPT_PlayerMark_LoadSettings();	-- 条目4.8续：读隐身设置存档并应用 UI+广播（异步回调，不阻塞）
+		MPT_PlayerMark_RebuildRoomList();	-- 条目4.9：房间玩家列表（读 Gameplay 快照）
 		MPT_PlayerMark_RebuildList();
 		MPT_PlayerMark_RefreshEditor();
 	end);
@@ -772,6 +854,13 @@ function MPT_PlayerMark_Toggle()
 	end
 end
 LuaEvents.MPT_PlayerMark_Toggle.Add(MPT_PlayerMark_Toggle);
+
+-- ============================================================================
+-- 条目4.9：房间玩家列表刷新——玩家加入/离开/对局信息更新时重建（数据源为 Gameplay 侧 Game:SetProperty 快照）
+-- ============================================================================
+Events.PlayerJoined.Add(function() if Controls.PlayerMarkPanel ~= nil and not Controls.PlayerMarkPanel:IsHidden() then MPT_PlayerMark_RebuildRoomList(); end end);
+Events.MultiplayerPostPlayerDisconnected.Add(function() if Controls.PlayerMarkPanel ~= nil and not Controls.PlayerMarkPanel:IsHidden() then MPT_PlayerMark_RebuildRoomList(); end end);
+Events.GameInfoUpdated.Add(function() if Controls.PlayerMarkPanel ~= nil and not Controls.PlayerMarkPanel:IsHidden() then MPT_PlayerMark_RebuildRoomList(); end end);
 
 -- ============================================================================
 -- 输入处理（EndGameMenu.lua:1294 同款模式）：ESC 优先关闭本面板——

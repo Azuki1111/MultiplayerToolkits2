@@ -11,6 +11,9 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 条目4.8续：隐身开关（头部复选框）
 ('LOC_MPT_PLAYERMARK_HIDDEN_MARK', 'zh_Hans_CN', '隐藏我的标记'),
 ('LOC_MPT_PLAYERMARK_HIDDEN_MARK_TT', 'zh_Hans_CN', '勾选后，房间内其他玩家将看不到你的特殊标记（管理员/一般/荣誉标记；黑名单标记始终显示）'),
+-- 条目4.9：左列双页签
+('LOC_MPT_PLAYERMARK_TAB_SAVED', 'zh_Hans_CN', '存储标签'),
+('LOC_MPT_PLAYERMARK_TAB_ROOM', 'zh_Hans_CN', '房间玩家'),
 -- 搜索框（占位文本/提示）
 ('LOC_MPT_PLAYERMARK_SEARCH_NAME', 'zh_Hans_CN', '搜索昵称或ID'),
 ('LOC_MPT_PLAYERMARK_SEARCH_TT', 'zh_Hans_CN', '按昵称或 NetworkIdentifier 过滤左侧列表'),
