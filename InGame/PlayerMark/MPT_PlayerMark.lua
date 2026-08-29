@@ -431,14 +431,25 @@ function MPT_PlayerMark_RebuildRoomList()
 	--   snap.marked 非 nil 时优先用（替代 MPT_PlayerMark_IsMarked）；否则按 nid 查 g_PlayerMarkList。
 	local testList : table = {};
 	local testSnap : table = {};
-	local leaderPool : table = { "TRAJAN", "CLEOPATRA", "GANDHI", "VICTORIA", "ALEXANDER", "SALADIN", "PETER", "HOJO", "KUPE", "TAMAR" };
+	-- 头像样品：取当前对局真实存在的领袖（从 PlayerConfigurations 收集，跳过观察者），
+	--   20 个测试玩家轮流使用；对局无玩家时兜底 LEADER_DEFAULT。
+	local realLeaders : table = {};
+	for pid, cfg in pairs(PlayerConfigurations) do
+		if cfg ~= nil then
+			local lt : string = cfg:GetLeaderTypeName();
+			if lt ~= nil and lt ~= "" and lt ~= "LEADER_SPECTATOR" then
+				table.insert(realLeaders, lt);
+			end
+		end
+	end
+	if #realLeaders == 0 then realLeaders = { "LEADER_DEFAULT" }; end
 	for i = 1, 20 do
 		local pid : number = 1000 + i;
 		table.insert(testList, pid);
 		testSnap[pid] = {
 			nid = "76561198" .. string.format("%08d", i),
 			name = "测试玩家" .. i,
-			leader = leaderPool[(i - 1) % #leaderPool + 1],
+			leader = realLeaders[(i - 1) % #realLeaders + 1],
 			online = (i % 2 == 0),	-- 偶数在线、奇数离线
 			marked = (i % 3 == 0),	-- 每 3 个标记一个（隐藏添加按钮）
 		};
