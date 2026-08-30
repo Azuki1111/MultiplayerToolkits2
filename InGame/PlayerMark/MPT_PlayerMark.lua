@@ -240,17 +240,26 @@ function MPT_PlayerMark_LoadFromDisk(callback)
 end
 
 function MPT_PlayerMark_SaveToDisk(callback)
-	MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
-		Players = g_PlayerMarkList,
-		Settings = { HiddenSqlMark = g_MPT_MarkHidden },
-	}, function(ok)
-		-- ============================================================================
-		-- 条目11 差异2：删 MPT_PlayerMark_RefreshLocalCache() 调用（条目4.8 房间显示层刷新，游戏内无此层）
-		-- if ok then
-		-- 	MPT_PlayerMark_RefreshLocalCache();
-		-- end
+	-- ============================================================================
+	-- 条目12修复：写前读回旧 Settings 合并（SaveComposite 为全量覆盖语义，
+	-- 不合并会覆盖游戏内设置面板写入的字段（如 ForcedEndButton_Show））
+	-- ============================================================================
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(oldSettings)
+		local newSettings : table = (type(oldSettings) == "table") and oldSettings or {};
+		newSettings.HiddenSqlMark = g_MPT_MarkHidden;
+		MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
+			Players = g_PlayerMarkList,
+			Settings = newSettings,
+		}, function(ok)
+			-- ============================================================================
+			-- 条目11 差异2：删 MPT_PlayerMark_RefreshLocalCache() 调用（条目4.8 房间显示层刷新，游戏内无此层）
+			-- if ok then
+			-- 	MPT_PlayerMark_RefreshLocalCache();
+			-- end
+			-- ----------------------------------------------------------------------------
+			if callback ~= nil then callback(ok); end
+		end);
 		-- ----------------------------------------------------------------------------
-		if callback ~= nil then callback(ok); end
 	end);
 end
 
@@ -303,13 +312,22 @@ function MPT_PlayerMark_OnHiddenMarkCheck()
 	g_MPT_MarkHidden = not g_MPT_MarkHidden;
 	MPT_PlayerMark_ApplyHiddenMarkUI();
 	MPT_PlayerMark_BroadcastHiddenMark();
-	MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
-		Players = g_PlayerMarkList,
-		Settings = { HiddenSqlMark = g_MPT_MarkHidden },
-	}, function(ok)
-		if not ok then
-			print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
-		end
+	-- ============================================================================
+	-- 条目12修复：写前读回旧 Settings 合并（SaveComposite 为全量覆盖语义，
+	-- 不合并会覆盖游戏内设置面板写入的字段（如 ForcedEndButton_Show））
+	-- ============================================================================
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(oldSettings)
+		local newSettings : table = (type(oldSettings) == "table") and oldSettings or {};
+		newSettings.HiddenSqlMark = g_MPT_MarkHidden;
+		MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
+			Players = g_PlayerMarkList,
+			Settings = newSettings,
+		}, function(ok)
+			if not ok then
+				print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
+			end
+		end);
+		-- ----------------------------------------------------------------------------
 	end);
 end
 

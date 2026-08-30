@@ -47,7 +47,7 @@
 | `InGame/TopPanelExt/` | 条目9 顶部面板扩展（移植 1.67 TPE）：ReplaceUIScript 覆盖，追加食物/生产力/人口/奢侈品统计按钮与 Tooltip、战略资源 Tooltip 追加队友清单 |
 | `InGame/DealRestriction/` | 条目10 交易限制与外交限制（移植 1.67 DDV 整模块）：交易四模式/无友谊默认开/和解三模式；`MPT_TradeRules.lua` 统一解析器；SQL 经 ActionCriteria（ConfigurationValueMatches）条件执行；参数定义与 DealView 导入门控 `Disable_MPH` |
 | `InGame/PlayerMark/` | 条目11 游戏内玩家标记面板（移植条目4.4 到 InGame）：include Shared/MPT_DataStorage.lua 与前端同一份存档互通；QuickPanel 按钮打开 |
-| `InGame/ForcedEndTurn/` | 条目12 强制结束回合按钮（移植 1.67 FEB）+ 游戏内设置面板（移植 1.67 Settings 简化版）：ActionPanel 右下角按钮左键强制结束回合（ACTION_ENDTURN REASON="UserForced"），右键保留 LuaEvents.ForcedEndTurn 触发点（NHK 未移植，预留）；设置面板当前仅 FEB 开关（参数表 MPT_Settings，ParameterId 保留 1.67 key，避免与 1.67 TPT_Settings 建表冲突），入口为 QuickPanel 展开区「设置」按钮（LuaEvents.MPT_Settings_Toggle），存档走 MPT_DataStorage 复合组 |
+| `InGame/ForcedEndTurn/` | 条目12 强制结束回合按钮（移植 1.67 FEB）+ 游戏内设置面板（移植 1.67 Settings 简化版）：ActionPanel 右下角按钮左键强制结束回合（ACTION_ENDTURN REASON="UserForced"），右键保留 LuaEvents.ForcedEndTurn 触发点（NHK 未移植，预留）；设置面板当前仅 FEB 开关（参数表 MPT_Settings，ParameterId 保留 1.67 key，避免与 1.67 TPT_Settings 建表冲突），入口为 QuickPanel 展开区「设置」按钮（LuaEvents.MPT_Settings_Toggle）；存档并入 MPT_PlayerInfo 复合组 Settings 子字段（ForcedEndButton_Show，与玩家标记/隐身设置同一 ModGroupName；条目12修复：所有写入口读回合并防覆盖），点击复选框不落盘（仅 Confirm 保存，防 StorageCreateCleanGroup 批量禁用 mod 卡顿） |
 | `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目12+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
 
 ## 加载机制（.modinfo）

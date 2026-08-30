@@ -8,22 +8,31 @@
 --   FEB 按钮等各功能监听响应），并持久化到本地存档。
 --
 -- 与 1.67 差异（逐条注释留痕）：
---   1) 存档改走本 mod 条目4.3 存储管线 MPT_DataStorage（游戏内 include 可靠，
---      条目11 实证）：MPT_Storage_LoadComposite/SaveComposite("MPT_Settings",
---      {ForcedEndButton_Show})——替代 1.67 的 serialize/deserialize +
---      ModGroup 组名 [size_0][TPTsettings] 手工存档（与 1.67 存档隔离）；
+--   1) 存档走本 mod 条目4.3 存储管线 MPT_DataStorage（游戏内 include 可靠，
+--      条目11 实证），并**并入前端 4.4/条目11 玩家标记的同一复合组**
+--      MPT_PlayerInfo（Settings 子字段 ForcedEndButton_Show）——「所有数据
+--      同一 ModGroupName」；替代 1.67 的 serialize/deserialize + ModGroup
+--      组名 [size_0][TPTsettings] 手工存档（与 1.67 存档隔离）；
 --   2) 删 1.67 齿轮入口 TPTSettingButton（ChangeParent 到 WorldTrackerHeader），
 --      入口改 LuaEvents.MPT_Settings_Toggle 监听（QuickPanel「设置」按钮触发）；
 --   3) 参数表读 GameInfo.MPT_Settings（本 mod 表名，避免与 1.67 TPT_Settings 共存冲突）；
 --   4) 删 1.67 Initializedata 的「存档行本局未使用存回去」分支（本 mod 参数
 --      全部常驻 MPT_Settings 表，无此场景）；
---   5) 复选框点击即落盘（1.67 仅在 OnClose 保存——防改了不点确认关面板丢配置）。
+--   5) 存档改「读回合并写」（SaveComposite 是全量覆盖语义：写前先读回 Players+
+--      Settings 合并，防覆盖玩家标记数据/其它设置字段；1.67 无此问题因其存档独立）；
+--   6) 不在点击时立即落盘（1.67 同款，仅 OnClose 保存）——点击即存会触发
+--      StorageCreateCleanGroup 批量禁用/启用全部 mod，造成点复选框卡顿。
 --
 -- 注册：AddUserInterfaces(Context=InGame) + ImportFiles 同名 Lua 自动执行。
 -- ============================================================================
 
 include("InstanceManager");
 include("MPT_DataStorage");	-- 条目4.3 存储管线（自带 include("MPT_Serialize") 与幂等守卫）
+
+-- ============================================================================
+-- 复合组命名空间：与前端 4.4/条目11 玩家标记同一 ModGroupName（所有数据同组承载）
+-- ============================================================================
+local PLAYERMARK_STORAGE_FILE : string = "MPT_PlayerInfo";
 
 -- ============================================================================
 -- 复选框实例管理与状态表（下标即参数行序，SetVoid1 传下标）
@@ -67,7 +76,9 @@ function SetCheck()
 end
 
 -- ============================================================================
--- 复选框点击：翻转值 → 刷新勾选态 → 广播（对应功能响应）→ 立即落盘
+-- 复选框点击：翻转值 → 刷新勾选态 → 广播（对应功能响应）。
+-- 不立即落盘：点击即存会触发 StorageCreateCleanGroup 批量禁用/启用全部 mod 造成卡顿
+-- （1.67 同款，仅在 OnClose 保存；面板只有 Confirm 一条关闭路径，无丢失场景）
 -- ============================================================================
 function OnCheckBoxs(i)
 	local CheckBoxsControl = m_CheckBoxsIM:GetAllocatedInstance(i);
@@ -75,7 +86,6 @@ function OnCheckBoxs(i)
 
 	CheckBoxsControl.Settings_Box:SetSelected(TPT_Settings_CheckBoxs[i].Value);
 	LuaEvents.TPT_Settings_Toggle(TPT_Settings_CheckBoxs[i].ParameterId, TPT_Settings_CheckBoxs[i].Value);
-	storageData();
 end
 
 -- ============================================================================
@@ -99,26 +109,36 @@ function OnSettingButton()
 end
 
 -- ============================================================================
--- 储存数据：收集全部参数当前值 → 复合存档（条目4.3 管线，组名 [MPT_DS][MPT_Settings]）
+-- 储存数据：读回 Players+Settings 合并后写回（SaveComposite 为全量覆盖语义，
+-- 写前读回保留玩家标记数据与 Settings 其它字段——前端 4.4/条目11 同一复合组互不覆盖）。
+-- 组名 [MPT_DS][MPT_PlayerInfo][len]return { Players=..., Settings=... }
 -- ============================================================================
 function storageData()
-	local t : table = {};
-	for i, idata in pairs(TPT_Settings_CheckBoxs) do
-		t[idata.ParameterId] = idata.Value;
-	end
-	MPT_Storage_SaveComposite("MPT_Settings", t);
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Players", "Settings" }, function(players, oldSettings)
+		local newSettings : table = (type(oldSettings) == "table") and oldSettings or {};
+		for i, idata in pairs(TPT_Settings_CheckBoxs) do
+			newSettings[idata.ParameterId] = idata.Value;	-- Settings.ForcedEndButton_Show
+		end
+		MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
+			Players = (type(players) == "table") and players or {},
+			Settings = newSettings,
+		});
+	end);
 end
 
 -- ============================================================================
--- 读取存档：覆盖默认值（有存档 → First_Use 置 false；无存档保持 true，首次自动弹窗）
+-- 读取存档：读 Settings 子字段覆盖默认值（有存档 → First_Use 置 false；
+-- 无存档/字段缺失 → 保持表默认 0；首次自动弹窗语义不变）
 -- ============================================================================
 function Initializedata()
-	MPT_Storage_LoadComposite("MPT_Settings", { "ForcedEndButton_Show" }, function(savedValue)
-		if savedValue ~= nil then
-			First_Use = false;
-			for i, idata in pairs(TPT_Settings_CheckBoxs) do
-				if idata.ParameterId == "ForcedEndButton_Show" then
-					TPT_Settings_CheckBoxs[i].Value = savedValue;
+	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(settings)
+		if type(settings) == "table" then
+			First_Use = false;	-- 复合组存在（玩家标记/设置任一数据）即非首次使用
+			if settings.ForcedEndButton_Show ~= nil then
+				for i, idata in pairs(TPT_Settings_CheckBoxs) do
+					if idata.ParameterId == "ForcedEndButton_Show" then
+						TPT_Settings_CheckBoxs[i].Value = settings.ForcedEndButton_Show;
+					end
 				end
 			end
 		end
