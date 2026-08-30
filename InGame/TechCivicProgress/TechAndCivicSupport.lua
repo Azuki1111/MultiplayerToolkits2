@@ -714,11 +714,21 @@ function GetResearchData( localPlayer:number, pPlayerTechs:table, kTech:table )
 		Enough			= false											-- 是否可凭 boost 完成
 	};
 	-- ============================================================================
-	-- 条目14：未触发 boost 时修正预估（含 0.5 步进取整补偿：引擎 GetResearchProgress 按 0.5 步进，
-	-- boost 进度为 0.5 整数倍时减 0.5 否则减 1，向下取整后叠加当前进度）
+	-- 条目14：未触发 boost 时修正预估（实测校准公式，替代 1.67 的 %0.5 估算）
+	-- 引擎实测定论（Gameplay 侧 TriggerBoost 实验 + Ghidra 反编译确认）：
+	--   · realCost 必须用 GetResearchCost（含游戏速度 + 时代修正 TECH_COST_PERCENT_CHANGE
+	--     AFTER/BEFORE_GAME_ERA，int 逐步取整）——本 mod 一直如此；
+	--   · 引擎 boost 值 = floor(realCost×Boost%/100)（percent×cost int 除法）后再减
+	--     1~5 的取整损失（与成本相关，实测 13 采样拟合：penalty = 1 + floor(realCost/1000)，
+	--     最大误差 1 点；1.67 的 %0.5 补偿对大成本低估 1~4）；
+	--   · 触发后进度封顶到成本（TriggerBoost 反编译确认 min(progress+boost, cost)），
+	--     故 Estimates 无需再 clamp（math.min 已保证）。
 	-- ============================================================================
 	if not kData.BoostTriggered then		-- 未触发 boost
-		kData.Estimates = math.min(pPlayerTechs:GetResearchProgress(iTech) + math.floor(math.max(kData.Cost * kData.BoostAmount - ( (kData.Cost * kData.BoostAmount % 0.5 == 0) and 0.5 or 1),0) ),kData.Cost);		-- 后预估的值
+		local boostRaw : number = math.floor(kData.Cost * kData.BoostAmount);		-- BoostAmount = (Boost%+附加)/100 比例
+		local penalty : number = 1 + math.floor(kData.Cost / 1000);					-- 实测取整损失（拟合）
+		local boostValue : number = math.max(boostRaw - penalty, 0);
+		kData.Estimates = math.min(pPlayerTechs:GetResearchProgress(iTech) + boostValue, kData.Cost);
 	end
 	if kData.Estimates == kData.Cost then
 		kData.Enough = true;
@@ -855,11 +865,15 @@ function GetCivicData( localPlayer:number, pPlayerCulture:table, kCivic:table )
 		Enough			= false												-- 是否可凭 boost 完成
 	};
 	-- ============================================================================
-	-- 条目14：未触发 boost 时修正预估（同 GetResearchData 的 0.5 步进取整补偿）
+	-- 条目14：未触发 boost 时修正预估（实测校准公式，同 GetResearchData；
+	-- penalty = 1 + floor(Cost/1000) 拟合引擎取整损失，误差 ≤1 点）
 	-- ============================================================================
 	if not kData.BoostTriggered then		-- 未触发 boost
-		kData.Estimates = math.min(pPlayerCulture:GetCulturalProgress(iCivic) + math.floor(math.max(kData.Cost * kData.BoostAmount - ( (kData.Cost * kData.BoostAmount % 0.5 == 0) and 0.5 or 1),0)),kData.Cost);		-- 后预估的值
-	end	
+		local boostRaw : number = math.floor(kData.Cost * kData.BoostAmount);
+		local penalty : number = 1 + math.floor(kData.Cost / 1000);
+		local boostValue : number = math.max(boostRaw - penalty, 0);
+		kData.Estimates = math.min(pPlayerCulture:GetCulturalProgress(iCivic) + boostValue, kData.Cost);
+	end
 	if kData.Estimates == kData.Cost then
 		kData.Enough = true;
 	end

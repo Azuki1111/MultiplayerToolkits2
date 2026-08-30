@@ -69,8 +69,11 @@ function GetCurrentData(ePlayer:number)
 		live.BoostAmount = boostPercent;		-- 百分比绝对值（含附加加速），供 Estimates 计算
 		live.Enough = false;
 		if live.Cost ~= nil and live.Progress ~= nil then
-			if not live.IsBoosted then			-- 未触发 boost：修正预估（0.5 步进取整补偿，见 TechAndCivicSupport.lua 注释）
-				live.Estimates = math.min(live.Progress + math.floor(math.max(live.Cost * boostPercent / 100 - ((live.Cost * boostPercent / 100 % 0.5 == 0) and 0.5 or 1), 0)), live.Cost);
+			if not live.IsBoosted then			-- 未触发 boost：修正预估（实测校准公式，同 TechAndCivicSupport）
+				local boostRaw : number = math.floor(live.Cost * boostPercent / 100);
+				local penalty : number = 1 + math.floor(live.Cost / 1000);		-- 引擎取整损失（13 采样拟合，误差 ≤1 点）
+				local boostValue : number = math.max(boostRaw - penalty, 0);
+				live.Estimates = math.min(live.Progress + boostValue, live.Cost);
 			else								-- 已触发 boost：预估 = 当前进度
 				live.Estimates = live.Progress;
 			end
