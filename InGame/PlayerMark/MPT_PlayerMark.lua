@@ -228,10 +228,14 @@ end
 -- 条目4.3 存储管线包装：真实读盘刷新 g_PlayerMarkList / 把工作副本落盘。
 -- ============================================================================
 function MPT_PlayerMark_LoadFromDisk(callback)
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Players", "Settings" }, function(players, settings)
-		g_PlayerMarkList = (type(players) == "table") and players or {};
-		if type(settings) == "table" and type(settings.HiddenSqlMark) == "boolean" then
-			g_MPT_MarkHidden = settings.HiddenSqlMark;
+	-- ============================================================================
+	-- 条目4.3重构：统一多表存储——整组读回（同一 ModGroupName 内按表名分键），
+	-- 读 Players / HiddenSqlMark 独立表（不兼容旧 Settings 子表格式）
+	-- ============================================================================
+	MPT_Storage_LoadAll(PLAYERMARK_STORAGE_FILE, function(all)
+		g_PlayerMarkList = (type(all.Players) == "table") and all.Players or {};
+		if type(all.HiddenSqlMark) == "boolean" then
+			g_MPT_MarkHidden = all.HiddenSqlMark;
 		else
 			g_MPT_MarkHidden = true;
 		end
@@ -241,25 +245,20 @@ end
 
 function MPT_PlayerMark_SaveToDisk(callback)
 	-- ============================================================================
-	-- 条目12修复：写前读回旧 Settings 合并（SaveComposite 为全量覆盖语义，
-	-- 不合并会覆盖游戏内设置面板写入的字段（如 ForcedEndButton_Show））
+	-- 条目4.3重构：SaveTables 按表名覆盖写（内部自动读回合并，其它表保留，
+	-- 无需手动 merge；替代旧 SaveComposite 全量覆盖 + 条目12修复的读回合并）
 	-- ============================================================================
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(oldSettings)
-		local newSettings : table = (type(oldSettings) == "table") and oldSettings or {};
-		newSettings.HiddenSqlMark = g_MPT_MarkHidden;
-		MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
-			Players = g_PlayerMarkList,
-			Settings = newSettings,
-		}, function(ok)
-			-- ============================================================================
-			-- 条目11 差异2：删 MPT_PlayerMark_RefreshLocalCache() 调用（条目4.8 房间显示层刷新，游戏内无此层）
-			-- if ok then
-			-- 	MPT_PlayerMark_RefreshLocalCache();
-			-- end
-			-- ----------------------------------------------------------------------------
-			if callback ~= nil then callback(ok); end
-		end);
+	MPT_Storage_SaveTables(PLAYERMARK_STORAGE_FILE, {
+		Players = g_PlayerMarkList,
+		HiddenSqlMark = g_MPT_MarkHidden,
+	}, function(ok)
+		-- ============================================================================
+		-- 条目11 差异2：删 MPT_PlayerMark_RefreshLocalCache() 调用（条目4.8 房间显示层刷新，游戏内无此层）
+		-- if ok then
+		-- 	MPT_PlayerMark_RefreshLocalCache();
+		-- end
 		-- ----------------------------------------------------------------------------
+		if callback ~= nil then callback(ok); end
 	end);
 end
 
@@ -267,7 +266,8 @@ end
 -- 条目4.8续：隐身设置（隐藏自身 SQL 公共标记）——与前端 4.4 同步（StagingRoom.lua 同款）。
 -- 语义：勾选 = 隐藏自己，房间内其他玩家加载我的配置后跳过我的 SQL 公共标记
 --   （Admin/Normal/Honor；Ban 强制显示）。默认开启（继承 1.67 IsHiddenPlayerInfo_STR="T"）。
--- 存储：与 Players 同命名空间 MPT_PlayerInfo 下复合组 Settings 字段（LoadFromDisk 已一并读回）。
+-- 存储：与 Players 同一命名空间 MPT_PlayerInfo 复合组内的独立表名 HiddenSqlMark
+--   （条目4.3重构：所有表同组承载，按表名分键互不覆盖，LoadFromDisk 已一并读回）。
 -- 广播：设置/进房时写 PlayerConfigurations[我]:SetValue("HiddenPlayerInfo","T"/"F")
 --   + Network.BroadcastPlayerInfo（游戏内 PlayerConfigurations/Network 可用，QuickPanel 已验证）。
 -- ============================================================================
@@ -287,14 +287,14 @@ function MPT_PlayerMark_BroadcastHiddenMark()
 	end
 end
 
--- MPT_PlayerMark_LoadSettings()：读 Settings 存档刷新 g_MPT_MarkHidden 并应用 UI+广播
+-- MPT_PlayerMark_LoadSettings()：读 HiddenSqlMark 表刷新 g_MPT_MarkHidden 并应用 UI+广播
 --   （无存档/字段缺失 → 默认 true 开启隐身；读完广播一次保证他人视角即时生效）
---   注：真实读库入口是 LoadFromDisk（LoadComposite 一次读回 Players+Settings）；
---   本函数保留为打开面板时的独立刷新（读复合组 Settings 字段）。
+--   注：真实读库入口是 LoadFromDisk（LoadAll 一次读回全部表）；
+--   本函数保留为打开面板时的独立刷新（读 HiddenSqlMark 表）。
 function MPT_PlayerMark_LoadSettings()
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(settings)
-		if type(settings) == "table" and type(settings.HiddenSqlMark) == "boolean" then
-			g_MPT_MarkHidden = settings.HiddenSqlMark;
+	MPT_Storage_GetTable(PLAYERMARK_STORAGE_FILE, "HiddenSqlMark", function(hidden)
+		if type(hidden) == "boolean" then
+			g_MPT_MarkHidden = hidden;
 		else
 			g_MPT_MarkHidden = true;	-- 默认开启隐身（继承 1.67）
 		end
@@ -307,27 +307,21 @@ function MPT_PlayerMark_LoadSettings()
 end
 
 -- MPT_PlayerMark_OnHiddenMarkCheck()：复选框勾选回调（NoStateChange 手动维护勾选态）
---   取反 → 广播 → 落盘（复合写 Players+Settings）→ 重刷 UI
+--   取反 → 广播 → 落盘（按表名覆盖写 HiddenSqlMark）→ 重刷 UI
 function MPT_PlayerMark_OnHiddenMarkCheck()
 	g_MPT_MarkHidden = not g_MPT_MarkHidden;
 	MPT_PlayerMark_ApplyHiddenMarkUI();
 	MPT_PlayerMark_BroadcastHiddenMark();
 	-- ============================================================================
-	-- 条目12修复：写前读回旧 Settings 合并（SaveComposite 为全量覆盖语义，
-	-- 不合并会覆盖游戏内设置面板写入的字段（如 ForcedEndButton_Show））
+	-- 条目4.3重构：SaveTables 按表名覆盖写（内部自动读回合并，Players 等其它表保留，
+	-- 无需手动 merge；替代旧 SaveComposite 全量覆盖 + 条目12修复的读回合并）
 	-- ============================================================================
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(oldSettings)
-		local newSettings : table = (type(oldSettings) == "table") and oldSettings or {};
-		newSettings.HiddenSqlMark = g_MPT_MarkHidden;
-		MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
-			Players = g_PlayerMarkList,
-			Settings = newSettings,
-		}, function(ok)
-			if not ok then
-				print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
-			end
-		end);
-		-- ----------------------------------------------------------------------------
+	MPT_Storage_SaveTables(PLAYERMARK_STORAGE_FILE, {
+		HiddenSqlMark = g_MPT_MarkHidden,
+	}, function(ok)
+		if not ok then
+			print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
+		end
 	end);
 end
 

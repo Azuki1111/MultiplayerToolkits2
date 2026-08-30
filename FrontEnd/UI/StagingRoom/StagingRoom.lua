@@ -5232,29 +5232,33 @@ function MPT_Deserialize(s)
 end
 
 -- ============================================================================
+-- ============================================================================
 -- 条目4.3预备：MPT_DataStorage 本地数据读写部分（同源自 Shared/MPT_DataStorage.lua）
--- 极简本地数据读写工具：ModGroup 组名承载数据（原 .Civ6Cfg 方案已移除）。
+-- 统一多表存储（条目4.3重构）：所有数据经 MPT_Serialize 序列化后整体承载于
+--   单一 ModGroup 组名（同一 ModGroupName），组内按「表名」分键——互不覆盖、方便扩展。
 -- 原理：Modding.CreateModGroup 组名长度 >64MB 未触顶、创建即落库 Mods.sqlite、
 --   跨进程冷启动 GetModGroups() 读回完整（三轮实测，见 AGENTS.md「ModGroup 组名存储实测定论」）。
--- 组名格式：[size_0][color:0,0,0,0][MPT_DS][fileName][key][len]数据
+-- 组名格式：[size_0][color:0,0,0,0][MPT_DS][fileName][len]return { 表名=数据, ... }
 --   [size_0][color:0,0,0,0] 隐形前缀（字号0+全透明）：数据组在前端 Mods 界面组列表不可见
 --   （1.67 [size_0] 前缀同款思路 + 透明色强化）；len=数据字符数，读时校验完整性；
 --   单组名直存不切块（实测上限 >> 实际数据量）。
 -- 干净组：建组前批量禁用全部已启用 mod（官方 DisableAllMods 模式）、建组后即恢复——
 --   数据组不含任何 mod，玩家在前端误切到数据组不会改变 mod 启用状态。
 -- 用法（同步执行，结果经回调返回）：
---   MPT_Storage_SaveData("MyMod", "Blacklist", t, function(ok) end);   -- 写：序列化→删旧组→建组
---   MPT_Storage_LoadData("MyMod", "Blacklist", function(t) end);       -- 读：t=数据表，无组/损坏=nil
---   MPT_Storage_DeleteFile("MyMod", function(found) end);              -- 删：删 MyMod 全部数据组
--- ============================================================================
-
--- ============================================================================
--- 常量
+--   MPT_Storage_LoadAll("MPT_PlayerInfo", function(all) ... end);   -- 读整组全部表
+--   MPT_Storage_GetTable("MPT_PlayerInfo", "Players", function(t) end);  -- 读单表
+--   MPT_Storage_SaveTables("MPT_PlayerInfo", { Players=t, HiddenSqlMark=true }, function(ok) end);
+--     -- 写多表：读回整组 → 按表名覆盖传入的表（其它表自动保留）→ 写回同一组行。
+--     -- 调用方无需读回合并；未来新功能 = 新增表名，天然同组共存。
+-- 与独立文件的差异：内联副本无幂等守卫（本文件每状态只执行一次，守卫无意义；
+--   且 chunk 顶层中间的 return 会编译失败，守卫结构本也无法照搬），无 include。
+-- 旧 API（SaveData/LoadData/DeleteFile/SaveComposite/LoadComposite）随条目4.3重构移除：
+--   单 key 组无调用方；SaveComposite 全量覆盖语义由 SaveTables 内部读回合并取代。
 -- ============================================================================
 local STORAGE_GROUP_PREFIX : string = "[size_0][color:0,0,0,0][MPT_DS][";	-- 数据组名公共前缀（隐形标签 + 命名空间）
 
 -- ============================================================================
--- StorageValidateName：fileName/key 仅限字母数字下划线（要拼进组名前缀做定界解析）
+-- StorageValidateName：fileName/表名仅限字母数字下划线（要拼进组名前缀做定界解析）
 -- ============================================================================
 local function StorageValidateName(name)
 	return type(name) == "string" and string.match(name, "^[%w_]+$") ~= nil;
@@ -5302,138 +5306,29 @@ local function StorageCreateCleanGroup(name : string)
 end
 
 -- ============================================================================
--- 对外：写——data 序列化后以组名承载（先删同 key 旧组，再建干净新组）。
--- data 为任意纯数据（表/字符串/数字/布尔；函数/循环表序列化报错）；
--- callback(success:boolean) 可选，同步调用。
+-- 对外：读整组——读回命名空间下全部表（单一复合组行，同组承载）。
+--   callback(all) 必填，同步调用；无组/损坏/非表 → callback({})（空表字典）。
+--   旧格式单 key 组（首段是表名、tonumber=nil）跳过不读（条目4.3重构不兼容旧存档）。
 -- ============================================================================
-function MPT_Storage_SaveData(fileName : string, key : string, data, callback)
-	if not StorageValidateName(fileName) or not StorageValidateName(key) then
-		print("MPT_DS: 非法 fileName/key", tostring(fileName), tostring(key));
-		if callback ~= nil then pcall(callback, false); end
-		return;
-	end
-	local ok, encoded = pcall(MPT_Serialize, data);
-	if not ok or type(encoded) ~= "string" then
-		print("MPT_DS: 序列化失败", key);
-		if callback ~= nil then pcall(callback, false); end
-		return;
-	end
-	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][" .. key .. "][";
-	StorageDeleteGroupsByPrefix(prefix);
-	StorageCreateCleanGroup(prefix .. #encoded .. "]" .. encoded);
-	if callback ~= nil then
-		local ok, err = pcall(callback, true);
-		if not ok and err ~= nil then print("MPT_DS: SaveData 回调错误", key, tostring(err)); end
-	end
-end
-
--- ============================================================================
--- 对外：读——按前缀找数据组，len 校验后反序列化读回（异常多组时取第一个完好的）。
--- callback(data) 必填，同步调用；组不存在/长度损坏/反序列化失败均回调 nil。
--- ============================================================================
-function MPT_Storage_LoadData(fileName : string, key : string, callback)
-	if not StorageValidateName(fileName) or not StorageValidateName(key) then
-		print("MPT_DS: 非法 fileName/key", tostring(fileName), tostring(key));
-		if callback ~= nil then pcall(callback, nil); end
+function MPT_Storage_LoadAll(fileName : string, callback)
+	if not StorageValidateName(fileName) then
+		print("MPT_DS: 非法 fileName", tostring(fileName));
+		if callback ~= nil then pcall(callback, {}); end
 		return;
 	end
 	if type(callback) ~= "function" then
-		print("MPT_DS: LoadData 缺少 callback", key);
-		return;
-	end
-	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][" .. key .. "][";
-	local data = nil;
-	for i, v in ipairs(Modding.GetModGroups()) do
-		if string.sub(v.Name, 1, #prefix) == prefix then
-			local rest : string = string.sub(v.Name, #prefix + 1);
-			local closePos = string.find(rest, "]", 1, true);	-- len 定界符（plain find：] 是模式魔法字符）
-			if closePos ~= nil then
-				local len = tonumber(string.sub(rest, 1, closePos - 1));
-				local encoded : string = string.sub(rest, closePos + 1);
-				if len ~= nil and len == #encoded then
-					data = MPT_Deserialize(encoded);
-					if data ~= nil then break; end
-				else
-					print("MPT_DS: 数据组长度校验失败", key);
-				end
-			end
-		end
-	end
-	local ok, err = pcall(callback, data);
-	if not ok and err ~= nil then print("MPT_DS: LoadData 回调错误", key, tostring(err)); end
-end
-
--- ============================================================================
--- 对外：删——删除 fileName 下全部 key 的数据组；callback(found:boolean) 可选，同步调用。
--- ============================================================================
-function MPT_Storage_DeleteFile(fileName : string, callback)
-	if not StorageValidateName(fileName) then
-		print("MPT_DS: 非法 fileName", tostring(fileName));
-		if callback ~= nil then pcall(callback, false); end
-		return;
-	end
-	local found = StorageDeleteGroupsByPrefix(STORAGE_GROUP_PREFIX .. fileName .. "][");
-	if callback ~= nil then pcall(callback, found); end
-end
--- ============================================================================
--- 对外（复合）：写——多 key 数据合并为一张总表，整体序列化进单一组名（同一 ModGroup 行）。
---   dataTable：{ key1=数据1, key2=数据2, ... }，key 成为总表字段名（不再拼进组名）。
---   组名格式：[size_0][color:0,0,0,0][MPT_DS][fileName][len]return {...}
---   （区别于单 key 组的 [fileName][key][len]：无 key 段，多份数据同组承载）
---   写前按 [MPT_DS][fileName][ 前缀删除该命名空间全部旧组（含旧单 key 组与旧复合组）。
--- callback(success:boolean) 可选，同步调用。
--- ============================================================================
-function MPT_Storage_SaveComposite(fileName : string, dataTable : table, callback)
-	if not StorageValidateName(fileName) then
-		print("MPT_DS: 非法 fileName", tostring(fileName));
-		if callback ~= nil then pcall(callback, false); end
-		return;
-	end
-	if type(dataTable) ~= "table" then
-		print("MPT_DS: SaveComposite 数据必须是表", tostring(fileName));
-		if callback ~= nil then pcall(callback, false); end
-		return;
-	end
-	local ok, encoded = pcall(MPT_Serialize, dataTable);
-	if not ok or type(encoded) ~= "string" then
-		print("MPT_DS: 复合序列化失败", fileName);
-		if callback ~= nil then pcall(callback, false); end
-		return;
-	end
-	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][";	-- 覆盖该命名空间全部组（旧单 key 组 + 旧复合组）
-	StorageDeleteGroupsByPrefix(prefix);
-	StorageCreateCleanGroup(prefix .. #encoded .. "]" .. encoded);
-	if callback ~= nil then
-		local ok, err = pcall(callback, true);
-		if not ok and err ~= nil then print("MPT_DS: SaveComposite 回调错误", fileName, tostring(err)); end
-	end
-end
-
--- ============================================================================
--- 对外（复合）：读——从复合组读出总表，按 keys 逐个取子字段回调。
---   keys：{ "key1", "key2", ... }；callback(v1, v2, ...) 必填，同步调用；
---   缺失/无复合组 → 对应字段回调 nil。只查复合组（无 key 段）：旧单 key 组
---   首段是 key 名 tonumber=nil，跳过（不迁移场景下不兼容读取）。
--- ============================================================================
-function MPT_Storage_LoadComposite(fileName : string, keys : table, callback)
-	if not StorageValidateName(fileName) then
-		print("MPT_DS: 非法 fileName", tostring(fileName));
-		if callback ~= nil then pcall(callback); end
-		return;
-	end
-	if type(keys) ~= "table" or type(callback) ~= "function" then
-		print("MPT_DS: LoadComposite 缺少 keys/callback", fileName);
+		print("MPT_DS: LoadAll 缺少 callback", fileName);
 		return;
 	end
 	local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][";
-	local data = nil;
+	local data : table = {};
 	for i, v in ipairs(Modding.GetModGroups()) do
 		if string.sub(v.Name, 1, #prefix) == prefix then
 			local rest : string = string.sub(v.Name, #prefix + 1);
 			local closePos = string.find(rest, "]", 1, true);	-- len 定界符（plain find：] 是模式魔法字符）
 			if closePos ~= nil then
 				local len = tonumber(string.sub(rest, 1, closePos - 1));
-				if len ~= nil then	-- len 为纯数字：复合组（旧单 key 组首段是 key 名，tonumber=nil，跳过）
+				if len ~= nil then	-- len 为纯数字：复合组（旧单 key 组首段是表名，tonumber=nil，跳过）
 					local encoded : string = string.sub(rest, closePos + 1);
 					if len == #encoded then
 						local d = MPT_Deserialize(encoded);
@@ -5442,48 +5337,80 @@ function MPT_Storage_LoadComposite(fileName : string, keys : table, callback)
 							break;
 						end
 					else
-						print("MPT_DS: 复合组长度校验失败", fileName);
+						print("MPT_DS: 数据组长度校验失败", fileName);
 					end
 				end
 			end
 		end
 	end
-	local results : table = {};
-	if type(data) == "table" then
-		for i, key in ipairs(keys) do
-			results[i] = data[key];
-		end
-	end
-	-- 显式展开回调参数：不依赖 table.unpack（Civ6 前端 Lua 环境无此 API，实测 1.67 用全局 unpack）。
-	--   当前调用方 keys 数量 1-2 个；超过 8 个才退到全局 unpack 兜底（正常不触发）。
-	--   pcall 保留保护（回调异常不中断存储层），但错误打印留痕 Lua.log（避免静默吞错）。
-	local pcallOk, err = nil, nil;
-	if #keys == 0 then
-		pcallOk, err = pcall(callback);
-	elseif #keys == 1 then
-		pcallOk, err = pcall(callback, results[1]);
-	elseif #keys == 2 then
-		pcallOk, err = pcall(callback, results[1], results[2]);
-	elseif #keys == 3 then
-		pcallOk, err = pcall(callback, results[1], results[2], results[3]);
-	elseif #keys == 4 then
-		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4]);
-	elseif #keys == 5 then
-		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4], results[5]);
-	elseif #keys == 6 then
-		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4], results[5], results[6]);
-	elseif #keys == 7 then
-		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4], results[5], results[6], results[7]);
-	elseif #keys == 8 then
-		pcallOk, err = pcall(callback, results[1], results[2], results[3], results[4], results[5], results[6], results[7], results[8]);
-	else
-		pcallOk, err = pcall(callback, unpack(results));
-	end
-	if not pcallOk and err ~= nil then
-		print("MPT_DS: LoadComposite 回调错误", fileName, tostring(err));
-	end
+	local ok, err = pcall(callback, data);
+	if not ok and err ~= nil then print("MPT_DS: LoadAll 回调错误", fileName, tostring(err)); end
 end
 
+-- ============================================================================
+-- 对外：读单表——读回整组后取指定表名。
+--   callback(data) 必填；表不存在/无组 → nil。
+-- ============================================================================
+function MPT_Storage_GetTable(fileName : string, tableName : string, callback)
+	if not StorageValidateName(fileName) or not StorageValidateName(tableName) then
+		print("MPT_DS: 非法 fileName/tableName", tostring(fileName), tostring(tableName));
+		if callback ~= nil then pcall(callback, nil); end
+		return;
+	end
+	if type(callback) ~= "function" then
+		print("MPT_DS: GetTable 缺少 callback", tableName);
+		return;
+	end
+	MPT_Storage_LoadAll(fileName, function(all)
+		local ok, err = pcall(callback, all[tableName]);
+		if not ok and err ~= nil then print("MPT_DS: GetTable 回调错误", tableName, tostring(err)); end
+	end);
+end
+
+-- ============================================================================
+-- 对外：写多表——读回整组 → 按表名覆盖传入的表（其它表自动保留）→ 写回同一组行。
+--   tables = { 表名1=数据1, 表名2=数据2, ... }；callback(success:boolean) 可选，同步调用。
+--   调用方无需读回合并：SaveTables 内部自动读回旧组合并，仅覆盖传入表名。
+-- ============================================================================
+function MPT_Storage_SaveTables(fileName : string, tables : table, callback)
+	if not StorageValidateName(fileName) then
+		print("MPT_DS: 非法 fileName", tostring(fileName));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	if type(tables) ~= "table" then
+		print("MPT_DS: SaveTables 数据必须是表", tostring(fileName));
+		if callback ~= nil then pcall(callback, false); end
+		return;
+	end
+	for tableName, data in pairs(tables) do
+		if not StorageValidateName(tableName) then
+			print("MPT_DS: 非法表名", tostring(tableName));
+			if callback ~= nil then pcall(callback, false); end
+			return;
+		end
+	end
+	MPT_Storage_LoadAll(fileName, function(all)
+		for tableName, data in pairs(tables) do
+			all[tableName] = data;
+		end
+		local ok, encoded = pcall(MPT_Serialize, all);
+		if not ok or type(encoded) ~= "string" then
+			print("MPT_DS: 序列化失败", fileName);
+			if callback ~= nil then pcall(callback, false); end
+			return;
+		end
+		local prefix : string = STORAGE_GROUP_PREFIX .. fileName .. "][";
+		StorageDeleteGroupsByPrefix(prefix);
+		StorageCreateCleanGroup(prefix .. #encoded .. "]" .. encoded);
+		if callback ~= nil then
+			local cbOk, err = pcall(callback, true);
+			if not cbOk and err ~= nil then print("MPT_DS: SaveTables 回调错误", fileName, tostring(err)); end
+		end
+	end);
+end
+
+-- 幂等守卫置位（放在文件末尾：只有全部定义成功才置位，半加载状态可由下次 include 自愈）
 end	-- 条目4.3预备 do 块结束（寄存器上限适配）
 
 -- ############################################################################
@@ -5492,8 +5419,8 @@ end	-- 条目4.3预备 do 块结束（寄存器上限适配）
 -- 用法：左下角 BottomLeftButtonStack「玩家标记」按钮打开面板；左列 过滤/搜索/排序/列表/添加，
 --   右列内联编辑选中记录（含详细描述记事本）。面板与弹窗布局见 StagingRoom.xml 条目4.4 注释区。
 -- 定位：纯本地记事本，不读取当前房间实况、不做任何房间联动/警告（与用户确认的边界）。
--- 存储：严格走条目4.3预备内联副本的 MPT_Storage_SaveData/LoadData（MPT_DataStorage 格式），
---   ModGroup 组名 [size_0][color:0,0,0,0][MPT_DS][MPT_PlayerInfo][Players][len]... 承载；
+-- 存储：严格走条目4.3预备内联副本的 MPT_Storage_LoadAll/GetTable/SaveTables（MPT_DataStorage 多表格式），
+--   ModGroup 组名 [size_0][color:0,0,0,0][MPT_DS][MPT_PlayerInfo][len]return { Players=..., ... } 承载；
 --   每次打开面板真实读库，仅「保存」按钮建组落库；面板代码不直接碰 Modding 组管理 API。
 -- 数据：g_PlayerMarkList = { { Id=主键(17位纯数字Steam/32位字符Epic), Name=昵称,
 --   Tag=1好友/2一般/3黑名单, Brief=简要描述, Details={ {Text,Time=os.time()}, ... },
@@ -5657,13 +5584,17 @@ end
 -- ============================================================================
 -- MPT_PlayerMark_LoadFromDisk(callback) / MPT_PlayerMark_SaveToDisk(callback)
 -- 条目4.3 存储管线包装：真实读盘刷新 g_PlayerMarkList / 把工作副本落盘。
--- 复合存储（条目4.8续）：Players+Settings 同组承载，单一 ModGroup 行。
+-- 统一多表存储（条目4.3重构）：Players / HiddenSqlMark 等表同组承载，单一 ModGroup 行。
 -- ============================================================================
 function MPT_PlayerMark_LoadFromDisk(callback)
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Players", "Settings" }, function(players, settings)
-		g_PlayerMarkList = (type(players) == "table") and players or {};
-		if type(settings) == "table" and type(settings.HiddenSqlMark) == "boolean" then
-			g_MPT_MarkHidden = settings.HiddenSqlMark;
+	-- ============================================================================
+	-- 条目4.3重构：统一多表存储——整组读回（同一 ModGroupName 内按表名分键），
+	-- 读 Players / HiddenSqlMark 独立表（不兼容旧 Settings 子表格式）
+	-- ============================================================================
+	MPT_Storage_LoadAll(PLAYERMARK_STORAGE_FILE, function(all)
+		g_PlayerMarkList = (type(all.Players) == "table") and all.Players or {};
+		if type(all.HiddenSqlMark) == "boolean" then
+			g_MPT_MarkHidden = all.HiddenSqlMark;
 		else
 			g_MPT_MarkHidden = true;
 		end
@@ -5673,22 +5604,17 @@ end
 
 function MPT_PlayerMark_SaveToDisk(callback)
 	-- ============================================================================
-	-- 条目12修复：写前读回旧 Settings 合并（SaveComposite 为全量覆盖语义，
-	-- 不合并会覆盖游戏内设置面板写入的字段（如 ForcedEndButton_Show））
+	-- 条目4.3重构：SaveTables 按表名覆盖写（内部自动读回合并，其它表保留，
+	-- 无需手动 merge；替代旧 SaveComposite 全量覆盖 + 条目12修复的读回合并）
 	-- ============================================================================
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(oldSettings)
-		local newSettings : table = (type(oldSettings) == "table") and oldSettings or {};
-		newSettings.HiddenSqlMark = g_MPT_MarkHidden;
-		MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
-			Players = g_PlayerMarkList,
-			Settings = newSettings,
-		}, function(ok)
-			if ok then
-				MPT_PlayerMark_RefreshLocalCache();	-- 条目4.8：面板保存后同步房间标记缓存（定义见文件末尾条目4.8分区）
-			end
-			if callback ~= nil then callback(ok); end
-		end);
-		-- ----------------------------------------------------------------------------
+	MPT_Storage_SaveTables(PLAYERMARK_STORAGE_FILE, {
+		Players = g_PlayerMarkList,
+		HiddenSqlMark = g_MPT_MarkHidden,
+	}, function(ok)
+		if ok then
+			MPT_PlayerMark_RefreshLocalCache();	-- 条目4.8：面板保存后同步房间标记缓存（定义见文件末尾条目4.8分区）
+		end
+		if callback ~= nil then callback(ok); end
 	end);
 end
 
@@ -5696,8 +5622,8 @@ end
 -- 条目4.8续：隐身设置（隐藏自身 SQL 公共标记）
 -- 语义：勾选 = 隐藏自己，房间内其他玩家加载我的配置后跳过我的 SQL 公共标记
 --   （Admin/Normal/Honor；Ban 强制显示）。默认开启（继承 1.67 IsHiddenPlayerInfo_STR="T"）。
--- 存储：与 Players 同命名空间 MPT_PlayerInfo 下新增 Settings key（组名各异互不覆盖），
---   存 { HiddenSqlMark=boolean }；每次打开面板真实读库（同 4.4 惯例）。
+-- 存储：与 Players 同一命名空间 MPT_PlayerInfo 复合组内的独立表名 HiddenSqlMark
+--   （条目4.3重构：所有表同组承载，按表名分键互不覆盖），存 boolean。
 -- 广播：设置/进房时写 PlayerConfigurations[我]:SetValue("HiddenPlayerInfo","T"/"F")
 --   + Network.BroadcastPlayerInfo（1.67 同款：键为 1.67 自定义配置键，随房间同步）。
 -- ============================================================================
@@ -5717,15 +5643,15 @@ function MPT_PlayerMark_BroadcastHiddenMark()
 	end
 end
 
--- MPT_PlayerMark_LoadSettings()：读 Settings 存档刷新 g_MPT_MarkHidden 并应用 UI+广播
+-- MPT_PlayerMark_LoadSettings()：读 HiddenSqlMark 存档刷新 g_MPT_MarkHidden 并应用 UI+广播
 --   （无存档/字段缺失 → 默认 true 开启隐身；读完广播一次保证他人视角即时生效）
 function MPT_PlayerMark_LoadSettings()
-	-- 读 Settings（复合组内字段）；无复合组/字段缺失 → 默认 true 开启隐身（继承 1.67）。
-	-- 注：真实读库入口是 LoadFromDisk（LoadComposite 一次读回 Players+Settings）；
-	--   本函数保留为打开面板时的独立刷新（读复合组 Settings 字段）。
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(settings)
-		if type(settings) == "table" and type(settings.HiddenSqlMark) == "boolean" then
-			g_MPT_MarkHidden = settings.HiddenSqlMark;
+	-- 读 HiddenSqlMark 表（整组读回取字段）；无存档/字段缺失 → 默认 true 开启隐身（继承 1.67）。
+	-- 注：真实读库入口是 LoadFromDisk（LoadAll 一次读回全部表）；
+	--   本函数保留为打开面板时的独立刷新（读 HiddenSqlMark 表）。
+	MPT_Storage_GetTable(PLAYERMARK_STORAGE_FILE, "HiddenSqlMark", function(hidden)
+		if type(hidden) == "boolean" then
+			g_MPT_MarkHidden = hidden;
 		else
 			g_MPT_MarkHidden = true;	-- 默认开启隐身（继承 1.67）
 		end
@@ -5741,21 +5667,15 @@ function MPT_PlayerMark_OnHiddenMarkCheck()
 	MPT_PlayerMark_ApplyHiddenMarkUI();
 	MPT_PlayerMark_BroadcastHiddenMark();
 	-- ============================================================================
-	-- 条目12修复：写前读回旧 Settings 合并（SaveComposite 为全量覆盖语义，
-	-- 不合并会覆盖游戏内设置面板写入的字段（如 ForcedEndButton_Show））
+	-- 条目4.3重构：SaveTables 按表名覆盖写（内部自动读回合并，Players 等其它表保留，
+	-- 无需手动 merge；替代旧 SaveComposite 全量覆盖 + 条目12修复的读回合并）
 	-- ============================================================================
-	MPT_Storage_LoadComposite(PLAYERMARK_STORAGE_FILE, { "Settings" }, function(oldSettings)
-		local newSettings : table = (type(oldSettings) == "table") and oldSettings or {};
-		newSettings.HiddenSqlMark = g_MPT_MarkHidden;
-		MPT_Storage_SaveComposite(PLAYERMARK_STORAGE_FILE, {
-			Players = g_PlayerMarkList,
-			Settings = newSettings,
-		}, function(ok)
-			if not ok then
-				print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
-			end
-		end);
-		-- ----------------------------------------------------------------------------
+	MPT_Storage_SaveTables(PLAYERMARK_STORAGE_FILE, {
+		HiddenSqlMark = g_MPT_MarkHidden,
+	}, function(ok)
+		if not ok then
+			print("MPT_PlayerMark: 隐身设置落盘失败（存储管线回调 false）");
+		end
 	end);
 	MPT_PlayerMark_RefreshLocalCache();	-- 重刷房间条目：本机视角立即生效（他人视角由广播驱动）
 end
@@ -6818,11 +6738,12 @@ end
 
 -- ============================================================================
 -- MPT_PlayerMark_RefreshLocalCache()：从条目4.3 存储管线读盘刷新本地标记哈希表。
---   键名段与 4.4（PLAYERMARK_STORAGE_FILE/KEY）一致；异步回调式，回调前消费端拿到的是旧缓存，
---   无标记则显示 SQL 标记/就绪文本（可接受）。4.4 面板保存成功回调内也会调本函数（见 SaveToDisk）。
+--   命名空间与 4.4（PLAYERMARK_STORAGE_FILE）一致，读 Players 表；异步回调式，
+--   回调前消费端拿到的是旧缓存，无标记则显示 SQL 标记/就绪文本（可接受）。
+--   4.4 面板保存成功回调内也会调本函数（见 SaveToDisk）。
 -- ============================================================================
 function MPT_PlayerMark_RefreshLocalCache()
-	MPT_Storage_LoadComposite("MPT_PlayerInfo", { "Players" }, function(players)
+	MPT_Storage_GetTable("MPT_PlayerInfo", "Players", function(players)
 		local data = players;
 		g_MPT_MarkLocal = {};
 		if type(data) == "table" then

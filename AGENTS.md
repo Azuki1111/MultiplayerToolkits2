@@ -30,7 +30,7 @@
 | `FrontEnd/UI/StagingRoom/StagingRoom.lua`（~6300行） | 条目3 核心：同名覆盖原版准备房间脚本。房间20人上限、快捷开关AI（3.2）、快捷分队（3.3）、房主权限提升改他人队伍/领袖（3.4）、更新公告面板（3.5）、广告轮播（3.6）、ping 常驻显示（3.7，内联覆盖原版 UpdateNetConnectionIcon）、移除玩家入槽位下拉框（3.8，NUM_COLUMNS 5→4、g_slotTypeData 新增 kickOption 哨兵项，改动列数/槽位类型时先读分区注释）、mod 版本校验（4.1）、非官方模组清单（4.2）、序列化与数据读写内联分区（4.3预备，ModGroup 组名承载）、玩家标记管理（4.4，纯本地档案+隐身开关）、图标查看器（4.5）、贴图查看器（4.6，4.5/4.6 融合为单面板双页签）、进房自动更新已启用非官方工坊mod（4.7）、房间内玩家标记显示（4.8）。末尾按条目分区 `do...end` 包裹（寄存器上限约束，新增分区必须沿用） |
 | `FrontEnd/UI/StagingRoom/StagingRoom.xml` | 条目3：同名覆盖原版准备房间布局（StatusLabel 已改 TruncateWidth=180 截断，超宽省略） |
 | `FrontEnd/UI/AdvancedSetup/AdvancedSetup.lua` | 单人高级设置替换：minPlayers 2→1，允许移除全部 AI、1 人开局 |
-| `Shared/` | 双环境共享代码与数据。`MPT_Serialize.lua` 序列化；`MPT_DataStorage.lua` 极简本地数据读写（对外 `MPT_Storage_SaveData/LoadData/DeleteFile` 三个全局 API，ModGroup 组名承载）。**前端实际承载 = StagingRoom.lua 末尾「条目4.3预备」内联副本**（因引擎 include 缺陷，见技能库 empty-context.md），两副本改动必须双向同步。子目录 `PlayerMark/` 为玩家标记双环境共享数据，当前仅前端消费 |
+| `Shared/` | 双环境共享代码与数据。`MPT_Serialize.lua` 序列化；`MPT_DataStorage.lua` 统一多表本地读写（条目4.3重构：对外 `MPT_Storage_LoadAll/GetTable/SaveTables` 三 API，所有数据序列化后承载于单一 ModGroup 组名、组内按表名分键，写多表自动读回合并、调用方零 merge）。**前端实际承载 = StagingRoom.lua 末尾「条目4.3预备」内联副本**（因引擎 include 缺陷，见技能库 empty-context.md），两副本改动必须双向同步。子目录 `PlayerMark/` 为玩家标记双环境共享数据，当前仅前端消费 |
 | `FrontEnd/Text/` | 通用本地化文本（每语言一个文件：`FrontEnd_zh_Hans_CN.sql` / `FrontEnd_en_US.sql`） |
 | `FrontEnd/Changelog/` | 条目3.5 更新公告：`MPT_Changelog` 数据表 + 专属文本 |
 | `FrontEnd/Ads/` | 条目3.6 广告轮播：`MPT_Ads` 数据表 + 专属文本 + DDS 贴图 |
