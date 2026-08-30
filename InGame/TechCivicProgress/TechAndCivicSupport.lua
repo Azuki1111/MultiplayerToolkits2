@@ -120,6 +120,28 @@ function MPT_GetNumfone(num:number)
 	return num;
 end
 
+-- ===========================================================================
+-- 引擎精确 boost 值（Ghidra 反编译复刻：CvPlayerTechs::TriggerBoost FUN_180336940 +
+-- FUN_1800eb5c0，39 组 Gameplay 实测 39/39 精确）。
+-- 引擎定点算术链（每步 int 取整，0.64 = 64 位魔数 0xa3d70a3d70a3d70b/2^64）：
+--   B  = floor(cost × basePct / 100)   -- basePct = Boosts 表基础百分比（如 40）
+--   M  = int(B × 256 / cost)           -- 定点 1/256
+--   X  = M × 100 + extra × 256         -- extra = modifier 附加（如中国 +10 → 40+10=50%）
+--   u  = floor(X × cost × 256 × 0.64)
+--   u14 = floor(u / 16384) & ~0xff     -- 对齐 256（1/256 定点）
+--   boost = u14 / 256
+-- 用法：MPT_EngineBoost(cost, basePct, extraBoost)
+-- ===========================================================================
+function MPT_EngineBoost(cost:number, basePct:number, extra:number)
+	local B : number = math.floor(cost * basePct / 100);
+	local M : number = math.floor(B * 256 / cost);
+	local X : number = M * 100 + extra * 256;
+	local u : number = math.floor(X * cost * 256 * 0.64);
+	local u14 : number = math.floor(u / 16384);
+	u14 = u14 - (u14 % 256);
+	return u14 / 256;
+end
+
 
 -- ===========================================================================
 --	CONSTANTS
@@ -677,6 +699,7 @@ function GetResearchData( localPlayer:number, pPlayerTechs:table, kTech:table )
 	local iTech			:number = kTech.Index;
 	local isBoostable	:boolean = false;
 	local boostAmount	:number = 0;
+	local boostBasePct	:number = 0;		-- Boosts 表基础百分比（引擎公式用，循环局部 row 不可外传）
 	local isRepeatable	:boolean = kTech.Repeatable;
 	local researchCost	:number = pPlayerTechs:GetResearchCost(iTech);
 	local techType		:string = kTech.TechnologyType;
@@ -688,6 +711,7 @@ function GetResearchData( localPlayer:number, pPlayerTechs:table, kTech:table )
 			-- ============================================================================
 			-- 条目14：boost 量叠加 modifier 附加加速（真实进度）
 			-- boostAmount = (row.Boost *.01 ) * researchCost;		--Convert the boost value to decimal and determine the actual boost amount.
+			boostBasePct = row.Boost;
 			boostAmount = ((row.Boost + MPT_GetExtraBoostFromModifiers(Game.GetLocalPlayer(), true)) *.01 ) * researchCost;		--Convert the boost value to decimal and determine the actual boost amount.
 			-- ----------------------------------------------------------------------------
 			triggerDesc = row.TriggerDescription;
@@ -714,20 +738,11 @@ function GetResearchData( localPlayer:number, pPlayerTechs:table, kTech:table )
 		Enough			= false											-- 是否可凭 boost 完成
 	};
 	-- ============================================================================
-	-- 条目14：未触发 boost 时修正预估（实测校准公式，替代 1.67 的 %0.5 估算）
-	-- 引擎实测定论（Gameplay 侧 TriggerBoost 实验 + Ghidra 反编译确认）：
-	--   · realCost 必须用 GetResearchCost（含游戏速度 + 时代修正 TECH_COST_PERCENT_CHANGE
-	--     AFTER/BEFORE_GAME_ERA，int 逐步取整）——本 mod 一直如此；
-	--   · 引擎 boost 值 = floor(realCost×Boost%/100)（percent×cost int 除法）后再减
-	--     1~5 的取整损失（与成本相关，实测 13 采样拟合：penalty = 1 + floor(realCost/1000)，
-	--     最大误差 1 点；1.67 的 %0.5 补偿对大成本低估 1~4）；
-	--   · 触发后进度封顶到成本（TriggerBoost 反编译确认 min(progress+boost, cost)），
-	--     故 Estimates 无需再 clamp（math.min 已保证）。
+	-- 条目14：未触发 boost 时修正预估（引擎精确公式 MPT_EngineBoost，39 实测全对；
+	-- basePct = Boosts 表基础值，extra = modifier 附加（中国 +10 → 50%））
 	-- ============================================================================
 	if not kData.BoostTriggered then		-- 未触发 boost
-		local boostRaw : number = math.floor(kData.Cost * kData.BoostAmount);		-- BoostAmount = (Boost%+附加)/100 比例
-		local penalty : number = 1 + math.floor(kData.Cost / 1000);					-- 实测取整损失（拟合）
-		local boostValue : number = math.max(boostRaw - penalty, 0);
+		local boostValue : number = MPT_EngineBoost(kData.Cost, boostBasePct, MPT_GetExtraBoostFromModifiers(Game.GetLocalPlayer(), true));
 		kData.Estimates = math.min(pPlayerTechs:GetResearchProgress(iTech) + boostValue, kData.Cost);
 	end
 	if kData.Estimates == kData.Cost then
@@ -827,6 +842,7 @@ function GetCivicData( localPlayer:number, pPlayerCulture:table, kCivic:table )
 	local iCivic		:number = kCivic.Index;			
 	local isBoostable	:boolean = false;
 	local boostAmount	:number = 0;
+	local boostBasePct	:number = 0;		-- Boosts 表基础百分比（引擎公式用，循环局部 row 不可外传）
 	local isRepeatable	:boolean = kCivic.Repeatable;
 	local progressCost	:number = pPlayerCulture:GetCultureCost(iCivic)
 	local civicType		:string = kCivic.CivicType;
@@ -838,6 +854,7 @@ function GetCivicData( localPlayer:number, pPlayerCulture:table, kCivic:table )
 			-- ============================================================================
 			-- 条目14：boost 量叠加 modifier 附加加速（真实进度）
 			-- boostAmount = (row.Boost *.01 ) * progressCost;		--Convert the boost value to decimal and determine the actual boost amount.
+			boostBasePct = row.Boost;
 			boostAmount = ((row.Boost + MPT_GetExtraBoostFromModifiers(Game.GetLocalPlayer(), false)) *.01 ) * progressCost;		--Convert the boost value to decimal and determine the actual boost amount.
 			-- ----------------------------------------------------------------------------
 			triggerDesc = row.TriggerDescription;
@@ -869,9 +886,7 @@ function GetCivicData( localPlayer:number, pPlayerCulture:table, kCivic:table )
 	-- penalty = 1 + floor(Cost/1000) 拟合引擎取整损失，误差 ≤1 点）
 	-- ============================================================================
 	if not kData.BoostTriggered then		-- 未触发 boost
-		local boostRaw : number = math.floor(kData.Cost * kData.BoostAmount);
-		local penalty : number = 1 + math.floor(kData.Cost / 1000);
-		local boostValue : number = math.max(boostRaw - penalty, 0);
+		local boostValue : number = MPT_EngineBoost(kData.Cost, boostBasePct, MPT_GetExtraBoostFromModifiers(Game.GetLocalPlayer(), false));
 		kData.Estimates = math.min(pPlayerCulture:GetCulturalProgress(iCivic) + boostValue, kData.Cost);
 	end
 	if kData.Estimates == kData.Cost then

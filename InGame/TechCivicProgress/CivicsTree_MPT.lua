@@ -65,14 +65,12 @@ function GetCurrentData(ePlayer:number)
 	local extraBoost : number = MPT_GetExtraBoostFromModifiers(Game.GetLocalPlayer(), false);	-- 本回合 modifier 附加文化加速（内部缓存）
 
 	for type, live in pairs(liveData) do
-		local boostPercent : number = (MPT_BoostMap[type] or 0) + extraBoost;
-		live.BoostAmount = boostPercent;		-- 百分比绝对值（含附加加速），供 Estimates 计算
+		local basePct : number = MPT_BoostMap[type] or 0;		-- Boosts 表基础百分比
+		live.BoostAmount = basePct + extraBoost;				-- 百分比绝对值（含附加加速），供显示
 		live.Enough = false;
 		if live.Cost ~= nil and live.Progress ~= nil then
-			if not live.IsBoosted then			-- 未触发 boost：修正预估（实测校准公式，同 TechAndCivicSupport）
-				local boostRaw : number = math.floor(live.Cost * boostPercent / 100);
-				local penalty : number = 1 + math.floor(live.Cost / 1000);		-- 引擎取整损失（13 采样拟合，误差 ≤1 点）
-				local boostValue : number = math.max(boostRaw - penalty, 0);
+			if not live.IsBoosted then			-- 未触发 boost：引擎精确公式（MPT_EngineBoost，39 实测全对）
+				local boostValue : number = MPT_EngineBoost(live.Cost, basePct, extraBoost);
 				live.Estimates = math.min(live.Progress + boostValue, live.Cost);
 			else								-- 已触发 boost：预估 = 当前进度
 				live.Estimates = live.Progress;
