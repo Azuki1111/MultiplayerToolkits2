@@ -6,11 +6,11 @@
 <!-- 经 LuaEvents.MPT_Settings_Toggle 跨 Context 开关（见 MPT_SettingsPanel.lua）；  -->
 <!-- 底部 Header 与顶部重名改 HeaderBottom（防 ID 歧义）；                              -->
 <!-- 面板初始隐藏（AddUserInterfaces 上下文引擎默认 isHidden=true，条目11 经验），      -->
-<!-- 显示/隐藏由 Lua OnShow/OnClose 切换 ContextPtr:SetHide。                          -->
+<!-- 显示/隐藏由 Lua MPT_SettingsPanel_Show/Close 切换 ContextPtr:SetHide。                 -->
 <!-- 注册：AddUserInterfaces(Context=InGame) + ImportFiles 同名 Lua 自动执行。        -->
 <!-- ============================================================================ -->
 <Context>
-	<Container ID="TPTSettingsPanel" Size="380,512" Anchor="C,C" ConsumeMouse="1">
+	<Container ID="MPTSettingsPanel" Size="380,512" Anchor="C,C" ConsumeMouse="1">
 		<Grid Size="parent,parent" Texture="Controls_ContainerBlue" SliceStart="0,0" SliceCorner="3,3" SliceSize="9,9" SliceTextureSize="16,16">
 			<Container ID="Header" Size="parent,54" Anchor="C,T" Style="ShellHeaderContainer">
 				<Grid Style="ShellHeaderButtonGrid">

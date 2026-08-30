@@ -3,7 +3,7 @@
 --
 -- 功能：ActionPanel 右下角小按钮，左键无视未完成行动直接请求结束回合；
 --   显隐默认隐藏（同 1.67），由游戏内设置面板（MPT_SettingsPanel）经
---   LuaEvents.TPT_Settings_Toggle("ForcedEndButton_Show", Value) 广播控制。
+--   LuaEvents.MPT_Settings_Toggle("ForcedEndButton_Show", Value) 广播控制。
 -- 挂载：LoadScreenClose 时 ChangeParent 到 /InGame/ActionPanel（R,B 0,0）。
 --
 -- 与 1.67 差异（逐条注释留痕）：
@@ -23,9 +23,10 @@ local Show_FEB : boolean = false;
 local m_attached : boolean = false;
 
 -- ============================================================================
--- 设置广播响应：ForcedEndButton_Show 控制按钮显隐
+-- 设置广播响应：ForcedEndButton_Show 控制按钮显隐（事件名 MPT_Settings_Toggle，
+-- 本 mod 自有命名规范，由游戏内设置面板 MPT_SettingsPanel 广播）
 -- ============================================================================
-function OnTPT_Settings_Toggle(ParameterId, Value)
+function OnMPT_Settings_Toggle(ParameterId, Value)
 	if ParameterId == "ForcedEndButton_Show" then
 		Show_FEB = Value;
 		Controls.ForcedEnd_Button:SetHide(not Show_FEB);
@@ -59,6 +60,6 @@ end
 -- ============================================================================
 function Initialize()
 	Events.LoadScreenClose.Add(LateInitialize);
-	LuaEvents.TPT_Settings_Toggle.Add(OnTPT_Settings_Toggle);
+	LuaEvents.MPT_Settings_Toggle.Add(OnMPT_Settings_Toggle);
 end
 Initialize();

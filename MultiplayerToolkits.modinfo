@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>37</Version>
+		<Version>38</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -481,23 +481,23 @@
 			<File>InGame/DealRestriction/SQL/MakePeace_Disable.sql</File>
 		<File>InGame/PlayerMark/MPT_RoomPlayers_Gameplay.lua</File>
 		</UpdateDatabase>
-		<!-- 条目12：游戏内设置面板（移植 1.67 Settings 简化版，当前仅 FEB 开关）——空 Context + 同名 Lua 自动执行；
-			QuickPanel（条目8）展开区「设置」按钮经 LuaEvents.MPT_Settings_Toggle 开关；参数表 MPT_Settings
-			（ParameterId 保留 1.67 key ForcedEndButton_Show，避免与 1.67 TPT_Settings 建表冲突）；
-			选项广播 LuaEvents.TPT_Settings_Toggle 供各功能响应；存档走条目4.3 MPT_DataStorage
-			（复合组 [MPT_DS][MPT_Settings]，与 1.67 存档隔离） -->
+		<!-- 条目12：游戏内设置面板（移植 1.67 Settings 简化版，当前仅 FEB 开关；独立目录 InGame/SettingsPanel/）——
+			空 Context + 同名 Lua 自动执行；QuickPanel（条目8）展开区「设置」按钮经 LuaEvents.MPT_Settings_Toggle 开关；
+			参数表 MPT_Settings（ParameterId 保留 1.67 key ForcedEndButton_Show，避免与 1.67 TPT_Settings 建表冲突）；
+			选项广播 LuaEvents.MPT_Settings_Toggle（条目12优化命名规范化：本 mod 自有事件名）供各功能响应；
+			存档走条目4.3 MPT_DataStorage 统一多表存储（复合组 [MPT_DS][MPT_PlayerInfo]，表名=参数 ParameterId） -->
 		<AddUserInterfaces id="IG_MPT_Settings">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 				<Context>InGame</Context>
 			</Properties>
-			<File>InGame/ForcedEndTurn/MPT_SettingsPanel.xml</File>
+			<File>InGame/SettingsPanel/MPT_SettingsPanel.xml</File>
 		</AddUserInterfaces>
 		<ImportFiles id="IG_MPT_Settings_Import">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 			</Properties>
-			<File>InGame/ForcedEndTurn/MPT_SettingsPanel.lua</File>
+			<File>InGame/SettingsPanel/MPT_SettingsPanel.lua</File>
 			<File>Shared/MPT_Serialize.lua</File>
 			<File>Shared/MPT_DataStorage.lua</File>
 		</ImportFiles>
@@ -505,12 +505,20 @@
 			<Properties>
 				<LoadOrder>10</LoadOrder>
 			</Properties>
-			<File>InGame/ForcedEndTurn/MPT_Settings.sql</File>
+			<File>InGame/SettingsPanel/MPT_Settings.sql</File>
 		</UpdateDatabase>
+		<!-- 条目12：设置面板文本游戏内注册（面板标题/确认按钮复用原版 tag） -->
+		<UpdateText id="IG_MPT_Settings_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/SettingsPanel/SettingsPanel_zh_Hans_CN.sql</File>
+			<File>InGame/SettingsPanel/SettingsPanel_en_US.sql</File>
+		</UpdateText>
 		<!-- 条目12：强制结束回合按钮（FEB，移植 1.67 FEB）——ActionPanel 右下角 50×50 按钮，左键强制结束回合
 			（ACTION_ENDTURN REASON="UserForced"，绕过行动检查），右键保留 LuaEvents.ForcedEndTurn 触发点
 			（1.67 由 NHK 热键系统消费，本 mod 未移植，预留接口）；
-			显隐默认隐藏，由设置面板「显示强制结束回合按钮」开关（TPT_Settings_Toggle 广播）控制 -->
+			显隐默认隐藏，由设置面板「显示强制结束回合按钮」开关（MPT_Settings_Toggle 广播）控制 -->
 		<AddUserInterfaces id="IG_ForcedEnd">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
@@ -524,7 +532,7 @@
 			</Properties>
 			<File>InGame/ForcedEndTurn/ForcedEndButton.lua</File>
 		</ImportFiles>
-		<!-- 条目12：FEB/设置面板文本游戏内注册（面板标题/确认按钮复用原版 tag） -->
+		<!-- 条目12：FEB 按钮文本游戏内注册（LOC_FORCEEND_TT；设置面板文本走 IG_MPT_Settings_Text） -->
 		<UpdateText id="IG_ForcedEnd_Text">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
@@ -602,9 +610,11 @@
 		<File>InGame/DealRestriction/SQL/NoFriendship.sql</File>
 		<File>InGame/DealRestriction/SQL/MakePeace.sql</File>
 		<File>InGame/DealRestriction/SQL/MakePeace_Disable.sql</File>
-		<File>InGame/ForcedEndTurn/MPT_Settings.sql</File>
-		<File>InGame/ForcedEndTurn/MPT_SettingsPanel.xml</File>
-		<File>InGame/ForcedEndTurn/MPT_SettingsPanel.lua</File>
+		<File>InGame/SettingsPanel/MPT_Settings.sql</File>
+		<File>InGame/SettingsPanel/MPT_SettingsPanel.xml</File>
+		<File>InGame/SettingsPanel/MPT_SettingsPanel.lua</File>
+		<File>InGame/SettingsPanel/SettingsPanel_zh_Hans_CN.sql</File>
+		<File>InGame/SettingsPanel/SettingsPanel_en_US.sql</File>
 		<File>InGame/ForcedEndTurn/ForcedEndButton.xml</File>
 		<File>InGame/ForcedEndTurn/ForcedEndButton.lua</File>
 		<File>InGame/ForcedEndTurn/ForcedEndTurn_zh_Hans_CN.sql</File>
