@@ -46,6 +46,9 @@ local MPT_cachedExtraCivicBoost	: number = 0;
 -- 用法：MPT_GetExtraBoostFromModifiers(Game.GetLocalPlayer(), true)  -- isTech=true 科技，false 市政
 -- ===========================================================================
 function MPT_GetExtraBoostFromModifiers(playerID:number, isTech:boolean)
+	if GameEffects == nil then		-- 防御：GameEffects API 不可用（某些 UI context）时返回 0
+		return 0;
+	end
 	-- Only need to check for the local players.
 	local cur : number = Game.GetCurrentGameTurn();
 	if playerID ~= Game.GetLocalPlayer() then
@@ -68,7 +71,8 @@ function MPT_GetExtraBoostFromModifiers(playerID:number, isTech:boolean)
 		if isActive and MPT_IsOwnerRequirementSetMet(modifierObjID) and (GameEffects.GetObjectsPlayerId(ownerObjID) == playerID) then
 			-- The modifier is active, belongs to the given player, and owner requirement set is met.
 			local modifierDef : table = GameEffects.GetModifierDefinition(modifierObjID);
-			local modifierType : string = GameInfo.Modifiers[modifierDef.Id].ModifierType;
+			local modifierRow : table = modifierDef and GameInfo.Modifiers[modifierDef.Id] or nil;
+			local modifierType : string = modifierRow and modifierRow.ModifierType or nil;
 			if modifierType then
 				local modifierTypeRow : table = GameInfo.DynamicModifiers[modifierType];
 				if modifierTypeRow then

@@ -16,6 +16,7 @@
 -- ===========================================================================
 -- INCLUDES（基类探测：Exp2 优先，退 Exp1，再退 Base；仅当 Initialize 存在即视为基类）
 -- ===========================================================================
+print("MPT_TCP(TechTree): script start");
 local files = {
 	"TechTree_Expansion2",
 	"TechTree_Expansion1",
@@ -25,6 +26,7 @@ local files = {
 for _, file in ipairs(files) do
 	include(file)
 	if Initialize then
+		print("MPT_TCP(TechTree): base loaded = " .. file);
 		break
 	end
 end
@@ -47,9 +49,31 @@ end
 
 -- ===========================================================================
 --	CACHE BASE FUNCTIONS
+-- 注意：必须用 MPT_ 前缀独立命名，不能覆盖官方 Exp1 已定义的 BASE_PopulateNode 全局
+--（Exp1 的 PopulateNode 内部动态查找 BASE_PopulateNode；若被本 mod 同名覆盖为 Exp1 版
+-- 自身将无限递归 → 栈溢出崩溃。CivicsTree 无 Exp1 替换所以此前未暴露此问题）
 -- ===========================================================================
-BASE_GetCurrentData = GetCurrentData;
-BASE_PopulateNode = PopulateNode;
+MPT_BASE_GetCurrentData = GetCurrentData;
+MPT_BASE_PopulateNode = PopulateNode;
+
+-- ===========================================================================
+--	OVERRIDE UpdateAllianceIcon（官方 Exp1 版 + nil 防御）：
+-- Alliance 控件仅在官方 Exp1 的 TechTreeNode.xml 替换中存在；无该替换（或未来 DLC
+-- 缺失）时返回，避免 nil 索引导致整棵科技树渲染崩溃（本 mod 覆盖层保证）。
+-- ===========================================================================
+function UpdateAllianceIcon(node:table)
+	if node == nil or node.AllianceIcon == nil or node.Alliance == nil then
+		return;
+	end
+	local techID : number = GameInfo.Technologies[node.Type].Index;
+	if AllyHasOrIsResearchingTech(techID) then
+		node.AllianceIcon:SetToolTipString(GetAllianceIconToolTip());
+		node.AllianceIcon:SetColor(GetAllianceIconColor());
+		node.Alliance:SetHide(false);
+	else
+		node.Alliance:SetHide(true);
+	end
+end
 
 -- ===========================================================================
 --	OVERRIDE GetCurrentData：为 live 数据追加真实进度字段（BoostAmount/Estimates/Enough）
@@ -57,7 +81,7 @@ BASE_PopulateNode = PopulateNode;
 -- BoostAmount = 官方 boost 百分比 + modifier 附加加速（动态注入，替代 1.67 刷新静态数据）。
 -- ===========================================================================
 function GetCurrentData(ePlayer:number, eCompletedTech:number)
-	local data : table = BASE_GetCurrentData(ePlayer, eCompletedTech);
+	local data : table = MPT_BASE_GetCurrentData(ePlayer, eCompletedTech);
 	if data == nil then
 		return nil;
 	end
@@ -72,13 +96,15 @@ function GetCurrentData(ePlayer:number, eCompletedTech:number)
 		local boostPercent : number = (MPT_BoostMap[type] or 0) + extraBoost;
 		live.BoostAmount = boostPercent;		-- 百分比绝对值（含附加加速），供 Estimates 计算
 		live.Enough = false;
-		if not live.IsBoosted then				-- 未触发 boost：修正预估（0.5 步进取整补偿，见 TechAndCivicSupport.lua 注释）
-			live.Estimates = math.min(live.Progress + math.floor(math.max(live.Cost * boostPercent / 100 - ((live.Cost * boostPercent / 100 % 0.5 == 0) and 0.5 or 1), 0)), live.Cost);
-		else									-- 已触发 boost：预估 = 当前进度
-			live.Estimates = live.Progress;
-		end
-		if live.Estimates == live.Cost then
-			live.Enough = true;
+		if live.Cost ~= nil and live.Progress ~= nil then
+			if not live.IsBoosted then			-- 未触发 boost：修正预估（0.5 步进取整补偿，见 TechAndCivicSupport.lua 注释）
+				live.Estimates = math.min(live.Progress + math.floor(math.max(live.Cost * boostPercent / 100 - ((live.Cost * boostPercent / 100 % 0.5 == 0) and 0.5 or 1), 0)), live.Cost);
+			else								-- 已触发 boost：预估 = 当前进度
+				live.Estimates = live.Progress;
+			end
+			if live.Estimates == live.Cost then
+				live.Enough = true;
+			end
 		end
 	end
 
@@ -92,7 +118,7 @@ end
 --  3. BoostMeter 百分比改为「boost 后预估完成度」（Estimates/Cost）
 -- ===========================================================================
 function PopulateNode(uiNode:table, playerTechData:table)
-	BASE_PopulateNode(uiNode, playerTechData);
+	MPT_BASE_PopulateNode(uiNode, playerTechData);
 
 	local item : table = g_kItemDefaults[uiNode.Type];		-- static item data
 	local live : table = playerTechData[DATA_FIELD_LIVEDATA][uiNode.Type];	-- live (changing) data
@@ -111,13 +137,18 @@ function PopulateNode(uiNode:table, playerTechData:table)
 	-- 2. BLOCKED 回合数修正（按实际科学产出重算，防引擎对不可研究项给不可信值）
 	if live.Status == ITEM_STATUS.BLOCKED then
 		local pPlayerTechs : table = Players[Game.GetLocalPlayer()]:GetTechs();
-		live.Turns = math.floor(math.max((live.Cost - live.Progress) / pPlayerTechs:GetScienceYield(), 1) + 0.5);
-		uiNode.Turns:SetHide(false);
-		uiNode.Turns:SetText(Locale.Lookup("LOC_TECH_TREE_TURNS", live.Turns));
+		local scienceYield : number = pPlayerTechs:GetScienceYield();
+		if scienceYield ~= nil and scienceYield > 0 then
+			live.Turns = math.floor(math.max((live.Cost - live.Progress) / scienceYield, 1) + 0.5);
+			uiNode.Turns:SetHide(false);
+			uiNode.Turns:SetText(Locale.Lookup("LOC_TECH_TREE_TURNS", live.Turns));
+		end
 	end
 
 	-- 3. BoostMeter 百分比修正（Base 已决定显隐，此处仅在显示 boost 进度条时改百分比）
 	if item.IsBoostable and status ~= ITEM_STATUS.RESEARCHED and status ~= ITEM_STATUS.UNREVEALED and not live.IsBoosted then
-		uiNode.BoostMeter:SetPercent(live.Estimates / live.Cost);
+		if live.Estimates ~= nil and live.Cost ~= nil and live.Cost > 0 then
+			uiNode.BoostMeter:SetPercent(live.Estimates / live.Cost);
+		end
 	end
 end

@@ -9,6 +9,7 @@
 -- ===========================================================================
 -- INCLUDES（基类探测：Exp2 优先，退 Base；仅当 Initialize 存在即视为基类）
 -- ===========================================================================
+print("MPT_TCP(CivicsTree): script start");
 local files = {
 	"CivicsTree_Expansion2",
 	"CivicsTree",
@@ -17,6 +18,7 @@ local files = {
 for _, file in ipairs(files) do
 	include(file)
 	if Initialize then
+		print("MPT_TCP(CivicsTree): base loaded = " .. file);
 		break
 	end
 end
@@ -39,9 +41,11 @@ end
 
 -- ===========================================================================
 --	CACHE BASE FUNCTIONS
+-- 注意：MPT_ 前缀独立命名（同 TechTree_MPT.lua——官方 DLC 替换文件可能定义同名 BASE_
+-- 全局，覆盖会导致官方覆盖层内部递归；本 mod 统一用 MPT_BASE_ 前缀规避）
 -- ===========================================================================
-BASE_GetCurrentData = GetCurrentData;
-BASE_PopulateNode = PopulateNode;
+MPT_BASE_GetCurrentData = GetCurrentData;
+MPT_BASE_PopulateNode = PopulateNode;
 
 -- ===========================================================================
 --	OVERRIDE GetCurrentData：为 live 数据追加真实进度字段（BoostAmount/Estimates/Enough）
@@ -49,7 +53,7 @@ BASE_PopulateNode = PopulateNode;
 -- BoostAmount = 官方 boost 百分比 + modifier 附加加速（动态注入，替代 1.67 刷新静态数据）。
 -- ===========================================================================
 function GetCurrentData(ePlayer:number)
-	local data : table = BASE_GetCurrentData(ePlayer);
+	local data : table = MPT_BASE_GetCurrentData(ePlayer);
 	if data == nil then
 		return nil;
 	end
@@ -64,13 +68,15 @@ function GetCurrentData(ePlayer:number)
 		local boostPercent : number = (MPT_BoostMap[type] or 0) + extraBoost;
 		live.BoostAmount = boostPercent;		-- 百分比绝对值（含附加加速），供 Estimates 计算
 		live.Enough = false;
-		if not live.IsBoosted then				-- 未触发 boost：修正预估（0.5 步进取整补偿，见 TechAndCivicSupport.lua 注释）
-			live.Estimates = math.min(live.Progress + math.floor(math.max(live.Cost * boostPercent / 100 - ((live.Cost * boostPercent / 100 % 0.5 == 0) and 0.5 or 1), 0)), live.Cost);
-		else									-- 已触发 boost：预估 = 当前进度
-			live.Estimates = live.Progress;
-		end
-		if live.Estimates == live.Cost then
-			live.Enough = true;
+		if live.Cost ~= nil and live.Progress ~= nil then
+			if not live.IsBoosted then			-- 未触发 boost：修正预估（0.5 步进取整补偿，见 TechAndCivicSupport.lua 注释）
+				live.Estimates = math.min(live.Progress + math.floor(math.max(live.Cost * boostPercent / 100 - ((live.Cost * boostPercent / 100 % 0.5 == 0) and 0.5 or 1), 0)), live.Cost);
+			else								-- 已触发 boost：预估 = 当前进度
+				live.Estimates = live.Progress;
+			end
+			if live.Estimates == live.Cost then
+				live.Enough = true;
+			end
 		end
 	end
 
@@ -84,7 +90,7 @@ end
 --  3. BoostMeter 百分比改为「boost 后预估完成度」（Estimates/Cost）
 -- ===========================================================================
 function PopulateNode(uiNode:table, playerTechData:table)
-	BASE_PopulateNode(uiNode, playerTechData);
+	MPT_BASE_PopulateNode(uiNode, playerTechData);
 
 	local item : table = g_kItemDefaults[uiNode.Type];		-- static item data
 	local live : table = playerTechData[DATA_FIELD_LIVEDATA][uiNode.Type];	-- live (changing) data
@@ -103,13 +109,18 @@ function PopulateNode(uiNode:table, playerTechData:table)
 	-- 2. BLOCKED 回合数修正（按实际文化产出重算，防引擎对不可研究项给不可信值）
 	if live.Status == ITEM_STATUS.BLOCKED then
 		local pPlayerCulture : table = Players[Game.GetLocalPlayer()]:GetCulture();
-		live.Turns = math.floor(math.max((live.Cost - live.Progress) / pPlayerCulture:GetCultureYield(), 1) + 0.5);
-		uiNode.Turns:SetHide(false);
-		uiNode.Turns:SetText(Locale.Lookup("LOC_TECH_TREE_TURNS", live.Turns));
+		local cultureYield : number = pPlayerCulture:GetCultureYield();
+		if cultureYield ~= nil and cultureYield > 0 then
+			live.Turns = math.floor(math.max((live.Cost - live.Progress) / cultureYield, 1) + 0.5);
+			uiNode.Turns:SetHide(false);
+			uiNode.Turns:SetText(Locale.Lookup("LOC_TECH_TREE_TURNS", live.Turns));
+		end
 	end
 
 	-- 3. BoostMeter 百分比修正（Base 已决定显隐，此处仅在显示 boost 进度条时改百分比）
 	if item.IsBoostable and status ~= ITEM_STATUS.RESEARCHED and status ~= ITEM_STATUS.UNREVEALED and not live.IsBoosted then
-		uiNode.BoostMeter:SetPercent(live.Estimates / live.Cost);
+		if live.Estimates ~= nil and live.Cost ~= nil and live.Cost > 0 then
+			uiNode.BoostMeter:SetPercent(live.Estimates / live.Cost);
+		end
 	end
 end
