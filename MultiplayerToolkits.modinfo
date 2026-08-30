@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>39</Version>
+		<Version>40</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -482,9 +482,10 @@
 		<File>InGame/PlayerMark/MPT_RoomPlayers_Gameplay.lua</File>
 		</UpdateDatabase>
 		<!-- 条目12：游戏内设置面板（移植 1.67 Settings 简化版，当前仅 FEB 开关；独立目录 InGame/SettingsPanel/）——
-			空 Context + 同名 Lua 自动执行；QuickPanel（条目8）展开区「设置」按钮经 LuaEvents.MPT_Settings_Toggle 开关；
+			空 Context + 同名 Lua 自动执行；QuickPanel（条目8）展开区「设置」按钮经 LuaEvents.MPT_SettingsPanel_Toggle 开关
+			（条目12修复：开关入口独立事件名，与参数广播 MPT_Settings_Toggle 拆分——原共用导致点复选框广播时面板自关闭）；
 			参数表 MPT_Settings（ParameterId 保留 1.67 key ForcedEndButton_Show，避免与 1.67 TPT_Settings 建表冲突）；
-			选项广播 LuaEvents.MPT_Settings_Toggle（条目12优化命名规范化：本 mod 自有事件名）供各功能响应；
+			选项广播 LuaEvents.MPT_Settings_Toggle（本 mod 自有事件名）供各功能响应；
 			存档走条目4.3 MPT_DataStorage 统一多表存储（复合组 [MPT_DS][MPT_PlayerInfo]，表名=参数 ParameterId） -->
 		<AddUserInterfaces id="IG_MPT_Settings">
 			<Properties>

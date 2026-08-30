@@ -812,8 +812,8 @@ local function MPT_QuickInitialize()
 	Controls.PlayerMarkButton:RegisterCallback(Mouse.eLClick, function() LuaEvents.MPT_PlayerMark_Toggle(); end);
 	Controls.PlayerMarkButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
-	-- 条目12：设置按钮 → 打开/关闭游戏内设置面板（LuaEvents 跨 Context，面板侧见 InGame/ForcedEndTurn/MPT_SettingsPanel.lua）
-	Controls.SettingsButton:RegisterCallback(Mouse.eLClick, function() LuaEvents.MPT_Settings_Toggle(); end);
+	-- 条目12：设置按钮 → 打开/关闭游戏内设置面板（LuaEvents 跨 Context；面板侧见 InGame/SettingsPanel/MPT_SettingsPanel.lua）
+	Controls.SettingsButton:RegisterCallback(Mouse.eLClick, function() LuaEvents.MPT_SettingsPanel_Toggle(); end);
 	Controls.SettingsButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
 	Controls.VoteAgreeButton:RegisterCallback(Mouse.eLClick, function() MPT_QuickVote(true); end);

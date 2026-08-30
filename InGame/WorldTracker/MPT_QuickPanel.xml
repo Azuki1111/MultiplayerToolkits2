@@ -7,8 +7,8 @@
 <!-- 点击标题 HeaderTitle 展开/收起；展开后显示「投降」「重新开始」「玩家标记」「设置」四按钮。  -->
 <!-- 条目11：「玩家标记」按钮打开游戏内玩家标记面板（InGame/PlayerMark/MPT_PlayerMark，     -->
 <!-- 经 LuaEvents.MPT_PlayerMark_Toggle 跨 Context 触发，面板与条目4.4 前端面板同尺寸同存档）。 -->
-<!-- 条目12：「设置」按钮打开游戏内设置面板（InGame/ForcedEndTurn/MPT_SettingsPanel，        -->
-<!-- 经 LuaEvents.MPT_Settings_Toggle 跨 Context 触发，移植 1.67 Settings 简化版）。         -->
+<!-- 条目12：「设置」按钮打开游戏内设置面板（InGame/SettingsPanel/MPT_SettingsPanel，   -->
+<!-- 经 LuaEvents.MPT_SettingsPanel_Toggle 跨 Context 触发，移植 1.67 Settings 简化版）。 -->
 <!-- 「投降」为团队投降投票（条目8续）：VoteArea 独立挂 PanelStack（QuickPanel 之下），  -->
 <!-- 仅投票进行中/已通过时显示，不受快捷面板展开/收起影响；                             -->
 <!-- 投票状态经 Game:SetProperty 跨端同步（见 SurrenderVote_Gameplay.lua）            -->
@@ -29,7 +29,7 @@
 					<GridButton ID="RestartButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_RESTART"/>
 					<!-- 条目11：打开游戏内玩家标记面板（LuaEvents.MPT_PlayerMark_Toggle，见 MPT_QuickPanel.lua） -->
 					<GridButton ID="PlayerMarkButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_PLAYERMARK" ToolTip="LOC_MPT_QUICK_PLAYERMARK_TT"/>
-					<!-- 条目12：打开游戏内设置面板（LuaEvents.MPT_Settings_Toggle，见 MPT_QuickPanel.lua；面板见 InGame/ForcedEndTurn/MPT_SettingsPanel，移植 1.67 Settings 简化版） -->
+					<!-- 条目12：打开游戏内设置面板（LuaEvents.MPT_SettingsPanel_Toggle，见 MPT_QuickPanel.lua；面板见 InGame/SettingsPanel/MPT_SettingsPanel，移植 1.67 Settings 简化版） -->
 					<GridButton ID="SettingsButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_SETTINGS"/>
 				</Stack>
 			</Container>

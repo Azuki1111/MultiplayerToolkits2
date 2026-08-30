@@ -3,7 +3,7 @@
 <!-- 条目12：游戏内设置面板（移植 1.67 Settings/UI/TPT_SettingsPanel.xml 简化版）     -->
 <!-- 仅保留复选框列表（当前参数：FEB 强制结束回合按钮开关），删除 1.67 齿轮入口按钮      -->
 <!-- TPTSettingButton——本 mod 入口改 QuickPanel（条目8）展开区「设置」按钮，           -->
-<!-- 经 LuaEvents.MPT_Settings_Toggle 跨 Context 开关（见 MPT_SettingsPanel.lua）；  -->
+<!-- 经 LuaEvents.MPT_SettingsPanel_Toggle 跨 Context 开关（见 MPT_SettingsPanel.lua）；  -->
 <!-- 底部 Header 与顶部重名改 HeaderBottom（防 ID 歧义）；                              -->
 <!-- 面板初始隐藏（AddUserInterfaces 上下文引擎默认 isHidden=true，条目11 经验），      -->
 <!-- 显示/隐藏由 Lua MPT_SettingsPanel_Show/Close 切换 ContextPtr:SetHide。                 -->

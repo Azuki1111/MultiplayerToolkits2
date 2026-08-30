@@ -9,5 +9,5 @@ VALUES
 	-- 条目11：游戏内玩家标记面板打开按钮（点击经 LuaEvents.MPT_PlayerMark_Toggle 打开/关闭面板）
 	('LOC_MPT_QUICK_PLAYERMARK',	'en_US',	'Player Marks'),
 	('LOC_MPT_QUICK_PLAYERMARK_TT',	'en_US',	'Open the player mark manager (local player records: friend / normal / blacklist marks and notes; shares the same archive with the staging room panel)'),
-	-- 条目12：游戏内设置面板打开按钮（点击经 LuaEvents.MPT_Settings_Toggle 打开/关闭面板，见 InGame/ForcedEndTurn/）
+	-- 条目12：游戏内设置面板打开按钮（点击经 LuaEvents.MPT_SettingsPanel_Toggle 打开/关闭面板，见 InGame/SettingsPanel/）
 	('LOC_MPT_QUICK_SETTINGS',	'en_US',	'Settings');

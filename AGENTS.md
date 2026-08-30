@@ -48,7 +48,7 @@
 | `InGame/DealRestriction/` | 条目10 交易限制与外交限制（移植 1.67 DDV 整模块）：交易四模式/无友谊默认开/和解三模式；`MPT_TradeRules.lua` 统一解析器；SQL 经 ActionCriteria（ConfigurationValueMatches）条件执行；参数定义与 DealView 导入门控 `Disable_MPH` |
 | `InGame/PlayerMark/` | 条目11 游戏内玩家标记面板（移植条目4.4 到 InGame）：include Shared/MPT_DataStorage.lua 与前端同一份存档互通；QuickPanel 按钮打开 |
 | `InGame/ForcedEndTurn/` | 条目12 强制结束回合按钮（移植 1.67 FEB）：ActionPanel 右下角 50×50 按钮左键强制结束回合（ACTION_ENDTURN REASON="UserForced"），右键保留 LuaEvents.ForcedEndTurn 触发点（NHK 未移植，预留）；显隐默认隐藏，由设置面板经 LuaEvents.MPT_Settings_Toggle 广播控制 |
-| `InGame/SettingsPanel/` | 条目12 游戏内设置面板（移植 1.67 Settings 简化版，独立目录）：当前仅 FEB 开关；参数表 MPT_Settings（ParameterId 保留 1.67 key ForcedEndButton_Show，避免与 1.67 TPT_Settings 建表冲突），入口为 QuickPanel 展开区「设置」按钮（LuaEvents.MPT_Settings_Toggle）；存档走条目4.3 统一多表存储（复合组 [MPT_DS][MPT_PlayerInfo]，表名 = 参数 ParameterId，与玩家标记/隐身同组互不覆盖）；点击复选框不落盘（仅关闭时保存，防 StorageCreateCleanGroup 批量禁用 mod 卡顿）；命名规范 MPT 前缀（条目12优化：事件/函数/控件/文本 tag 全部 TPT→MPT，与 1.67 广播互不联动）；不自动弹出（条目12修复：删 1.67 首次引导弹窗，入口仅 QuickPanel 按钮） |
+| `InGame/SettingsPanel/` | 条目12 游戏内设置面板（移植 1.67 Settings 简化版，独立目录）：当前仅 FEB 开关；参数表 MPT_Settings（ParameterId 保留 1.67 key ForcedEndButton_Show，避免与 1.67 TPT_Settings 建表冲突），入口为 QuickPanel 展开区「设置」按钮（LuaEvents.MPT_SettingsPanel_Toggle——条目12修复：开关入口与参数广播 MPT_Settings_Toggle 拆分独立事件名，原共用导致点复选框广播时面板自关闭）；存档走条目4.3 统一多表存储（复合组 [MPT_DS][MPT_PlayerInfo]，表名 = 参数 ParameterId，与玩家标记/隐身同组互不覆盖）；点击复选框不落盘（仅关闭时保存，防 StorageCreateCleanGroup 批量禁用 mod 卡顿）；命名规范 MPT 前缀（条目12优化：事件/函数/控件/文本 tag 全部 TPT→MPT，与 1.67 广播互不联动）；不自动弹出（条目12修复：删 1.67 首次引导弹窗，入口仅 QuickPanel 按钮） |
 | `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目12+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
 
 ## 加载机制（.modinfo）

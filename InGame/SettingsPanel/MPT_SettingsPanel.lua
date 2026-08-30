@@ -3,9 +3,9 @@
 --
 -- 功能：游戏内选项设置（当前仅「显示强制结束回合按钮」FEB 开关）。参数行来自
 --   GameInfo.MPT_Settings 数据表；打开入口 = QuickPanel（条目8）展开区「设置」
---   按钮 → LuaEvents.MPT_Settings_Toggle() 开关面板；选项修改后广播
---   LuaEvents.MPT_Settings_Toggle(ParameterId, Value)（本 mod 自有事件名，MPT 前缀
---   规范；FEB 按钮等各功能监听响应），并持久化到本地存档。
+--   按钮 → LuaEvents.MPT_SettingsPanel_Toggle() 开关面板（独立开关事件名，条目12修复）；
+--   选项修改后广播 LuaEvents.MPT_Settings_Toggle(ParameterId, Value)（本 mod 自有
+--   参数广播事件名，MPT 前缀规范；FEB 按钮等各功能监听响应），并持久化到本地存档。
 --
 -- 与 1.67 差异（逐条注释留痕）：
 --   1) 存档走本 mod 条目4.3 存储管线 MPT_DataStorage（游戏内 include 可靠，
@@ -16,7 +16,7 @@
 --      替代 1.67 的 serialize/deserialize + ModGroup 组名 [size_0][TPTsettings]
 --      手工存档（与 1.67 存档隔离）；
 --   2) 删 1.67 齿轮入口 TPTSettingButton（ChangeParent 到 WorldTrackerHeader），
---      入口改 LuaEvents.MPT_Settings_Toggle 监听（QuickPanel「设置」按钮触发）；
+--      入口改 LuaEvents.MPT_SettingsPanel_Toggle 监听（QuickPanel「设置」按钮触发）；
 --   3) 参数表读 GameInfo.MPT_Settings（本 mod 表名，避免与 1.67 TPT_Settings 共存冲突）；
 --   4) 删 1.67 Initializedata 的「存档行本局未使用存回去」分支（本 mod 参数
 --      全部常驻 MPT_Settings 表，无此场景）；
@@ -97,7 +97,7 @@ function MPT_SettingsPanel_OnToggle(i)
 end
 
 -- ============================================================================
--- 显示/隐藏面板（QuickPanel「设置」按钮 → LuaEvents.MPT_Settings_Toggle 触发）
+-- 显示/隐藏面板（QuickPanel「设置」按钮 → LuaEvents.MPT_SettingsPanel_Toggle 触发）
 -- ============================================================================
 function MPT_SettingsPanel_Show()
 	ContextPtr:SetHide(false);
@@ -172,8 +172,10 @@ function Initialize()
 	MPT_SettingsPanel_CreateCheckboxes();	-- 创建复选框列
 	MPT_SettingsPanel_Load();				-- 读取用户存档覆盖默认值
 
-	-- 入口：QuickPanel（条目8）展开区「设置」按钮 → LuaEvents.MPT_Settings_Toggle 开关面板
-	LuaEvents.MPT_Settings_Toggle.Add(MPT_SettingsPanel_OnOpen);
+	-- 入口：QuickPanel（条目8）展开区「设置」按钮 → LuaEvents.MPT_SettingsPanel_Toggle 开关面板
+	-- （条目12修复：开关入口与参数广播拆分独立事件名——MPT_SettingsPanel_Toggle 无参开关面板，
+	--   MPT_Settings_Toggle(ParameterId, Value) 供功能响应；原共用后者导致点复选框广播时面板自关闭）
+	LuaEvents.MPT_SettingsPanel_Toggle.Add(MPT_SettingsPanel_OnOpen);
 	Events.LoadScreenClose.Add(LateInitialize);
 end
 Initialize();
