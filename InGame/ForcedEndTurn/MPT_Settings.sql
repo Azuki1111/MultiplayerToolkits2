@@ -1,0 +1,20 @@
+-- ============================================================================
+-- 条目12：游戏内设置参数表 MPT_Settings（移植 1.67 Settings/TPT_Settings.sql 简化版）
+-- 仅保留本 mod 已移植功能的参数行（当前：FEB 强制结束回合按钮开关）；
+-- 表名用 MPT_Settings（本 mod 数据表 MPT_ 前缀规约）——1.67 的 TPT_Settings 建表
+-- 无 IF NOT EXISTS，同名表两 mod 共存时后加载者报错，故隔离；
+-- ParameterId 保留 1.67 原 key（ForcedEndButton_Show）：LuaEvents.TPT_Settings_Toggle
+-- 广播 key 与 1.67 兼容，将来移植 NHK 等 1.67 功能时同 key 自动对接。
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS MPT_Settings (
+	ParameterId TEXT NOT NULL,
+	String TEXT NOT NULL,
+	ToolTip TEXT,
+	DefaultValue BOOLEAN DEFAULT 0,
+	PRIMARY KEY(ParameterId)
+);
+
+INSERT OR REPLACE INTO MPT_Settings
+		(ParameterId,								String,					ToolTip,				DefaultValue)
+VALUES
+		("ForcedEndButton_Show",					"LOC_SHOW_FEB_NAME",	"LOC_SHOW_FEB_TT",		0);

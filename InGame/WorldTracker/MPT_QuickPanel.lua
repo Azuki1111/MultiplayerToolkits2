@@ -637,11 +637,15 @@ local function MPT_QuickToggle()
 		-- ============================================================================
 		-- 条目11：展开区新增「玩家标记」按钮（2 → 3 枚），展开高度 110 -> 146，
 		-- 底部分隔线随之下移 108 -> 144
-		-- 展开高度固定：头部 25 + 展开区（30 偏移 + 32 按钮 + 4 + 32 按钮 + 4 + 32 按钮 + 4）+ 8 尾距 = 146；
+		-- 条目12：展开区新增「设置」按钮（3 → 4 枚），展开高度 146 -> 182，
+		-- 底部分隔线随之下移 144 -> 180
+		-- 展开高度固定：头部 25 + 展开区（30 偏移 + 4 ×（32 按钮 + 4 间距））+ 8 尾距 = 182；
 		-- Controls.QuickPanel:SetSizeY(110);
-		Controls.QuickPanel:SetSizeY(146);
+		-- Controls.QuickPanel:SetSizeY(146);
+		Controls.QuickPanel:SetSizeY(182);
 		-- QuickSepBottom 原 XML Offset 0,108（两按钮态），展开时下移：
-		Controls.QuickSepBottom:SetOffsetY(144);
+		-- Controls.QuickSepBottom:SetOffsetY(144);
+		Controls.QuickSepBottom:SetOffsetY(180);
 		-- ----------------------------------------------------------------------------
 		-- 投票面板独立挂 PanelStack，不参与本面板高度
 		Controls.ExpandStack:SetHide(false);
@@ -807,6 +811,10 @@ local function MPT_QuickInitialize()
 	-- 条目11：玩家标记按钮 → 打开/关闭游戏内玩家标记面板（LuaEvents 跨 Context，面板侧见 InGame/PlayerMark/MPT_PlayerMark.lua）
 	Controls.PlayerMarkButton:RegisterCallback(Mouse.eLClick, function() LuaEvents.MPT_PlayerMark_Toggle(); end);
 	Controls.PlayerMarkButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
+
+	-- 条目12：设置按钮 → 打开/关闭游戏内设置面板（LuaEvents 跨 Context，面板侧见 InGame/ForcedEndTurn/MPT_SettingsPanel.lua）
+	Controls.SettingsButton:RegisterCallback(Mouse.eLClick, function() LuaEvents.MPT_Settings_Toggle(); end);
+	Controls.SettingsButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
 
 	Controls.VoteAgreeButton:RegisterCallback(Mouse.eLClick, function() MPT_QuickVote(true); end);
 	Controls.VoteAgreeButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);

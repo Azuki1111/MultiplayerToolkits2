@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================ -->
+<!-- 条目12：强制结束回合按钮（FEB，移植 1.67 FEB/UI/ForcedEndButton.xml）            -->
+<!-- 50×50 按钮经 Lua LateInitialize ChangeParent 挂到 /InGame/ActionPanel 右下角     -->
+<!-- （Anchor R,B Offset 0,0——EndTurnButton 右下空白区）；默认隐藏，由设置面板          -->
+<!-- 「显示强制结束回合按钮」开关控制（见 ForcedEndButton.lua）。                      -->
+<!-- 纹理均为原版在用资源：ActionPanel_Notification2（原版 NotificationPanel.xml:78   -->
+<!-- 同款 50×50 按钮底）、Units32.dds 图集 ICON_ATLAS_UNITS 第 3 列（TextureOffset     -->
+<!-- 96,0 = 32px 列索引 3），照抄 1.67 即安全。                                       -->
+<!-- 注册：AddUserInterfaces(Context=InGame) + ImportFiles 同名 Lua 自动执行。        -->
+<!-- ============================================================================ -->
+<Context>
+	<Button ID="ForcedEnd_Button" Offset="0,0" Anchor="R,B" Size="50,50" Texture="ActionPanel_Notification2" NoStateChange="1">
+		<Image ID="Icon" Size="32,32" Texture="Units32.dds" TextureOffset="96,0" Anchor="C,C" Color="208,208,208,255"/>
+	</Button>
+</Context>

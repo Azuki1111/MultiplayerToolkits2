@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================ -->
+<!-- 条目12：游戏内设置面板（移植 1.67 Settings/UI/TPT_SettingsPanel.xml 简化版）     -->
+<!-- 仅保留复选框列表（当前参数：FEB 强制结束回合按钮开关），删除 1.67 齿轮入口按钮      -->
+<!-- TPTSettingButton——本 mod 入口改 QuickPanel（条目8）展开区「设置」按钮，           -->
+<!-- 经 LuaEvents.MPT_Settings_Toggle 跨 Context 开关（见 MPT_SettingsPanel.lua）；  -->
+<!-- 底部 Header 与顶部重名改 HeaderBottom（防 ID 歧义）；                              -->
+<!-- 面板初始隐藏（AddUserInterfaces 上下文引擎默认 isHidden=true，条目11 经验），      -->
+<!-- 显示/隐藏由 Lua OnShow/OnClose 切换 ContextPtr:SetHide。                          -->
+<!-- 注册：AddUserInterfaces(Context=InGame) + ImportFiles 同名 Lua 自动执行。        -->
+<!-- ============================================================================ -->
+<Context>
+	<Container ID="TPTSettingsPanel" Size="380,512" Anchor="C,C" ConsumeMouse="1">
+		<Grid Size="parent,parent" Texture="Controls_ContainerBlue" SliceStart="0,0" SliceCorner="3,3" SliceSize="9,9" SliceTextureSize="16,16">
+			<Container ID="Header" Size="parent,54" Anchor="C,T" Style="ShellHeaderContainer">
+				<Grid Style="ShellHeaderButtonGrid">
+				<Label Style="FontFlair24" FontStyle="glow" ColorSet="ShellHeader" Anchor="C,C" String="LOC_GAMESUMMARY_HISTORY_SETTINGS"/>
+				</Grid>
+			</Container>
+
+			<Container ID="GeneralOptions" Size="parent,parent-54" Offset="0,20" Hidden="0" Anchor="C,T">
+				<ScrollPanel ID="Listings" Anchor="C,T" Size="parent,parent" Offset="0,48" Vertical="1" AutoScrollBar="1">
+					<Stack ID="CheckBoxStack" Anchor="C,T" StackGrowth="Down" Padding="5" Offset="0,0"/>
+					<ScrollBar Style="Slider_Blue" Anchor="R,C" AnchorSide="O,I" Offset="-10,0"/>
+				</ScrollPanel>
+			</Container>
+
+			<Container ID="HeaderBottom" Size="parent,60" Anchor="C,B" Offset="0,-5" Style="ShellHeaderContainer">
+				<GridButton ID="ConfirmButton" Style="ButtonConfirm" Anchor="C,C" Offset="0,-1" String="LOC_AUTONARRATE_BUTTON_DONE" Size="300,41"/>
+			</Container>
+		</Grid>
+	</Container>
+
+	<Instance Name="CheckboxInstance">
+		<Container ID="ButtonRoot" Size="300,24" Anchor="L,C">
+			<GridButton ID="Settings_Box" Anchor="L,C" Offset="0,0" Size="300,24" Style="CheckBoxControl" String="#String"/>
+		</Container>
+	</Instance>
+</Context>
