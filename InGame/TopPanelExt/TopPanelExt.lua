@@ -39,6 +39,7 @@ local g_TeamVisibleResources : table = {}		-- 队友已解锁的战略资源（I
 local g_LuxuryTeamPlayerIDs : table = nil		-- 奢侈品队友列表（FFA 时含全部存活玩家；每刷新周期构建一次）
 local g_StrategicTeamPlayerIDs : table = nil	-- 战略资源队友列表（仅同队；每刷新周期构建一次）
 local g_StrategicTeamLeaderNames : table = {}	-- 战略资源队友 leader 名缓存（playerID => Name，避免资源循环内重复查询）
+local g_TeamLuxuryExtraCache : table = {}		-- 队友额外奢侈品 presence 缓存（playerID => {ResourceType => true}，PlayerResourceChanged 事件预过滤用，GetMoreLUXURYstr 每次全量刷新同步）
 
 local m_FoodYieldButton = nil
 local m_PopulationYieldButton = nil
@@ -393,11 +394,18 @@ function GetMoreLUXURYstr(playerID)
     local LUXURYstr = "[NEWLINE][NEWLINE][icon_Bullet]"..LeaderName
 
     local pPlayerResources = Players[playerID]:GetResources()
+    -- 条目9优化：presence 缓存惰性初始化（PlayerResourceChanged 事件预过滤用）
+    local teamLuxuryCache : table = g_TeamLuxuryExtraCache[playerID]
+    if teamLuxuryCache == nil then
+        teamLuxuryCache = {}
+        g_TeamLuxuryExtraCache[playerID] = teamLuxuryCache
+    end
     local More = false
 
     for resource in GameInfo.Resources() do
         if resource.ResourceClassType ~= nil and resource.ResourceClassType == "RESOURCECLASS_LUXURY" then
             local amount = pPlayerResources:GetResourceAmount(resource.ResourceType)
+            teamLuxuryCache[resource.ResourceType] = (amount > 1) or nil		-- 同步 presence 缓存（事件预过滤用）
             if (amount > 1 and IsNewLuxury(resource)) then
                 if PopulateAvailableResources(playerID, resource) then
                     More = true
@@ -661,6 +669,48 @@ function GetTeamVisibleResources(playerID)
 end
 
 -- ===========================================================================
+-- 条目9优化：PlayerResourceChanged 事件处理器（奢侈品显示及时刷新）
+-- 基类仅把该事件挂到战略资源刷新；本处理器过滤后驱动 RefreshLuxuryResourcesType，
+-- 使队友/自己奢侈品数量变化当回合即更新按钮计数、[icon_PressureHigh] 标记与 tooltip。
+-- 三层过滤：① 仅奢侈品资源类（resourceTypeID 即 GameInfo.Resources 行键）；
+-- ② 显示范围玩家（自己 / 同队存活主要玩家，FFA 时全部存活主要玩家，城邦蛮族排除）；
+-- ③ g_TeamLuxuryExtraCache presence 缓存——队友额外区只显示「>1 的存在性」，
+--    1 边界未翻转（如 3→2、2→3、0→1）时显示不变，跳过重刷新；缓存由 GetMoreLUXURYstr 每次全量刷新同步。
+-- ===========================================================================
+function OnMPTPlayerResourceChanged(ownerPlayerID:number, resourceTypeID:number)
+    -- 过滤① 资源类：仅奢侈品
+    local resource = (resourceTypeID ~= nil and resourceTypeID >= 0) and GameInfo.Resources[resourceTypeID] or nil
+    if resource == nil or resource.ResourceClassType ~= "RESOURCECLASS_LUXURY" then
+        return
+    end
+    local localPlayerID : number = Game.GetLocalPlayer()
+    if localPlayerID == -1 or ownerPlayerID == nil or ownerPlayerID < 0 then
+        return
+    end
+    local ownerPlayer : table = Players[ownerPlayerID]
+    if ownerPlayer == nil then
+        return
+    end
+    -- 过滤② 玩家范围：自己必刷（按钮计数/自己额外区数量变化）；队友要求存活主要玩家 + 同队（或 FFA）
+    if ownerPlayerID ~= localPlayerID then
+        if not ownerPlayer:IsAlive() or not ownerPlayer:IsMajor() then
+            return
+        end
+        local localPlayer : table = Players[localPlayerID]
+        if not IsFFA and localPlayer:GetTeam() ~= ownerPlayer:GetTeam() then
+            return
+        end
+        -- 过滤③ presence 缓存：1 边界未翻转则显示不变，跳过重刷新
+        local isExtra : boolean = ownerPlayer:GetResources():GetResourceAmount(resource.ResourceType) > 1
+        local teamLuxuryCache : table = g_TeamLuxuryExtraCache[ownerPlayerID]
+        if teamLuxuryCache ~= nil and ((teamLuxuryCache[resource.ResourceType] ~= nil) == isExtra) then
+            return
+        end
+    end
+    RefreshLuxuryResourcesType()
+end
+
+-- ===========================================================================
 -- OVERRIDE：刷新产出（先调基类，再追加自定义按钮）
 -- ===========================================================================
 function RefreshYields()
@@ -684,6 +734,7 @@ function LateInitialize()
 
     Events.ResearchCompleted.Add(GetTeamVisibleResources);
     Events.CivicCompleted.Add(GetTeamVisibleResources);
+    Events.PlayerResourceChanged.Add(OnMPTPlayerResourceChanged);		-- 条目9优化：奢侈品变化及时刷新（过滤见 OnMPTPlayerResourceChanged）
 
     for j, playerID in ipairs(PlayerManager.GetAliveMajorIDs()) do
         if Players[playerID]:GetTeam() ~= playerID then		-- 没有选择队伍的情况下，队伍id等于玩家id
