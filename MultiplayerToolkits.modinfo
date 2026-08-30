@@ -595,6 +595,13 @@
 			<File>InGame/TechCivicProgress/TechTree_MPT.lua</File>
 			<File>InGame/TechCivicProgress/CivicsTree_MPT.lua</File>
 		</ImportFiles>
+		<!-- 临时验证：MPT_BoostVerify（Estimates 新公式 vs TriggerBoost 实际值，测试完移除） -->
+		<AddGameplayScripts id="IG_TCP_Exp">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/TechCivicProgress/MPT_BoostVerify.lua</File>
+		</AddGameplayScripts>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -681,5 +688,6 @@
 		<File>InGame/TechCivicProgress/CivicsTree_MPT.lua</File>
 		<File>InGame/TechCivicProgress/TechCivicProgress_zh_Hans_CN.sql</File>
 		<File>InGame/TechCivicProgress/TechCivicProgress_en_US.sql</File>
+		<File>InGame/TechCivicProgress/MPT_BoostVerify.lua</File>
 	</Files>
 </Mod>
