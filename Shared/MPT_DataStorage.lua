@@ -74,7 +74,10 @@ end
 -- 内部：建干净组——①记录并批量禁用全部已启用 mod（官方 DisableAllMods 模式：
 -- GetInstalledMods 条目 .Enabled 筛选、DisableMod/EnableMod 表参数批量操作）
 -- → ②1.67 序列建组（GetCurrentModGroup → CreateModGroup → SetCurrentModGroup 还原）
--- → ③批量恢复启用。pcall 包裹建组段：任何失败都保证恢复玩家的 mod 启用状态。
+-- → ③批量恢复启用。禁用/恢复各自 pcall 包裹：游戏内 InGame Context 的
+-- DisableAllMods 流程不可用/抛错时静默跳过，退化为直接建组（组含当前 mod 状态，
+-- 游戏内玩家不会在前端误切数据组，影响可忽略）；前端场景保持「干净组」不变。
+-- 建组段 pcall 包裹：任何失败都保证不残留 mod 全禁状态。
 -- ============================================================================
 local function StorageCreateCleanGroup(name : string)
 	local enabledHandles : table = {};
@@ -84,7 +87,7 @@ local function StorageCreateCleanGroup(name : string)
 		end
 	end
 	if #enabledHandles > 0 then
-		Modding.DisableMod(enabledHandles);
+		pcall(function() Modding.DisableMod(enabledHandles); end);
 	end
 	pcall(function()
 		local g = Modding.GetCurrentModGroup();
@@ -92,7 +95,7 @@ local function StorageCreateCleanGroup(name : string)
 		Modding.SetCurrentModGroup(g);
 	end);
 	if #enabledHandles > 0 then
-		Modding.EnableMod(enabledHandles);
+		pcall(function() Modding.EnableMod(enabledHandles); end);
 	end
 end
 

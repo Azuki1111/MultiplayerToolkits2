@@ -51,8 +51,6 @@ local m_CheckBoxsIM : table = InstanceManager:new("CheckboxInstance", "ButtonRoo
 local m_CheckBoxsControls : table = {};
 local MPT_Settings_CheckBoxs : table = {};
 
-local First_Use : boolean = true;	-- 无本地存档时的首次使用（LoadScreenClose 后自动弹出面板）
-
 -- ============================================================================
 -- 创建复选框列表（按 MPT_Settings 表参数行逐个建实例；
 -- 名称/Tooltip 为数据驱动的动态 key（idata.String/idata.ToolTip），运行时 Locale.Lookup，不预加载）
@@ -133,34 +131,29 @@ end
 
 -- ============================================================================
 -- 读取存档：按表名（ParameterId）读各参数值覆盖默认值（整组读回，表名 = 参数 id）；
--- 有存档 → First_Use 置 false；无存档/表缺失 → 保持表默认 0；首次自动弹窗语义不变
+-- 无存档/表缺失 → 保持表默认 0
 -- ============================================================================
 function MPT_SettingsPanel_Load()
 	MPT_Storage_LoadAll(PLAYERMARK_STORAGE_FILE, function(all)
-		if next(all) ~= nil then
-			First_Use = false;	-- 复合组存在（玩家标记/设置任一数据）即非首次使用
-			for i, idata in pairs(MPT_Settings_CheckBoxs) do
-				local v = all[idata.ParameterId];
-				if v ~= nil then
-					MPT_Settings_CheckBoxs[i].Value = v;
-				end
+		for i, idata in pairs(MPT_Settings_CheckBoxs) do
+			local v = all[idata.ParameterId];
+			if v ~= nil then
+				MPT_Settings_CheckBoxs[i].Value = v;
 			end
 		end
 	end);
 end
 
 -- ============================================================================
--- LoadScreenClose：广播当前值（各功能初始化显隐）+ 绑定确认按钮 + 首次自动弹出
+-- LoadScreenClose：广播当前值（各功能初始化显隐）+ 绑定确认按钮
+-- （条目12修复：删 1.67「无存档首次自动弹出」——本 mod 有 QuickPanel「设置」
+--   按钮明确入口；自动弹窗依赖本地存档判定且游戏内不可靠，此前每次进游戏都弹）
 -- ============================================================================
 function LateInitialize()
 	MPT_SettingsPanel_ApplyAll();
 	-- 确认按钮：保存并关闭（String 已在 XML 指定 LOC_AUTONARRATE_BUTTON_DONE）
 	Controls.ConfirmButton:RegisterCallback(Mouse.eLClick, MPT_SettingsPanel_Close);
 	Controls.ConfirmButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
-
-	if First_Use then	-- 初次使用（无本地存档）：弹出面板提示设置入口
-		MPT_SettingsPanel_Show();
-	end
 end
 
 -- ============================================================================
