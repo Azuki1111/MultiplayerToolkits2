@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目13：游戏内自动更新（移植 1.67 Update/UI/AutoUpdate.lua 纯逻辑部分）
+空 Context 经 AddUserInterfaces 注册进 InGame；同名 MPT_AutoUpdate.lua 自动作为本 Context 脚本执行。
+无 UI 控件（1.67 的更新内容 Tooltip 展示不移植——本 mod 已有条目3.5 前端更新公告面板，
+且本 mod 不覆盖 WorldTracker 标题控件，无挂载点）。
+-------------------------------------------------------------------------- -->
+<Context>
+</Context>

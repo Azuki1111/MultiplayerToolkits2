@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>40</Version>
+		<Version>41</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -541,6 +541,20 @@
 			<File>InGame/ForcedEndTurn/ForcedEndTurn_zh_Hans_CN.sql</File>
 			<File>InGame/ForcedEndTurn/ForcedEndTurn_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目13：游戏内自动更新（移植 1.67 Update/AutoUpdate 纯逻辑部分）——空 Context + 同名
+			Lua 自动执行：进游戏即对本局已启用的非官方创意工坊 mod 触发更新检查（O(n) 映射 +
+			nil 防御，复用条目4.7 优化）+ 确保本 mod 已启用（按 GUID 匹配 Handle，本地 mod 无订阅
+			ID，1.67 按 SubscriptionId 匹配的 EnableMods 不适用）；退出到主菜单（ExitToMainMenu）
+			时触发本 mod 工坊更新（订阅 ID 常量 MPT_SUBSCRIPTION_ID 发布后填入，空则跳过）。
+			无 UI 控件（1.67 更新内容 Tooltip 展示不移植：条目3.5 前端更新公告面板已有，且本
+			mod 不覆盖 WorldTracker 标题控件） -->
+		<AddUserInterfaces id="IG_MPT_AutoUpdate">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/AutoUpdate/MPT_AutoUpdate.xml</File>
+		</AddUserInterfaces>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -620,5 +634,7 @@
 		<File>InGame/ForcedEndTurn/ForcedEndButton.lua</File>
 		<File>InGame/ForcedEndTurn/ForcedEndTurn_zh_Hans_CN.sql</File>
 		<File>InGame/ForcedEndTurn/ForcedEndTurn_en_US.sql</File>
+		<File>InGame/AutoUpdate/MPT_AutoUpdate.xml</File>
+		<File>InGame/AutoUpdate/MPT_AutoUpdate.lua</File>
 	</Files>
 </Mod>
