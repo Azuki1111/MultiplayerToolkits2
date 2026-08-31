@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>52</Version>
+		<Version>53</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -695,6 +695,20 @@
 			</Properties>
 			<File>InGame/CityBannerRefresh/CityBannerManager_MPT.lua</File>
 		</ImportFiles>
+		<!-- 条目19：清理通知按钮（NOC，移植 1.67 NOC）——通知栏「垃圾桶」按钮一键清理全部
+			可手动关闭的通知。文件名前缀 NotificationPanel_ 被原版通配
+			include("NotificationPanel_", true) 拉入同上下文（同条目7/18 机制），仅 ImportFiles
+			导入 VFS 无需 LuaContext；链式覆写 OnDefaultAddNotification/ReleaseNotificationEntry。
+			开关在条目12 MPT_Settings 表加行（ParameterId 沿用 1.67 原 key
+			NotificationPanel_QuickClear，反向语义同 1.67：勾选=禁用），lua 侧订阅
+			MPT_Settings_Toggle 广播，初始状态经设置面板 LoadScreenClose ApplyAll 送达；
+			优化（精确存活集/显隐计数/nil 守卫/按钮恒居底部论证）见文件头横幅 -->
+		<ImportFiles id="IG_NotificationClear_Import">
+			<Properties>
+				<LoadOrder>1010</LoadOrder>
+			</Properties>
+			<File>InGame/NotificationClear/NotificationPanel_MPT.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -792,5 +806,6 @@
 		<File>InGame/DisableMapPins/MapPinListPanel.xml</File>
 		<File>InGame/InstantFoundCity/UnitPanel_MPT.lua</File>
 		<File>InGame/CityBannerRefresh/CityBannerManager_MPT.lua</File>
+		<File>InGame/NotificationClear/NotificationPanel_MPT.lua</File>
 	</Files>
 </Mod>

@@ -7,4 +7,6 @@
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
 	('LOC_MPT_SETTINGS_SHOW_FEB_NAME',	'en_US',	'Show Forced End Turn Button'),
-	('LOC_MPT_SETTINGS_SHOW_FEB_TT',	'en_US',	'Show the button');
+	('LOC_MPT_SETTINGS_SHOW_FEB_TT',	'en_US',	'Show the button'),
+	('LOC_MPT_SETTINGS_NOC_DISABLE_NAME',	'en_US',	'Disable Notification Clear Button'),
+	('LOC_MPT_SETTINGS_NOC_DISABLE_TT',	'en_US',	'Hide the notification clear button at the bottom-right notification panel (item 19 NOC)');

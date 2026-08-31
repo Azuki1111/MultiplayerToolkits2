@@ -7,4 +7,6 @@
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
 	('LOC_MPT_SETTINGS_SHOW_FEB_NAME',	'zh_Hans_CN',	'显示强制结束回合按钮'),
-	('LOC_MPT_SETTINGS_SHOW_FEB_TT',	'zh_Hans_CN',	'显示按钮');
+	('LOC_MPT_SETTINGS_SHOW_FEB_TT',	'zh_Hans_CN',	'显示按钮'),
+	('LOC_MPT_SETTINGS_NOC_DISABLE_NAME',	'zh_Hans_CN',	'禁用清理通知按钮'),
+	('LOC_MPT_SETTINGS_NOC_DISABLE_TT',	'zh_Hans_CN',	'不再显示右下角通知栏的「清理通知」按钮（条目19 NOC）');
