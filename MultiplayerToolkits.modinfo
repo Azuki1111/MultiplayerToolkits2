@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>49</Version>
+		<Version>50</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -683,6 +683,18 @@
 			</Properties>
 			<File>InGame/InstantFoundCity/UnitPanel_MPT.lua</File>
 		</ImportFiles>
+		<!-- 条目18：城市横幅刷新（PCF，移植 1.67 PCF/皮皮凯）——市民变动后单城 RefreshBanner
+			（原版 CityBannerManager 不订阅 CityWorkerChanged，横幅产出滞后）+ 城界扩张/人口
+			增长/地块产出变化后下发 MANAGE 公民指令重排市民到最优地块。文件名前缀
+			CityBannerManager_ 被原版通配 include("CityBannerManager_", true) 拉入同上下文
+			（同条目7 EndGameMenu 机制），仅 ImportFiles 导入 VFS 无需 LuaContext；
+			刷新机制重写（单订阅调度器+真实时钟替代 1.67 LuaTimer）见文件头横幅 -->
+		<ImportFiles id="IG_BannerRefresh_Import">
+			<Properties>
+				<LoadOrder>1010</LoadOrder>
+			</Properties>
+			<File>InGame/CityBannerRefresh/CityBannerManager_MPT.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -779,5 +791,6 @@
 		<File>InGame/DisableMapPins/MapPinListPanel_MPT.lua</File>
 		<File>InGame/DisableMapPins/MapPinListPanel.xml</File>
 		<File>InGame/InstantFoundCity/UnitPanel_MPT.lua</File>
+		<File>InGame/CityBannerRefresh/CityBannerManager_MPT.lua</File>
 	</Files>
 </Mod>
