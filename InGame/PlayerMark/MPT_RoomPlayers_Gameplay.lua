@@ -1,9 +1,10 @@
 -- ============================================================================
 -- MPT_RoomPlayers_Gameplay.lua（条目4.9：房间玩家集合快照，Gameplay 侧）
 --
--- 用途：供 InGame 玩家标记面板「房间玩家」页签读档——把对局内所有玩家信息做成快照，
---   UI 侧读取显示。显示范围定义（用户确认）：所有**非自己**玩家，**含观察者、含当前
---   不在线**的；游戏中途加入的玩家也要显示（追加）。
+-- 用途：供 InGame 玩家标记面板「房间玩家」页签读档——把对局内真人玩家信息做成快照，
+--   UI 侧读取显示。显示范围定义（用户确认）：所有**非自己**的**真人玩家**（条目4.9优化：
+--   只保存真人玩家，AI/城邦/野蛮人等不入快照），**含真人观察者、含当前不在线**的；
+--   游戏中途加入的玩家也要显示（追加）。
 --
 -- 数据分层（条目4.9修复+重构）：
 --   ① 对局持久层：Game:SetProperty / GetProperty——快照随存档保存/读回，信息正确存进对局：
@@ -23,7 +24,7 @@
 -- 掉线/退出不删快照（「不在线仍显示」）。存储含全部玩家（含自己），UI 侧显示时排除自己。
 --
 -- 初始化/追加：
---   1) 脚本加载即回灌持久层 + 补存全部玩家（覆盖「开局已存在玩家」——脚本加载可能晚于加入事件）；
+--   1) 脚本加载即回灌持久层 + 补存全部真人玩家（覆盖「开局已存在玩家」——脚本加载可能晚于加入事件）；
 --   2) GameEvents.PlayerAddedToGame：中途加入玩家时追加；
 --   3) GameEvents.OnGameTurnStarted：首个回合补存兜底（防漏）。
 --
@@ -51,13 +52,16 @@ end
 
 -- ============================================================================
 -- MPT_RoomPlayers_LoadFromGame()：脚本加载/读档时——持久层 → ExposedMembers 内存态回灌。
+--   条目4.9优化：非真人条目不入内存态（旧存档迁移——修复前版本曾存过 AI 玩家）；
+--   持久层残留的旧 AI 条目无害（无消费方），下次有真人追加时整表覆写自然清洗。
 -- ============================================================================
 local function MPT_RoomPlayers_LoadFromGame()
 	MPT_RoomPlayers_Data.List = MPT_RoomPlayers_ReadList();
 	MPT_RoomPlayers_Data.Players = {};
 	for _, playerID in ipairs(MPT_RoomPlayers_Data.List) do
 		local snap = Game:GetProperty("MPT_RoomPlayer_" .. playerID);
-		if type(snap) == "table" then
+		local pPlayer = Players[playerID];
+		if type(snap) == "table" and pPlayer ~= nil and pPlayer:IsHuman() then
 			MPT_RoomPlayers_Data.Players[playerID] = snap;
 		end
 	end
@@ -78,6 +82,8 @@ end
 --   过关：cfg 无效则跳过（观察者/掉线槽位 PlayerConfigurations 仍有效，正常写入）。
 -- ============================================================================
 local function MPT_RoomPlayers_SetPlayer(playerID : number)
+	local pPlayer = Players[playerID];
+	if pPlayer == nil or not pPlayer:IsHuman() then return; end	-- 条目4.9优化：只保存真人玩家（AI/城邦/野蛮人不入快照；真人观察者/掉线真人仍保存）
 	local cfg = PlayerConfigurations[playerID];
 	if cfg == nil then return; end
 	local leader = cfg:GetLeaderTypeName();
@@ -113,8 +119,8 @@ local function MPT_RoomPlayers_SetPlayer(playerID : number)
 end
 
 -- ============================================================================
--- MPT_RoomPlayers_InitAll()：初始化——补存全部玩家（含自己，UI 侧显示时排除自己；
---   含观察者/掉线槽位，PlayerConfigurations 均有效）。
+-- MPT_RoomPlayers_InitAll()：初始化——补存全部真人玩家（SetPlayer 内过滤非真人；含自己，
+--   UI 侧显示时排除自己；含真人观察者/掉线槽位，PlayerConfigurations 均有效）。
 -- ============================================================================
 local function MPT_RoomPlayers_InitAll()
 	if Game == nil then return; end
