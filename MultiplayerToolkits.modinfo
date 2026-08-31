@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>45</Version>
+		<Version>46</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -92,6 +92,14 @@
 				<Group>Game</Group>
 				<ConfigurationId>TPT_NO_MAKE_PEACE</ConfigurationId>
 				<Value>NO_MAKE_PEACE</Value>
+			</ConfigurationValueMatches>
+		</Criteria>
+		<!-- 条目16：禁用地图钉（移植 1.67 RMP）——勾选高级选项「禁用地图钉」（CPL_NO_PINS）时生效（criteria id 镜像 1.67 命名） -->
+		<Criteria id="No_Map_Pins">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>CPL_NO_PINS</ConfigurationId>
+				<Value>1</Value>
 			</ConfigurationValueMatches>
 		</Criteria>
 	</ActionCriteria>
@@ -295,6 +303,24 @@
 			</Properties>
 			<File>FrontEnd/TextureViewer/TextureViewer_zh_Hans_CN.sql</File>
 			<File>FrontEnd/TextureViewer/TextureViewer_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目16：禁用地图钉参数（移植 1.67 RMP/Config.xml）——高级选项「禁用地图钉」布尔开关（ParameterId 沿用
+			1.67 原名 CPL_NO_PINS，与 1.67 同装时共用同一开关行，同条目10 保留参数名先例）；
+			无条件注册（参数常在，设置界面复选框才显示），功能生效门控在 InGameActions 的 No_Map_Pins criteria -->
+		<UpdateDatabase id="FE_NoPins_Config">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/DisableMapPins/Config_NoPins.xml</File>
+		</UpdateDatabase>
+		<!-- 条目16：禁用地图钉专属文本（设置界面复选框名称/描述，仅前端注册——游戏内无本条目文本；
+			tag 沿用 1.67 原名，中文照抄 + 英文本 mod 补全） -->
+		<UpdateText id="FE_DisableMapPins_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/DisableMapPins/DisableMapPins_zh_Hans_CN.sql</File>
+			<File>InGame/DisableMapPins/DisableMapPins_en_US.sql</File>
 		</UpdateText>
 	</FrontEndActions>
 	<InGameActions>
@@ -613,6 +639,32 @@
 			</Properties>
 			<File>InGame/TeamVisibleResources/WorldViewIconsManager_MPT.lua</File>
 		</ImportFiles>
+		<!-- 条目16：禁用地图钉（RMP，移植 1.67 RMP）——勾选高级选项「禁用地图钉」后进局：
+			隐藏小地图「地图钉列表」按钮 + 空壳整体替换原版 MapPinListPanel.lua（联机卡顿元凶），
+			地图钉本身（旗子渲染/放置）不受影响；1.67 NT 模块的进局通知不移植（最小范围）。
+			三个 action 均由 No_Map_Pins criteria 门控（不勾选时零改动原版）；
+			ReplaceUIScript LoadOrder 100000 压过 1.67 同类替换（其 LoadOrder 2010） -->
+		<ReplaceUIScript id="IG_NoPins_MapPinListPanel" criteria="No_Map_Pins">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>MapPinListPanel</LuaContext>
+				<LuaReplace>InGame/DisableMapPins/MapPinListPanel_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_NoPins_Import" criteria="No_Map_Pins">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/DisableMapPins/MapPinListPanel_MPT.lua</File>
+			<File>InGame/DisableMapPins/MapPinListPanel.xml</File>
+		</ImportFiles>
+		<AddUserInterfaces id="IG_NoPins_HideButton" criteria="No_Map_Pins">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/DisableMapPins/DisableMapPins.xml</File>
+		</AddUserInterfaces>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -701,5 +753,12 @@
 		<File>InGame/TechCivicProgress/TechCivicProgress_zh_Hans_CN.sql</File>
 		<File>InGame/TechCivicProgress/TechCivicProgress_en_US.sql</File>
 		<File>InGame/TeamVisibleResources/WorldViewIconsManager_MPT.lua</File>
+		<File>InGame/DisableMapPins/Config_NoPins.xml</File>
+		<File>InGame/DisableMapPins/DisableMapPins_zh_Hans_CN.sql</File>
+		<File>InGame/DisableMapPins/DisableMapPins_en_US.sql</File>
+		<File>InGame/DisableMapPins/DisableMapPins.xml</File>
+		<File>InGame/DisableMapPins/DisableMapPins.lua</File>
+		<File>InGame/DisableMapPins/MapPinListPanel_MPT.lua</File>
+		<File>InGame/DisableMapPins/MapPinListPanel.xml</File>
 	</Files>
 </Mod>

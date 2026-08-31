@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目16：禁用地图钉（移植 1.67 RMP/UI/MapPinListPanel.xml）
+空壳同名覆盖原版 MapPinListPanel.xml 布局（无控件，与 MapPinListPanel_MPT.lua 空壳双保险）。
+文件名必须保持 MapPinListPanel.xml 才能按名覆盖原版；经 ImportFiles + criteria=No_Map_Pins 门控导入。
+========================================================================== -->
+<Context Style="FontNormal16">
+</Context>

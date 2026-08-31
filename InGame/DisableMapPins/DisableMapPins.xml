@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目16：禁用地图钉（移植 1.67 RMP/UI/Hide_MapPinListButton.xml，1.67 Context 名 Disable_MapPin）
+空 Context 经 AddUserInterfaces 注册进 InGame（criteria=No_Map_Pins，勾选「禁用地图钉」才挂载）；
+同名 DisableMapPins.lua 自动作为本 Context 脚本执行。无 UI 控件。
+========================================================================== -->
+<Context Name="MPT_DisableMapPins">
+</Context>

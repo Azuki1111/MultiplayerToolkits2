@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目16：禁用地图钉（移植 1.67 RMP/Config.xml）；高级选项布尔开关，勾选后经 No_Map_Pins criteria 门控本条目各 action。
+	ParameterId 沿用 1.67 原名 CPL_NO_PINS（两 mod 同装时共用同一开关行，同条目10 保留 TPT_ 参数名先例），字段值照抄 1.67 -->
+<GameInfo>
+	<Parameters>
+		<Row ParameterId="CPL_NO_PINS" Name="CPL_NO_PINS_NAME" Description="CPL_NO_PINS_DESC" Domain="bool" DefaultValue="0" ConfigurationGroup="Game" ConfigurationId="CPL_NO_PINS" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2902" />
+	</Parameters>
+</GameInfo>
