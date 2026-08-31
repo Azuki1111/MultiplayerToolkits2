@@ -605,14 +605,14 @@
 			<Properties>
 				<LoadOrder>100000</LoadOrder>
 				<LuaContext>WorldViewIconsManager</LuaContext>
-				<LuaReplace>InGame/STR/WorldViewIconsManager_MPT.lua</LuaReplace>
+				<LuaReplace>InGame/TeamVisibleResources/WorldViewIconsManager_MPT.lua</LuaReplace>
 			</Properties>
 		</ReplaceUIScript>
 		<ImportFiles id="IG_STR_Import">
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>InGame/STR/WorldViewIconsManager_MPT.lua</File>
+			<File>InGame/TeamVisibleResources/WorldViewIconsManager_MPT.lua</File>
 		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
@@ -700,6 +700,6 @@
 		<File>InGame/TechCivicProgress/CivicsTree_MPT.lua</File>
 		<File>InGame/TechCivicProgress/TechCivicProgress_zh_Hans_CN.sql</File>
 		<File>InGame/TechCivicProgress/TechCivicProgress_en_US.sql</File>
-		<File>InGame/STR/WorldViewIconsManager_MPT.lua</File>
+		<File>InGame/TeamVisibleResources/WorldViewIconsManager_MPT.lua</File>
 	</Files>
 </Mod>
