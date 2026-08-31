@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>56</Version>
+		<Version>57</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -762,6 +762,38 @@
 			<File>InGame/SmartTurnTimer/SmartTurnTimer_zh_Hans_CN.sql</File>
 			<File>InGame/SmartTurnTimer/SmartTurnTimer_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目21：政策卡收益显示（EPC = Extended Policy Cards by Aristos，移植 1.67 BRS/ 内打包的 EPC 部分）——
+			政府/政策卡界面每张政策卡底部显示真实收益条 + tooltip 追加效果。
+			数据层：MPT_RealModifierAnalysis.lua（Infixo RMA 引擎 v7.0，空 Context + 同名 xml 自动执行，
+			同条目5/12/13 机制）向 ExposedMembers.RMA 导出计算函数；其唯一的 BRS 硬依赖（第 1 行 print
+			读 BRS_VERSION 全局参数，nil 连接崩 chunk）已删除见文件头横幅，图标/文本包经核对零引用一并剔除。
+			表现层：GovernmentScreen_MPT.lua 经 ReplaceUIScript 抢占 GovernmentScreen 上下文（原版无通配
+			include 钩子、无 DLC 完整变体，只能整文件覆盖；LoadOrder 100000 压过 1.67 的 EPC_IMPORT_FILES
+			12001）+ GovernmentScreen.xml 同名覆盖原版布局（ARISTOS 新增 EffectContainer/Effect 收益条
+			控件，同条目16 MapPinListPanel.xml 先例）。调用点 RMA nil 防御（1.67 无防御）。
+			无文本无图标无参数，无条件常开同 1.67（先例条目14/15/17） -->
+		<AddUserInterfaces id="IG_EPC_RMA">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/ExtendedPolicyCards/MPT_RealModifierAnalysis.xml</File>
+		</AddUserInterfaces>
+		<ReplaceUIScript id="IG_EPC_GovernmentScreen">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>GovernmentScreen</LuaContext>
+				<LuaReplace>InGame/ExtendedPolicyCards/GovernmentScreen_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_EPC_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/ExtendedPolicyCards/GovernmentScreen_MPT.lua</File>
+			<File>InGame/ExtendedPolicyCards/GovernmentScreen.xml</File>
+			<File>InGame/ExtendedPolicyCards/MPT_RealModifierAnalysis.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -865,5 +897,9 @@
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_InputActions.xml</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_zh_Hans_CN.sql</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_en_US.sql</File>
+		<File>InGame/ExtendedPolicyCards/GovernmentScreen_MPT.lua</File>
+		<File>InGame/ExtendedPolicyCards/GovernmentScreen.xml</File>
+		<File>InGame/ExtendedPolicyCards/MPT_RealModifierAnalysis.lua</File>
+		<File>InGame/ExtendedPolicyCards/MPT_RealModifierAnalysis.xml</File>
 	</Files>
 </Mod>

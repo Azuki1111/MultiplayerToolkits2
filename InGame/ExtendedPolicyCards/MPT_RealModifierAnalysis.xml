@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================== -->
+<!-- [MPT 条目21] RMA 引擎空壳 Context（Real Modifier Analysis, by Infixo, v7.0） -->
+<!-- 经 AddUserInterfaces（Context=InGame）注册进游戏内；同名 MPT_RealModifierAnalysis.lua -->
+<!-- 自动作为本 Context 脚本执行（同条目5/12/13 空壳机制），向 ExposedMembers.RMA 导出函数， -->
+<!-- 供 GovernmentScreen_MPT.lua（条目21 政策卡收益显示）跨上下文调用。无 UI 控件。 -->
+<!-- =========================================================================== -->
+<Context>
+</Context>
