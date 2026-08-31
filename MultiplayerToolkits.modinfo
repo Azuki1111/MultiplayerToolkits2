@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>43</Version>
+		<Version>44</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -595,6 +595,25 @@
 			<File>InGame/TechCivicProgress/TechTree_MPT.lua</File>
 			<File>InGame/TechCivicProgress/CivicsTree_MPT.lua</File>
 		</ImportFiles>
+		<!-- 条目15：队友资源可见性显示（STR，移植 1.67 STR）——同队队友已通过科技/市政解锁、而本地玩家
+			尚未解锁的资源，在地图已探索迷雾格显示迷雾样式图标（条目9 顶部面板队友战略资源清单的地图侧对应）。
+			ReplaceUIScript 投递 WorldViewIconsManager_MPT.lua（include 原版后覆盖 Initialize/GetNonEmptyAt/
+			OnResearchCompleted/OnCivicCompleted/OnShutdown；原版该文件仅 Base 版本无 DLC 变体，无需版本探测）；
+			优化：观察者 nil 防御（条目7 观战）、重复扫描函数合并、解锁表 O(1) 映射、读档即同步、
+			OnShutdown 卸载监听、GovernorAppointed Exp1 前守卫、外部刷新接口 MPT_WorldViewIcon_Rebuild -->
+		<ReplaceUIScript id="IG_STR_WorldViewIcons">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>WorldViewIconsManager</LuaContext>
+				<LuaReplace>InGame/STR/WorldViewIconsManager_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_STR_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/STR/WorldViewIconsManager_MPT.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -681,5 +700,6 @@
 		<File>InGame/TechCivicProgress/CivicsTree_MPT.lua</File>
 		<File>InGame/TechCivicProgress/TechCivicProgress_zh_Hans_CN.sql</File>
 		<File>InGame/TechCivicProgress/TechCivicProgress_en_US.sql</File>
+		<File>InGame/STR/WorldViewIconsManager_MPT.lua</File>
 	</Files>
 </Mod>
