@@ -479,7 +479,6 @@
 				<LoadOrder>999999</LoadOrder>
 			</Properties>
 			<File>InGame/DealRestriction/SQL/MakePeace_Disable.sql</File>
-		<File>InGame/PlayerMark/MPT_RoomPlayers_Gameplay.lua</File>
 		</UpdateDatabase>
 		<!-- 条目12：游戏内设置面板（移植 1.67 Settings 简化版，当前仅 FEB 开关；独立目录 InGame/SettingsPanel/）——
 			空 Context + 同名 Lua 自动执行；QuickPanel（条目8）展开区「设置」按钮经 LuaEvents.MPT_SettingsPanel_Toggle 开关
@@ -664,6 +663,7 @@
 		<File>InGame/WorldTracker/QuickPanel_en_US.sql</File>
 		<File>InGame/PlayerMark/MPT_PlayerMark.xml</File>
 		<File>InGame/PlayerMark/MPT_PlayerMark.lua</File>
+		<File>InGame/PlayerMark/MPT_RoomPlayers_Gameplay.lua</File>
 		<File>InGame/SurrenderVote/SurrenderVote_Gameplay.lua</File>
 		<File>InGame/SurrenderVote/SurrenderVote_zh_Hans_CN.sql</File>
 		<File>InGame/SurrenderVote/SurrenderVote_en_US.sql</File>
