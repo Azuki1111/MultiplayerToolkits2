@@ -451,7 +451,8 @@ local function MPT_PlayerMark_IsValidNetID(nid : string)
 end
 
 -- ============================================================================
--- MPT_PlayerMark_RebuildRoomList()：重建「房间玩家」列表（读 Gameplay 侧 Game:SetProperty 快照）。
+-- MPT_PlayerMark_RebuildRoomList()：重建「房间玩家」列表（读 Gameplay 侧 ExposedMembers.MPT_RoomPlayers
+--   共享表快照，条目4.9修复+重构：原逐条 Game:GetProperty 改共享表直读）。
 --   显示所有非自己玩家（含观察者/不在线）；未标记显示添加按钮；文明头像+在线状态。
 -- ============================================================================
 function MPT_PlayerMark_RebuildRoomList()
@@ -461,10 +462,28 @@ function MPT_PlayerMark_RebuildRoomList()
 
 	local localPlayer = Game.GetLocalPlayer();
 	local count : number = 0;
-	for _, playerID in ipairs(Game:GetProperty("MPT_RoomPlayerList") or {}) do
+	-- 条目4.9修复+重构：快照改读 ExposedMembers.MPT_RoomPlayers 共享表（Gameplay 侧对局持久层双写维护）
+	local roomData = ExposedMembers.MPT_RoomPlayers;
+	local roomList = (roomData ~= nil and roomData.List) or {};
+	for _, playerID in ipairs(roomList) do
 		if playerID ~= localPlayer then	-- 排除自己（用户确认）
-			local snap = Game:GetProperty("MPT_RoomPlayer_" .. playerID);
-			if type(snap) == "table" then
+			local raw = (roomData ~= nil and roomData.Players ~= nil) and roomData.Players[playerID] or nil;
+			if type(raw) == "table" then
+				-- 视图副本：UI 侧补全不写回共享表，防污染 Gameplay 内存态（变化检测失真→每回合重写属性）
+				local snap = { nid = raw.nid, name = raw.name, leader = raw.leader };
+				-- 条目4.9修复：Gameplay 环境无 GetNetworkIdentifer/GetPlayerName（快照 nid/name 可能为空串），
+				-- UI 侧（InGame UI 环境有此二方法，原版 ChatPanel 同款取法）实时补全，取不到保留快照值
+				local pcfg = PlayerConfigurations[playerID];
+				if pcfg ~= nil then
+					if pcfg.GetNetworkIdentifer ~= nil then
+						local liveNid = pcfg:GetNetworkIdentifer();
+						if liveNid ~= nil and liveNid ~= "" then snap.nid = liveNid; end
+					end
+					if pcfg.GetPlayerName ~= nil then
+						local liveName = pcfg:GetPlayerName();
+						if liveName ~= nil and liveName ~= "" then snap.name = liveName; end
+					end
+				end
 				local inst = m_playerMarkRoomIM:GetInstance();
 				if inst ~= nil then
 					inst.RoomPlayerName:SetText(Locale.Lookup(snap.name or ""));
