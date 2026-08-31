@@ -32,7 +32,6 @@
 --   本地回合结束清空未到期任务（跨回合执行已无意义）
 -- 条目18调优：去抖延时 1.67 的 4/2/2 周期计数过慢——横幅刷新 0.1 秒近实时、重排指令
 --   统一 0.5 秒合并窗口（MPT_REFRESH_DELAY/MPT_REARRANGE_DELAY 常量，可调）
--- 调试：关键路径留 print（MPT_Banner: 前缀），实测确认后可删
 -- 与 1.67 同装注意：两个补丁文件都会被通配 include 拉入（各自去重、重复执行无害），
 --   建议二选一启用
 -- 注册：ImportFiles(1010) 通配注入不占 LuaContext（1.67 同款机制）
@@ -47,7 +46,6 @@
 --   Type check failed: expected 'ifunction', but got 'cfunction' → 整个文件 chunk
 --   中止、通配 include 失败、全部功能未加载，Lua.log 43 行实证）——包一层 Lua 闭包
 --   即为 ifunction，兼做调用时 API 探测
-local MPT_ClockName : string = (UI.GetElapsedTime ~= nil) and "UI.GetElapsedTime" or "os.clock";
 local MPT_GetTime : ifunction = function()
 	if UI.GetElapsedTime ~= nil then
 		return UI.GetElapsedTime();
@@ -68,7 +66,7 @@ local MPT_REARRANGE_DELAY	: number = 0.1;
 -- MPT_ScheduleTask(fDelaySeconds, callbackFunc, taskID, Values, Needunpack)：
 --   fDelaySeconds 秒后执行一次 callbackFunc；同 taskID 重挂自动覆盖旧任务（去抖合并，
 --   语义同 1.67 AddTimer 的同名 FuncID 移除重建）。Values + Needunpack=true 时拆包传参。
--- 用法：MPT_ScheduleTask(0.1, RefreshBanner, "MPT_Refresh_12", {playerID, cityID}, true)
+-- 用法：MPT_ScheduleTask(2, RefreshBanner, "MPT_Refresh_12", {playerID, cityID}, true)
 -- ============================================================================
 local function MPT_ScheduleTask(fDelaySeconds : number, callbackFunc : ifunction, taskID : string, Values : table, Needunpack : boolean)
 	MPT_PendingTasks[taskID] = {
@@ -77,7 +75,6 @@ local function MPT_ScheduleTask(fDelaySeconds : number, callbackFunc : ifunction
 		Values	 = Values;
 		Unpack	 = Needunpack;
 	};
-	print("MPT_Banner: schedule " .. taskID .. " +" .. fDelaySeconds .. "s");	-- 条目18调试 print
 end
 
 -- 调度器 tick（本文件唯一一条 GameCoreEventPublishComplete 订阅——优化1）：
@@ -87,7 +84,6 @@ local function MPT_OnSchedulerTick()
 	for taskID, task in pairs(MPT_PendingTasks) do
 		if fNow >= task.Deadline then
 			MPT_PendingTasks[taskID] = nil;
-			print("MPT_Banner: run " .. taskID);	-- 条目18调试 print
 			if task.Unpack and task.Values ~= nil then
 				task.Func(unpack(task.Values));
 			else
@@ -102,12 +98,10 @@ Events.GameCoreEventPublishComplete.Add(MPT_OnSchedulerTick);
 local MPT_CoolDownUntil : number = 0;
 Events.LocalPlayerTurnBegin.Add(function()
 	MPT_CoolDownUntil = MPT_GetTime() + 1;
-	print("MPT_Banner: LocalPlayerTurnBegin, cooldown until " .. MPT_CoolDownUntil);	-- 条目18调试 print
 end);
 -- 本地回合结束清空未到期任务（跨回合执行已无意义；1.67 RemoveAllTimer 同语义）
 Events.TurnEnd.Add(function()
 	MPT_PendingTasks = {};
-	print("MPT_Banner: TurnEnd, pending tasks cleared");	-- 条目18调试 print
 end);
 
 -- ===========================================================================
@@ -128,7 +122,6 @@ local function MPT_RequestCitizenRearrange(playerID : number, cityID : number)
 	tParameters[CityCommandTypes.PARAM_X] = pSelectedCity:GetX();
 	tParameters[CityCommandTypes.PARAM_Y] = pSelectedCity:GetY();
 	CityManager.RequestCommand( pSelectedCity, CityCommandTypes.MANAGE, tParameters );
-	print("MPT_Banner: MANAGE command -> city " .. cityID);	-- 条目18调试 print
 	-- 优化5：重排后兜底横幅刷新（引擎未发 CityWorkerChanged 时 1.67 会滞留旧值；
 	--   与①路径同键去抖，不产生重复刷新）
 	MPT_ScheduleTask(MPT_REFRESH_DELAY, RefreshBanner, "MPT_Refresh_" .. tostring(cityID), {playerID, cityID}, true);
@@ -136,9 +129,6 @@ end
 
 -- ① 市民变动 → 横幅刷新（0.1 秒去抖近实时；原版 CityBannerManager 不订阅此事件，产出滞后元凶）
 local function MPT_OnCityWorkerChanged(playerID : number, cityID : number)
-	if playerID == Game.GetLocalPlayer() then
-		print("MPT_Banner: CityWorkerChanged city=" .. cityID .. " cooldownActive=" .. tostring(MPT_GetTime() <= MPT_CoolDownUntil));	-- 条目18调试 print
-	end
 	if playerID == Game.GetLocalPlayer() and MPT_GetTime() > MPT_CoolDownUntil then
 		MPT_ScheduleTask(MPT_REFRESH_DELAY, RefreshBanner, "MPT_Refresh_" .. tostring(cityID), {playerID, cityID}, true);
 	end
@@ -147,9 +137,6 @@ Events.CityWorkerChanged.Add(MPT_OnCityWorkerChanged);
 
 -- ② 城界扩张 → 市民重排（0.5 秒去抖合并窗口，1.67 为 4 秒——条目18调优）
 local function MPT_OnCityTileOwnershipChanged(playerID : number, cityID : number)
-	if playerID == Game.GetLocalPlayer() then
-		print("MPT_Banner: CityTileOwnershipChanged city=" .. cityID .. " cooldownActive=" .. tostring(MPT_GetTime() <= MPT_CoolDownUntil));	-- 条目18调试 print
-	end
 	if playerID == Game.GetLocalPlayer() and MPT_GetTime() > MPT_CoolDownUntil then
 		MPT_ScheduleTask(MPT_REARRANGE_DELAY, MPT_RequestCitizenRearrange, "MPT_Rearrange_" .. tostring(cityID), {playerID, cityID}, true);
 	end
@@ -158,9 +145,6 @@ Events.CityTileOwnershipChanged.Add(MPT_OnCityTileOwnershipChanged);
 
 -- ③ 人口增长 → 市民重排（0.5 秒去抖，1.67 为 4 秒——条目18调优）
 local function MPT_OnCityPopulationChanged(playerID : number, cityID : number)
-	if playerID == Game.GetLocalPlayer() then
-		print("MPT_Banner: CityPopulationChanged city=" .. cityID .. " cooldownActive=" .. tostring(MPT_GetTime() <= MPT_CoolDownUntil));	-- 条目18调试 print
-	end
 	if playerID == Game.GetLocalPlayer() and MPT_GetTime() > MPT_CoolDownUntil then
 		MPT_ScheduleTask(MPT_REARRANGE_DELAY, MPT_RequestCitizenRearrange, "MPT_Rearrange_" .. tostring(cityID), {playerID, cityID}, true);
 	end
@@ -177,12 +161,8 @@ local function MPT_OnPlotYieldChanged(x : number, y : number)
 		local pCity = Cities.GetPlotPurchaseCity(pPlot);
 		if pCity ~= nil then
 			local cityID : number = pCity:GetID();
-			print("MPT_Banner: PlotYieldChanged (" .. x .. "," .. y .. ") -> city=" .. cityID);	-- 条目18调试 print
 			MPT_ScheduleTask(MPT_REARRANGE_DELAY, MPT_RequestCitizenRearrange, "MPT_Rearrange_" .. tostring(cityID), {playerID, cityID}, true);
 		end
 	end
 end
 Events.PlotYieldChanged.Add(MPT_OnPlotYieldChanged);
-
--- 加载留痕（通配 include 是否成功在此一行可见）
-print("MPT_Banner: loaded via CityBannerManager wildcard include, clock=" .. MPT_ClockName .. " now=" .. MPT_GetTime());	-- 条目18调试 print
