@@ -1,16 +1,16 @@
 -- ============================================================================
 -- 条目12：游戏内设置参数表 MPT_Settings（移植 1.67 Settings/TPT_Settings.sql 简化版）
 -- 仅保留本 mod 已移植功能的参数行（当前：FEB 强制结束回合按钮 / 条目19 NOC 禁用
---   清理通知按钮）；
+--   清理通知按钮 / 条目20 智能计时器）；
 -- 表名用 MPT_Settings（本 mod 数据表 MPT_ 前缀规约）——1.67 的 TPT_Settings 建表
 -- 无 IF NOT EXISTS，同名表两 mod 共存时后加载者报错，故隔离；
--- ParameterId 保留 1.67 原 key（ForcedEndButton_Show / NotificationPanel_QuickClear，
---   无 TPT 前缀的语义名）：
+-- ParameterId 保留 1.67 原 key（ForcedEndButton_Show / NotificationPanel_QuickClear /
+--   TOOLS_COMMAND，无 TPT 前缀的语义名）：
 --   广播事件为本 mod 自有 MPT_Settings_Toggle（条目12优化命名规范化），
 --   与 1.67 的 TPT_Settings_Toggle 互不联动，共存时各自控制各自功能。
 -- String/ToolTip 文本 tag 统一 MPT_ 前缀（LOC_MPT_SETTINGS_SHOW_FEB_* /
---   LOC_MPT_SETTINGS_NOC_DISABLE_*，项目规约避免与 1.67 冲突），
---   见同目录 SettingsPanel_zh_Hans_CN.sql / en_US.sql。
+--   LOC_MPT_SETTINGS_NOC_DISABLE_* / LOC_MPT_SETTINGS_TIMER_ENABLE_*，项目规约
+--   避免与 1.67 冲突），见同目录 SettingsPanel_zh_Hans_CN.sql / en_US.sql。
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS MPT_Settings (
 	ParameterId TEXT NOT NULL,
@@ -24,4 +24,5 @@ INSERT OR REPLACE INTO MPT_Settings
 		(ParameterId,								String,								ToolTip,								DefaultValue)
 VALUES
 		("ForcedEndButton_Show",					"LOC_MPT_SETTINGS_SHOW_FEB_NAME",	"LOC_MPT_SETTINGS_SHOW_FEB_TT",			0),
-		("NotificationPanel_QuickClear",			"LOC_MPT_SETTINGS_NOC_DISABLE_NAME",	"LOC_MPT_SETTINGS_NOC_DISABLE_TT",		0);
+		("NotificationPanel_QuickClear",			"LOC_MPT_SETTINGS_NOC_DISABLE_NAME",	"LOC_MPT_SETTINGS_NOC_DISABLE_TT",		0),
+		("TOOLS_COMMAND",							"LOC_MPT_SETTINGS_TIMER_ENABLE_NAME",	"LOC_MPT_SETTINGS_TIMER_ENABLE_TT",		1);

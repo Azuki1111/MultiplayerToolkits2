@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目20：智能回合计时器热键注册（移植 1.67 NHK/Config_TurnTime.xml，ActionId 的
+TPT_ 前缀按项目规约改为 MPT_）。
+快捷加时 = ]（LOC_OPTIONS_KEY_RBRACKET）/ 快捷减时 = [（LOC_OPTIONS_KEY_LBRACKET），
+CategoryId=ONLINE、ContextId=World 沿用 1.67 原值；
+前后端各注册一次（FE 让主菜单「设置→按键绑定」列表正常显示名称/描述，IG 供运行时
+Input.GetActionId 取用），InsertOrIgnore 幂等无冲突。
+（XML 注释内容不可出现连续半角连字符，故注释不以横线收尾）
+=========================================================================== -->
+<GameInfo>
+	<InputActions>
+		<InsertOrIgnore ActionId="HotKey_MPT_TurnTimeAdd" Name="LOC_MPT_TIMER_HOTKEY_ADD_NAME" Description="LOC_MPT_TIMER_HOTKEY_ADD_DESC" CategoryId="ONLINE" ContextId="World"/>
+		<InsertOrIgnore ActionId="HotKey_MPT_TurnTimeReduce" Name="LOC_MPT_TIMER_HOTKEY_REDUCE_NAME" Description="LOC_MPT_TIMER_HOTKEY_REDUCE_DESC" CategoryId="ONLINE" ContextId="World"/>
+	</InputActions>
+	<InputActionDefaultGestures>
+		<InsertOrIgnore ActionId="HotKey_MPT_TurnTimeAdd" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_RBRACKET"/>
+		<InsertOrIgnore ActionId="HotKey_MPT_TurnTimeReduce" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_LBRACKET"/>
+	</InputActionDefaultGestures>
+</GameInfo>

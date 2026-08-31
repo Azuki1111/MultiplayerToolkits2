@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目20：智能回合计时器（移植 1.67 CC/Timer TimerPro + NHK/UI/TurnTime_HotKey 按钮部分）
+空 Context 经 AddUserInterfaces 注册进 InGame；同名 SmartTurnTimer.lua 自动作为本
+Context 脚本执行（同条目12/13 机制）。
+仅承载聊天框旁加时/减时两个快捷按钮（Lua ChangeParent 到 /InGame/WorldTracker/
+ChatPanelContainer），布局照抄 1.67 TurnTime_HotKey.xml；默认 Hidden 防加载瞬间
+闪现，显隐由设置开关 TOOLS_COMMAND（条目12 面板广播）+ 联机判定驱动。
+1.67 的 AlphaAnim 强退动画与强制结束回合段落不移植（条目12 FEB 已承担）。
+（XML 注释内容不可出现连续半角连字符，故注释不以横线收尾、不直书减时按钮键名；
+  连字符规则仅约束注释内文本，下方控件 String 属性值为元素内容，写减时键名合法）
+=========================================================================== -->
+<Context>
+	<GridButton ID="AddTimeButton" Anchor="R,T" Offset="60,1" Size="50,24" Texture="Controls_ButtonControl" SliceCorner="12,12" SliceTextureSize="24,24" StateOffsetIncrement="0,24" ToolTip="LOC_MPT_TIMER_ADD_BUTTON_TT" Hidden="1">
+		<Label Style="FontNormal16" FontStyle="stroke" ColorSet="ResGoldLabelCS" Anchor="C,C" String="P++" Offset="0,1"/>
+	</GridButton>
+	<GridButton ID="ReduceTimeButton" Anchor="R,T" Offset="8,1" Size="50,24" Texture="Controls_ButtonControl" SliceCorner="12,12" SliceTextureSize="24,24" StateOffsetIncrement="0,24" ToolTip="LOC_MPT_TIMER_REDUCE_BUTTON_TT" Hidden="1">
+		<Label Style="FontNormal16" FontStyle="stroke" ColorSet="ResGoldLabelCS" Anchor="C,C" String="P--" Offset="0,1" KerningAdjustment="1"/>
+	</GridButton>
+</Context>
