@@ -62,7 +62,7 @@ local MPT_PendingTasks : table = {};
 --   近实时（实际执行时刻=0.1 秒后首个事件批结束 tick，事件到达后本就紧跟批结束，体感即近
 --   实时）；重排指令统一 0.5 秒合并窗口，防同批边界/产出事件多次下发 MANAGE）
 local MPT_REFRESH_DELAY		: number = 0.1;
-local MPT_REARRANGE_DELAY	: number = 0.5;
+local MPT_REARRANGE_DELAY	: number = 0.1;
 
 -- ============================================================================
 -- MPT_ScheduleTask(fDelaySeconds, callbackFunc, taskID, Values, Needunpack)：
