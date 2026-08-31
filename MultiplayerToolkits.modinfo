@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>48</Version>
+		<Version>49</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -665,6 +665,24 @@
 			</Properties>
 			<File>InGame/DisableMapPins/DisableMapPins.xml</File>
 		</AddUserInterfaces>
+		<!-- 条目17：建立城市免确认（RCT，移植 1.67 RCT）——点击「建立城市」不再弹确认弹窗
+			（含「将移除地貌」提示），直接坐城；无条件常开（同 1.67，无配置开关）。
+			ReplaceUIScript 抢占 UnitPanel 上下文入口（LoadOrder 100000 压过 1.67 同类替换的
+			11000），文件内重建原版 include 链（BSM unitpanel_spec 优先→XP2→XP1→Base）后
+			重定义 OnUnitActionClicked_FoundCity，详见该文件头横幅 -->
+		<ReplaceUIScript id="IG_NoCityPopup_UnitPanel">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>UnitPanel</LuaContext>
+				<LuaReplace>InGame/InstantFoundCity/UnitPanel_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_NoCityPopup_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/InstantFoundCity/UnitPanel_MPT.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -760,5 +778,6 @@
 		<File>InGame/DisableMapPins/DisableMapPins.lua</File>
 		<File>InGame/DisableMapPins/MapPinListPanel_MPT.lua</File>
 		<File>InGame/DisableMapPins/MapPinListPanel.xml</File>
+		<File>InGame/InstantFoundCity/UnitPanel_MPT.lua</File>
 	</Files>
 </Mod>
