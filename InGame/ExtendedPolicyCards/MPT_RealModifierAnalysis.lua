@@ -1611,12 +1611,7 @@ local function MPT_GetGameInfoName(sTable:string, sType:string)
 	return s;
 end
 
--- 带符号百分比（参数驱动，符号跟随 Amount；nil/非数字兜底 0）
-local function MPT_Pct(iAmount:number)
-	return Locale.ToNumber(iAmount or 0, "+#,###.#;-#,###.#").."%";
-end
-
--- 带符号数值
+-- 带符号数值（[MPT 条目21用户裁决] MPT_Pct 已随决议返还显示删除而废弃移除）
 local function MPT_Sign(iAmount:number)
 	return Locale.ToNumber(iAmount or 0, "+#,###.#;-#,###.#");
 end
@@ -1837,7 +1832,8 @@ MPT_LineHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = functi
 	local iCount:number = MPT_GetExtractionCount(ePlayerID, sRes);
 	local n:number = tonumber(tMod.Arguments.Amount or 0) * iCount;
 	if n == 0 then return ""; end
-	return "[ICON_"..sRes.."]"..MPT_Sign(n);	-- [MPT 条目21用户裁决] icon 前数字后紧贴，同原版产量串 GetYieldString
+	-- icon 前数字后紧贴，同原版产量串 GetYieldString；tMerge 供同 icon 行合并
+	return "[ICON_"..sRes.."]"..MPT_Sign(n), { sIcon = "[ICON_"..sRes.."]", sLayout = "first", nAmount = n };
 end;
 MPT_DynamicHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = true;
 -- 对城邦商路平产（动态计算：实际数量 = Amount × 当前对城邦商路条数，无商路时不显示）
@@ -1859,9 +1855,11 @@ MPT_LineHandlers["EFFECT_ADJUST_CITY_STATE_TRADE_ROUTE_FLAT_YIELD"] = function(t
 	return MPT_Sign(n * iCount)..MPT_YieldIcon(tMod.Arguments.YieldType).." ("..MPT_Phrase("LOC_MPT_EPC_CS_TRADE")..")";
 end;
 MPT_DynamicHandlers["EFFECT_ADJUST_CITY_STATE_TRADE_ROUTE_FLAT_YIELD"] = true;
--- 外交支持族：每回合/决议返还为全局固定量；每座建筑动态计算（实际数量 = Favor × 拥有建筑数）
+-- 外交支持族：每回合为全局固定量（可合并元数据）；每座建筑动态计算（实际数量 = Favor × 拥有建筑数）
 MPT_LineHandlers["EFFECT_ADJUST_PLAYER_EXTRA_FAVOR_PER_TURN"] = function(tMod, ePlayerID)
-	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_FAVOR]";
+	local n:number = tonumber(tMod.Arguments.Amount or 0);
+	if n == 0 then return ""; end
+	return MPT_Sign(n).." [ICON_FAVOR]", { sIcon = "[ICON_FAVOR]", sLayout = "last", nAmount = n };
 end;
 MPT_LineHandlers["EFFECT_ADJUST_PLAYER_BUILDING_FAVOR"] = function(tMod, ePlayerID)
 	local pPlayer:table = Players[ePlayerID];
@@ -1876,9 +1874,8 @@ MPT_LineHandlers["EFFECT_ADJUST_PLAYER_BUILDING_FAVOR"] = function(tMod, ePlayer
 	return MPT_Sign(n * iCount).." [ICON_FAVOR] ("..MPT_Phrase("LOC_MPT_EPC_PER_BUILDING")..(MPT_GetGameInfoName("Buildings", tMod.Arguments.BuildingType) or "")..")";
 end;
 MPT_DynamicHandlers["EFFECT_ADJUST_PLAYER_BUILDING_FAVOR"] = true;
-MPT_LineHandlers["EFFECT_ADJUST_PLAYER_FAVOR_REFUND_FOR_SUCCESSFUL_RESOLUTION"] = function(tMod, ePlayerID)
-	return MPT_Pct(tonumber(tMod.Arguments.Percent or 0)).." [ICON_FAVOR] ("..MPT_Phrase("LOC_MPT_EPC_RESOLUTION")..")";
-end;
+-- [MPT 条目21用户裁决] 世界议会决议返还（+50% 外交支持）不显示（静默化不红字）
+MPT_KnownEffects["EFFECT_ADJUST_PLAYER_FAVOR_REFUND_FOR_SUCCESSFUL_RESOLUTION"] = true;
 -- [MPT 条目21用户裁决] 免费电力不显示（用户要求去掉电力加成）
 MPT_KnownEffects["EFFECT_ADJUST_CITY_FREE_POWER"] = true;
 -- 每城免费资源（动态计算：实际数量 = Amount × 合法主体城市数——父 modifier 的
@@ -1891,7 +1888,9 @@ MPT_LineHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = function(tMod, ePlaye
 	if n == 0 then return ""; end
 	local nSubs:number = nSubjects or 0;
 	if nSubs <= 0 then return ""; end
-	return "[ICON_"..sRes.."]"..MPT_Sign(n * nSubs);	-- [MPT 条目21用户裁决] icon 前数字后紧贴，同原版产量串 GetYieldString
+	local iGain:number = n * nSubs;
+	-- [MPT 条目21用户裁决] icon 前数字后紧贴，同原版产量串 GetYieldString；tMerge 供同 icon 行合并
+	return "[ICON_"..sRes.."]"..MPT_Sign(iGain), { sIcon = "[ICON_"..sRes.."]", sLayout = "first", nAmount = iGain };
 end;
 MPT_DynamicHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = true;
 -- 静默化：购地/单位/全军购买费用、升级金费/资源折扣、新建街区获金、击杀战利、劫掠收益、
@@ -1923,7 +1922,9 @@ MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod, ePlayerID
 	local sIcon:string = (classDef ~= nil and classDef.IconString) or ("[ICON_"..sClass.."]");
 	local nSubs:number = nSubjects or 1;
 	if nSubs <= 0 then return ""; end
-	return MPT_Sign(n * nSubs).." "..sIcon;
+	local iGain:number = n * nSubs;
+	-- tMerge：同 icon 同布局行合并（如「基础 +4」与「每座广播中心 +4×n」→ 一条 +8）
+	return MPT_Sign(iGain).." "..sIcon, { sIcon = sIcon, sLayout = "last", nAmount = iGain };
 end;
 MPT_DynamicHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = true;
 -- [MPT 条目21用户裁决] 影响力点/联盟点/建造者次数不显示（静默化不红字）
@@ -1966,19 +1967,22 @@ MPT_KnownEffects["DISABLE_PLAYER_GRIEVANCE_DECAY"] = true;
 
 -- ----------------------------------------------------------------------------
 -- MPT 行入口：按 EffectType 取格式化行，结果按 ModifierId 缓存（动态计算类跳过缓存实时求值；
--- 返回 nil = 非 MPT 显示类型：含未识别（走原链可能红字）与已识别静默（用户裁决不显示））
+-- 返回 nil = 非 MPT 显示类型：含未识别（走原链可能红字）与已识别静默（用户裁决不显示））。
+-- 第二返回值 tMerge = 可合并元数据 {sIcon=图标token, sLayout="first"|"last", nAmount=数值}
+-- （[MPT 条目21用户裁决] 同 icon 同布局的纯图标数值行在卡面合并，如伟人点两条 +4 → +8）
 -- ----------------------------------------------------------------------------
 function MPT_GetModifierLine(tMod:table, ePlayerID:number, nSubjects:number)
-	if tMod == nil or tMod.EffectType == nil then return nil; end
+	if tMod == nil or tMod.EffectType == nil then return nil, nil; end
 	local bDynamic:boolean = (MPT_DynamicHandlers[tMod.EffectType] == true);
 	if not bDynamic then
-		local sCached:string = MPT_LineCache[tMod.ModifierId];
-		if sCached ~= nil then
-			if sCached == "" then return nil; end
-			return sCached;
+		local tCached = MPT_LineCache[tMod.ModifierId];
+		if tCached ~= nil then
+			if tCached == false then return nil, nil; end	-- 已知类型但无行（静默/参数异常）
+			return tCached.sLine, tCached.tMerge;
 		end
 	end
 	local sLine:string = nil;
+	local tMerge:table = nil;
 	-- [MPT 条目21修复] 不能写 pHandler:function——标注位要求类型名而 function 是保留字，
 	-- 解析器报 <name> expected near 'function' 致整个 chunk 中止（条目18 cfunction/ifunction 同族坑）；
 	-- pHandler 仅被调用不参与比较，无标注即无运行时类型检查，不必写 ifunction
@@ -1991,9 +1995,10 @@ function MPT_GetModifierLine(tMod:table, ePlayerID:number, nSubjects:number)
 		-- 占位硬编码 0，多人下本地玩家通常非 0 号位，按 0 计算资源/城市数据会整行静默
 		local eCalcPlayerID:number = Game.GetLocalPlayer();
 		-- [MPT 条目21修复] handler 调用 pcall 化：单个动态 handler 异常只静默该行，不拖垮整卡收益条
-		local bOk, sResult = pcall(pHandler, tMod, eCalcPlayerID, nSubjects);
+		local bOk, sResult, tMergeResult = pcall(pHandler, tMod, eCalcPlayerID, nSubjects);
 		if bOk then
 			sLine = sResult;
+			tMerge = tMergeResult;
 		else
 			print("MPT_RMA: line handler failed for "..tostring(tMod.EffectType).." -> "..tostring(sResult));
 			sLine = nil;
@@ -2003,13 +2008,13 @@ function MPT_GetModifierLine(tMod:table, ePlayerID:number, nSubjects:number)
 	-- if not bDynamic 块，动态行（资源/商路/建筑支持/免费资源/伟人点）计算正确却在函数尾
 	-- 被无条件 return nil 丢弃（诊断 print 实证数值正确而卡面无行）
 	if sLine ~= nil and sLine ~= "" then
-		if not bDynamic then MPT_LineCache[tMod.ModifierId] = sLine; end
-		return sLine;
+		if not bDynamic then MPT_LineCache[tMod.ModifierId] = { sLine = sLine, tMerge = tMerge }; end
+		return sLine, tMerge;
 	end
 	if not bDynamic then
-		MPT_LineCache[tMod.ModifierId] = "";	-- 已知类型但无行（静默/参数异常），不再走 Unknown
+		MPT_LineCache[tMod.ModifierId] = false;	-- 已知类型但无行（静默/参数异常），不再走 Unknown
 	end
-	return nil;
+	return nil, nil;
 end
 
 -- ----------------------------------------------------------------------------
@@ -3252,7 +3257,7 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 	local tTotalImpact:table = YieldTableNew();
 	local tToolTip:table = {}; -- tooltip
 	local bUnknownEffect:boolean = false;
-	local tMPTLines:table = {};	-- [MPT 条目21优化] 扩展类型的文本行（卡面串与 tooltip 共用）
+	local tMPTLines:table = {};	-- [MPT 条目21优化] 扩展类型文本行条目 {sLine=行文本, tMerge=可合并元数据|nil}
 	local sSubjectFilter:string = ( sInfluence and "PLAYER_HAS_"..sInfluence.."_INFLUENCE" or nil );
 	-- [MPT 条目21优化] 全表扫描 → 懒索引（见 MPT_GetObjectModifierIds；留痕：原循环
 	-- for mod in GameInfo[sModifiersTable]() do ... 移入索引器，含 ModifierId/ModifierID 兼容）
@@ -3271,8 +3276,8 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 				table.insert(tToolTip, sText);
 				-- [MPT 条目21优化] 扩展类型文本行（direct）；[MPT 条目21用户裁决] 第 3 参传
 				-- 合法主体数（DecodeModifier 第 6 返回值，Req 过滤后）供按主体倍乘/判零
-				local sMPTLine:string = MPT_GetModifierLine(tMod, ePlayerID, tSubjects and #tSubjects or nil);
-				if sMPTLine then table.insert(tMPTLines, sMPTLine); end
+				local sMPTLine, tMPTMerge = MPT_GetModifierLine(tMod, ePlayerID, tSubjects and #tSubjects or nil);
+				if sMPTLine then table.insert(tMPTLines, { sLine = sMPTLine, tMerge = tMPTMerge }); end
 				if sAttachedId then
 					table.insert(tToolTip, "Attached modifier");
 					local tSubsAttached:table = nil;	-- [MPT 条目21用户裁决] 子 modifier 的合法主体集（Req 过滤后）
@@ -3285,8 +3290,8 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 					end
 					table.insert(tToolTip, sText);
 					-- [MPT 条目21优化] 扩展类型文本行（attached，tMod 已是子 modifier；主体数同 direct）
-					local sMPTLineAttached:string = MPT_GetModifierLine(tMod, ePlayerID, tSubsAttached and #tSubsAttached or nil);
-					if sMPTLineAttached then table.insert(tMPTLines, sMPTLineAttached); end
+					local sMPTLineAttached, tMPTMergeAttached = MPT_GetModifierLine(tMod, ePlayerID, tSubsAttached and #tSubsAttached or nil);
+					if sMPTLineAttached then table.insert(tMPTLines, { sLine = sMPTLineAttached, tMerge = tMPTMergeAttached }); end
 					-- 2019-04-14 Reset yields to 0 if there are no valid subjects that qualify for attaching
 					if tSubjects ~= nil and #tSubjects == 0 then
 						pYields = nil;
@@ -3313,12 +3318,40 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 		--if tTotalImpact[yield] ~= 0 then sTotalImpact = sTotalImpact..(sTotalImpact=="" and "" or " ")..GetYieldString("YIELD_"..yield, tTotalImpact[yield]); end
 	--end
 	local sTotalImpact:string = YieldTableGetInfo(tTotalImpact);
-	-- [MPT 条目21用户裁决] 卡面 Effect 不换行：多行收益在卡面串接为单行（第 1 返回值），
-	-- 接缝前段以 [ICON_...] 结尾仅补空格（图标天然分隔）、否则用分隔符（MPT_JoinCardSeg）；
-	-- [NEWLINE] 分行版走第 5 返回值供 tooltip（卡面/拖拽两处 SetToolTipString）
+	-- [MPT 条目21用户裁决] 卡面 Effect 不换行：多行收益在卡面串接为单行（第 1 返回值）——
+	-- 同 icon 同布局的纯图标数值行先合并（如伟人点「基础 +4」与「每座广播中心 +4×n」→
+	-- 一条 +8），再经 MPT_JoinCardSeg 串接；[NEWLINE] 分行版走第 5 返回值供 tooltip
 	local sTotalImpactNL:string = sTotalImpact;
 	if #tMPTLines > 0 then
-		for _,sLine in ipairs(tMPTLines) do
+		local tMerged:table = {};		-- {sLine=无合并直出行} 或 {sIcon,sLayout,nAmount,nCount}
+		local tMergeIndex:table = {};	-- icon|layout → tMerged 序号
+		for _,tEntry in ipairs(tMPTLines) do
+			local tM:table = tEntry.tMerge;
+			if type(tM) == "table" and tM.sIcon ~= nil and tM.nAmount ~= nil then
+				local sKey:string = tM.sIcon.."|"..tostring(tM.sLayout);
+				local iIndex:number = tMergeIndex[sKey];
+				if iIndex ~= nil then
+					tMerged[iIndex].nAmount = tMerged[iIndex].nAmount + tM.nAmount;
+					tMerged[iIndex].nCount = tMerged[iIndex].nCount + 1;
+				else
+					table.insert(tMerged, { sIcon = tM.sIcon, sLayout = tM.sLayout, nAmount = tM.nAmount, nCount = 1 });
+					tMergeIndex[sKey] = #tMerged;
+				end
+			else
+				table.insert(tMerged, { sLine = tEntry.sLine });
+			end
+		end
+		for _,tItem in ipairs(tMerged) do
+			local sLine:string;
+			if tItem.nCount ~= nil then
+				if tItem.sLayout == "first" then
+					sLine = tItem.sIcon..MPT_Sign(tItem.nAmount);
+				else
+					sLine = MPT_Sign(tItem.nAmount).." "..tItem.sIcon;
+				end
+			else
+				sLine = tItem.sLine;
+			end
 			sTotalImpactNL = (sTotalImpactNL ~= "" and sTotalImpactNL.."[NEWLINE]" or "")..sLine;
 			sTotalImpact = MPT_JoinCardSeg(sTotalImpact, sLine);
 		end

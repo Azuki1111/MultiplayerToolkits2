@@ -1,5 +1,5 @@
 -- Entry 21 optimization: custom phrases for policy card effect lines (no-arg tags, Lua .. concatenation)
--- [MPT user decision] 10 phrases after narrowing display types; influence/alliance/builder-charge lines removed;
+-- [MPT user decision] 9 phrases after narrowing display types; influence/alliance/builder-charge/resolution-refund lines removed;
 -- card lines are joined with LOC_MPT_EPC_SEPARATOR (omitted when the seam ends with an [ICON_..] token - icons
 -- separate naturally; no line breaks on cards, tooltips use the [NEWLINE] variant); turn descriptions removed entirely
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
@@ -10,6 +10,5 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 	('LOC_MPT_EPC_WONDER',				'en_US',	'Wonder'),
 	('LOC_MPT_EPC_CS_TRADE',			'en_US',	'trade with city-states'),
 	('LOC_MPT_EPC_PER_BUILDING',		'en_US',	'per '),
-	('LOC_MPT_EPC_RESOLUTION',			'en_US',	'world resolution'),
 	('LOC_MPT_EPC_RESOURCE_FREE',		'en_US',	'free resource per city'),
 	('LOC_MPT_EPC_SEPARATOR',			'en_US',	', ');
