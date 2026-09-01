@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>60</Version>
+		<Version>61</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -322,6 +322,17 @@
 			<File>InGame/DisableMapPins/DisableMapPins_zh_Hans_CN.sql</File>
 			<File>InGame/DisableMapPins/DisableMapPins_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目20扩展：回合计时器工作模式参数（MPT_TIMER_MODE，GameOptions 组下拉四选一：
+			关闭所有计时器/基础(仅聊天指令)/智能计时器(PID)/固定计时器(回合阶梯 30T 起 80s、
+			50T 起 120s、70T 起 180s 后保持，不含聊天指令)）——仅 FE 注册（条目16 CPL_NO_PINS
+			同款：Configuration 参数须前端注册，游戏开局建库继承，IG 重复注册主键冲突）；
+			替代条目20 初版的 MPT_Settings 布尔行（已回退），SortIndex=21 紧随原版回合计时器类型 -->
+		<UpdateDatabase id="FE_SmartTimer_Config">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/SmartTurnTimer/Config_SmartTimer.xml</File>
+		</UpdateDatabase>
 		<!-- 条目20：智能计时器热键注册（移植 1.67 NHK/Config_TurnTime.xml，ActionId TPT_→MPT_）——
 			GameInfo.InputActions + InputActionDefaultGestures（]/[ 键位），前后端各注册一次
 			（FE 让主菜单按键绑定界面显示名称/描述，IG 供运行时 Input.GetActionId 取用） -->
@@ -729,10 +740,11 @@
 		<!-- 条目20：智能回合计时器（移植 1.67 CC/Timer TimerPro + NHK/UI/TurnTime_HotKey 热键与按钮）——
 			房主回合末按「半数真人结束回合用时」PID 自动平衡 TURN_TIMER_TIME 并 BroadcastGameConfig
 			广播全房；宣战/掉线加时、议会投票 120s、聊天指令 p+/p+++/p-、聊天框旁加/减时快捷按钮、
-			]/[ 加减时热键。空 Context + 同名 Lua（同条目12/13 机制，1.67 两 Context 合并单文件）；
-			开关在条目12 MPT_Settings 表加行（ParameterId 沿用 1.67 原 key TOOLS_COMMAND，默认 1
-			=开启，每玩家本地开关——房主控自动平衡，非房主控自己按钮/热键），lua 侧订阅
-			MPT_Settings_Toggle 广播，初始状态经设置面板 LoadScreenClose ApplyAll 送达；
+			]/[ 加减时热键。空 Context + 同名 Lua（同条目12/13 机制，1.67 两 Context 合并单文件）。
+			工作模式：条目20扩展 Game 配置参数 MPT_TIMER_MODE（四模式 DomainValues 下拉，见
+			FE_SmartTimer_Config：OFF 全关/BASIC 仅聊天指令且回合末直减落实/PID 完整/FIXED 纯
+			阶梯曲线），Lua 按 Events.TurnEnd 分发，指令类功能仅 BASIC+SMART，自动调节仅 SMART，
+			按钮显隐经 GameConfigChanged 随配置广播刷新（替代初版 MPT_Settings 布尔行，已回退）；
 			优化（零全局污染/DB.MakeHash 替代魔法数/真人统计合并/PID 单次计算/nil 防御/单调时钟
 			冷却/联机门控）与语义差异见文件头横幅；15 秒滴答音与 NHK 强制结束回合不移植；
 			与 1.67 同装时双方计时器会互相拉扯，勿同开 -->
@@ -903,6 +915,7 @@
 		<File>InGame/NotificationClear/NotificationPanel_MPT.lua</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer.xml</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer.lua</File>
+		<File>InGame/SmartTurnTimer/Config_SmartTimer.xml</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_InputActions.xml</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_zh_Hans_CN.sql</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_en_US.sql</File>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目20扩展：回合计时器工作模式参数（Game 配置，GameOptions 组下拉四选一）。
+仅 FE 注册（条目16 CPL_NO_PINS 同款：Configuration 参数须前端注册，游戏开局建库
+继承；IG 重复注册会主键冲突）。SortIndex=21 紧随原版回合计时器类型（20）；
+ChangeableAfterGameStart=1：房主可开局后在暂停菜单游戏选项中切换，经配置广播全房。
+四个 DomainValues：OFF 关闭所有计时器 / BASIC 基础(仅聊天指令) / SMART 智能计时器
+(PID) / FIXED 固定计时器(回合阶梯 30T 起 80s、50T 起 120s、70T 起 180s 后保持)。
+（XML 注释内容不可出现连续半角连字符）
+=========================================================================== -->
+<GameInfo>
+	<Parameters>
+		<Row ParameterId="MPT_TIMER_MODE" Name="LOC_MPT_TIMER_MODE_NAME" Description="LOC_MPT_TIMER_MODE_DESC" Domain="StandardMPTTimerModes" DefaultValue="MPT_TIMER_MODE_SMART" ConfigurationGroup="Game" ConfigurationId="MPT_TIMER_MODE" GroupId="GameOptions" ChangeableAfterGameStart="1" SortIndex="21" />
+	</Parameters>
+	<DomainValues>
+		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_OFF" Name="LOC_MPT_TIMER_MODE_OFF" Description="LOC_MPT_TIMER_MODE_OFF_DESC" SortIndex="1"/>
+		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_BASIC" Name="LOC_MPT_TIMER_MODE_BASIC" Description="LOC_MPT_TIMER_MODE_BASIC_DESC" SortIndex="2"/>
+		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_SMART" Name="LOC_MPT_TIMER_MODE_SMART" Description="LOC_MPT_TIMER_MODE_SMART_DESC" SortIndex="3"/>
+		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_FIXED" Name="LOC_MPT_TIMER_MODE_FIXED" Description="LOC_MPT_TIMER_MODE_FIXED_DESC" SortIndex="4"/>
+	</DomainValues>
+</GameInfo>
