@@ -26,13 +26,20 @@
 --     PromotionClass+PrereqTech 时代、Projects.SpaceRace、奇观时代区间）→ 城市生产力 ×
 --     Amount%，城市集合自动跨城求和，显示为真实产量数字（+X [生产图标]）
 --   ②资源积累 = Amount × 玩家提取中地块数（Map 全图遍历 + IsResourceExtractableAt 引擎
---     判定，含被区域/奇观覆盖）；每城免费资源 = Amount × 城市数；每座建筑支持 = Favor ×
---     建筑数；对城邦商路 = Amount × 对城邦商路条数——四类登记 MPT_DynamicHandlers 实时
---     计算不缓存，RefreshBaseData 时失效行/提取缓存；无收益（如无提取地块/无对城邦商路）
---     时整行不显示；伟人点数经用户裁决回退静态贡献点数显示（+n [GPP 图标]，不做池计算）
---   ③卡面 Effect 不换行（用户裁决）：多行收益卡面串接为单行（第 1 返回值）——接缝前段
+--     判定，含被区域/奇观覆盖）；每座建筑支持 = Favor × 建筑数；对城邦商路 = Amount ×
+--     对城邦商路条数——登记 MPT_DynamicHandlers 实时计算不缓存，RefreshBaseData 时失效
+--     行/提取缓存；无收益（如无提取地块/无对城邦商路）时整行不显示
+--   ③Req 判断（用户裁决）：行数值 = Amount × 合法主体数——RMA BuildCollectionOfSubjects
+--     按 SubjectRequirementSetId 逐主体 CheckAllRequirements 过滤（如航天承包商仅宇航
+--     中心城市、伟人点「每座艺术博物馆」仅艺术博物馆城市），数量经 hook① 传入 handler，
+--     0 主体整行不显示（每城免费资源/伟人点两类按此计算）
+--   ④伟人点图标用 GreatPersonClasses.IconString（[ICON_GreatArtist] 等短形式文本内联
+--     token，原版政策描述同款）——ICON_GREAT_PERSON_CLASS_* 仅 UI 图集注册、无字体字形，
+--     文本内联渲染为原文（卡面实测）
+--   ⑤卡面 Effect 不换行（用户裁决）：多行收益卡面串接为单行（第 1 返回值）——接缝前段
 --     以 [ICON_..] 结尾仅补空格（图标天然分隔）、否则以 LOC_MPT_EPC_SEPARATOR 串接；
 --     [NEWLINE] 分行版为第 5 返回值供 tooltip
+--   ⑥影响力点/联盟点/建造者次数不显示（用户裁决，MPT_KnownEffects 静默不红字）
 -- ===========================================================================
 -- print("Loading Real Modifier Analysis.lua from Better Report Screen version "..GlobalParameters.BRS_VERSION_MAJOR.."."..GlobalParameters.BRS_VERSION_MINOR);
 -- ===========================================================================
@@ -1808,8 +1815,8 @@ end;
 -- 伟人点数/生产对象的生产力加成」；费用折扣/旅游/移动/经验/战力/间谍/厌战/劫掠百分比/
 -- 使者倍率/开关定性类全部静默化（不显示不红字），显示行不描述回合（/每回合 字样已除）。
 -- [MPT 条目21用户裁决·动态计算] 数值随局势变化的类型（资源提取/城邦商路/建筑支持/免费
--- 资源）登记 MPT_DynamicHandlers：不进缓存实时计算，实际数量按 modifier 真实语义计算
--- （如资源 = Amount × 玩家提取中地块数）。
+-- 资源/伟人点）登记 MPT_DynamicHandlers：不进缓存实时计算，实际数量按 modifier 真实语义
+-- 计算（如资源 = Amount × 玩家提取中地块数、伟人点 = Amount × Req 过滤后主体数）。
 -- [MPT 条目21用户裁决] 卡面 Effect 不换行：CalculateModifierEffect 把多行收益以
 -- LOC_MPT_EPC_SEPARATOR 分隔符串接为单行（第 1 返回值），[NEWLINE] 分行版走第 5 返回值
 -- 供 tooltip。
@@ -1871,15 +1878,17 @@ MPT_LineHandlers["EFFECT_ADJUST_PLAYER_FAVOR_REFUND_FOR_SUCCESSFUL_RESOLUTION"] 
 end;
 -- [MPT 条目21用户裁决] 免费电力不显示（用户要求去掉电力加成）
 MPT_KnownEffects["EFFECT_ADJUST_CITY_FREE_POWER"] = true;
--- 每城免费资源（动态计算：实际数量 = Amount × 城市数）
-MPT_LineHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = function(tMod, ePlayerID)
-	local pPlayer:table = Players[ePlayerID];
+-- 每城免费资源（动态计算：实际数量 = Amount × 合法主体城市数——父 modifier 的
+-- SubjectRequirementSetId 过滤由 RMA BuildCollectionOfSubjects 完成（如航天承包商
+-- CITY_HAS_SPACEPORT_REQUIREMENTS 仅宇航中心城市）；无合法主体时不显示该行。
+-- 旧「×全部城市数」未判 Req 已废弃——实测航天承包商 7 城无宇航中心也显示 +21）
+MPT_LineHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = function(tMod, ePlayerID, nSubjects)
 	local sRes:string = tMod.Arguments.ResourceType or "";
 	local n:number = tonumber(tMod.Arguments.Amount or 0);
-	if pPlayer == nil or n == 0 then return ""; end
-	local iCities:number = pPlayer:GetCities():GetCount();
-	if iCities == 0 then return ""; end
-	return MPT_Sign(n * iCities).." [ICON_"..sRes.."]";
+	if n == 0 then return ""; end
+	local nSubs:number = nSubjects or 0;
+	if nSubs <= 0 then return ""; end
+	return MPT_Sign(n * nSubs).." [ICON_"..sRes.."]";
 end;
 MPT_DynamicHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = true;
 -- 静默化：购地/单位/全军购买费用、升级金费/资源折扣、新建街区获金、击杀战利、劫掠收益、
@@ -1896,31 +1905,30 @@ MPT_KnownEffects["EFFECT_ADJUST_PLAYER_TRADE_ROUTE_TOURISM_MODIFIER"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_PLAYER_OVERALL_TOURISM_REDUCTION"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_UNIT_ROCK_BAND_TOURISM_BOMB_VALUE_PEACE"] = true;
 
--- 伟人点数（[MPT 条目21用户裁决] 仅显示静态贡献点数：Amount 本身即明确的点数值——
--- 原「总计 = Amount × 至下一位招募回合数（上限剩余缺口）」在卡为唯一点数来源时恒等于
--- 距下一位还差的点数，数字与卡强度无关（+1/+2 卡显示相同数字），按用户裁决整体删除池
--- 计算，回归缓存静态类。API 核实留档备查：池条目 GetTimeline()（未招募 Claimant==nil、
--- 最低 Cost 即下一位）、GetPointsTotal/GetPointsPerTurn(class Index)，同原版
--- GreatPeoplePopup 696-801 行，用法无误、弃用纯因显示语义）
-MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod)
+-- 伟人点数（动态计算：数值 = Amount × 合法主体数——基础行主体为玩家自身(1)、
+-- 「每座艺术博物馆」类 attach 行主体为 Req 过滤后城市数（0 座整行不显示）；Req 判断由
+-- RMA BuildCollectionOfSubjects 按 SubjectReqSetId 逐主体 CheckAllRequirements 完成，
+-- 数量经 hook① 传入。图标用 GreatPersonClasses.IconString（[ICON_GreatArtist] 等短形式
+-- 文本内联 token，原版政策描述同款）——ICON_GREAT_PERSON_CLASS_* 仅 UI 图集注册、无字体
+-- 字形，文本内联渲染为原文（卡面实测）。历史：池总计计算（Amount×至下一位回合数）经用户
+-- 裁决删除；池 API 核实留档 GetTimeline()/GetPointsTotal 同原版 GreatPeoplePopup 696-801 行）
+MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod, ePlayerID, nSubjects)
 	local sClass:string = tMod.Arguments.GreatPersonClassType;
 	local n:number = tonumber(tMod.Arguments.Amount or 0);
 	if sClass == nil or n == 0 then return ""; end
-	return MPT_Sign(n).." [ICON_"..sClass.."]";
+	local classDef = GameInfo.GreatPersonClasses[sClass];	-- 动态键访问返回 userdata，不可 :table 标注
+	local sIcon:string = (classDef ~= nil and classDef.IconString) or ("[ICON_"..sClass.."]");
+	local nSubs:number = nSubjects or 1;
+	if nSubs <= 0 then return ""; end
+	return MPT_Sign(n * nSubs).." "..sIcon;
 end;
-MPT_LineHandlers["EFFECT_ADJUST_INFLUENCE_POINTS_PER_TURN"] = function(tMod)
-	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_INFLUENCE");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_ALLIANCE_POINTS_FOR_MODIFIER"] = function(tMod)
-	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_ALLIANCE");
-end;
+MPT_DynamicHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = true;
+-- [MPT 条目21用户裁决] 影响力点/联盟点/建造者次数不显示（静默化不红字）
+MPT_KnownEffects["EFFECT_ADJUST_INFLUENCE_POINTS_PER_TURN"] = true;
+MPT_KnownEffects["EFFECT_ADJUST_ALLIANCE_POINTS_FOR_MODIFIER"] = true;
+MPT_KnownEffects["EFFECT_ADJUST_UNIT_BUILD_CHARGES"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_DUPLICATE_FIRST_INFLUENCE_TOKEN"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_DUPLICATE_INFLUENCE_TOKEN_WHEN_RIVAL_GOVERNMENT"] = true;
-
--- 建造者次数（审判官次数/移动/经验/战力/间谍/厌战等已静默化）
-MPT_LineHandlers["EFFECT_ADJUST_UNIT_BUILD_CHARGES"] = function(tMod)
-	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_BUILD_CHARGES] ("..MPT_Phrase("LOC_MPT_EPC_BUILD_CHARGES")..")";
-end;
 -- 静默化：审判官次数（负向反直觉）、单位移动（含敌境/友境起始）、经验获取、对蛮族战力、
 -- 城市外部防御、城市远程打击、受损战力减免、劫掠城区/改良、单位战力(attach)、厌战积累、
 -- 间谍行动等级/反间谍等级、窃取科技加速、间谍行动耗时
@@ -1957,7 +1965,7 @@ MPT_KnownEffects["DISABLE_PLAYER_GRIEVANCE_DECAY"] = true;
 -- MPT 行入口：按 EffectType 取格式化行，结果按 ModifierId 缓存（动态计算类跳过缓存实时求值；
 -- 返回 nil = 非 MPT 显示类型：含未识别（走原链可能红字）与已识别静默（用户裁决不显示））
 -- ----------------------------------------------------------------------------
-function MPT_GetModifierLine(tMod:table, ePlayerID:number)
+function MPT_GetModifierLine(tMod:table, ePlayerID:number, nSubjects:number)
 	if tMod == nil or tMod.EffectType == nil then return nil; end
 	local bDynamic:boolean = (MPT_DynamicHandlers[tMod.EffectType] == true);
 	if not bDynamic then
@@ -1980,7 +1988,7 @@ function MPT_GetModifierLine(tMod:table, ePlayerID:number)
 		-- 占位硬编码 0，多人下本地玩家通常非 0 号位，按 0 计算资源/城市数据会整行静默
 		local eCalcPlayerID:number = Game.GetLocalPlayer();
 		-- [MPT 条目21修复] handler 调用 pcall 化：单个动态 handler 异常只静默该行，不拖垮整卡收益条
-		local bOk, sResult = pcall(pHandler, tMod, eCalcPlayerID);
+		local bOk, sResult = pcall(pHandler, tMod, eCalcPlayerID, nSubjects);
 		if bOk then
 			sLine = sResult;
 		else
@@ -3258,21 +3266,23 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 			-- this the place to check for extra conditions
 			if sSubjectFilter == nil or tMod.SubjectReqSetId == sSubjectFilter then
 				table.insert(tToolTip, sText);
-				-- [MPT 条目21优化] 扩展类型文本行（direct；ePlayerID 供动态计算类实时求值）
-				local sMPTLine:string = MPT_GetModifierLine(tMod, ePlayerID);
+				-- [MPT 条目21优化] 扩展类型文本行（direct）；[MPT 条目21用户裁决] 第 3 参传
+				-- 合法主体数（DecodeModifier 第 6 返回值，Req 过滤后）供按主体倍乘/判零
+				local sMPTLine:string = MPT_GetModifierLine(tMod, ePlayerID, tSubjects and #tSubjects or nil);
 				if sMPTLine then table.insert(tMPTLines, sMPTLine); end
 				if sAttachedId then
 					table.insert(tToolTip, "Attached modifier");
+					local tSubsAttached:table = nil;	-- [MPT 条目21用户裁决] 子 modifier 的合法主体集（Req 过滤后）
 					-- in some cases the subjects will be passed down to be processed again
 					-- when (a) collection was processed correctly (b) there's more than 1 subject
 					if tSubjects ~= nil then
-						sText, pYields, sAttachedId, bUnknown, tMod = DecodeModifier(sAttachedId, ePlayerID, iCityID, tSubjects, sSubjectType);
+						sText, pYields, sAttachedId, bUnknown, tMod, tSubsAttached = DecodeModifier(sAttachedId, ePlayerID, iCityID, tSubjects, sSubjectType);
 					else
-						sText, pYields, sAttachedId, bUnknown, tMod = DecodeModifier(sAttachedId, ePlayerID, iCityID);
+						sText, pYields, sAttachedId, bUnknown, tMod, tSubsAttached = DecodeModifier(sAttachedId, ePlayerID, iCityID);
 					end
 					table.insert(tToolTip, sText);
-					-- [MPT 条目21优化] 扩展类型文本行（attached，tMod 已是子 modifier）
-					local sMPTLineAttached:string = MPT_GetModifierLine(tMod, ePlayerID);
+					-- [MPT 条目21优化] 扩展类型文本行（attached，tMod 已是子 modifier；主体数同 direct）
+					local sMPTLineAttached:string = MPT_GetModifierLine(tMod, ePlayerID, tSubsAttached and #tSubsAttached or nil);
 					if sMPTLineAttached then table.insert(tMPTLines, sMPTLineAttached); end
 					-- 2019-04-14 Reset yields to 0 if there are no valid subjects that qualify for attaching
 					if tSubjects ~= nil and #tSubjects == 0 then
