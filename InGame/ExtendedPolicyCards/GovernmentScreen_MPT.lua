@@ -1045,20 +1045,33 @@ function RealizePolicyCard( cardInstance:table, policyType:string )
 		-- local policyEffect = RMA.CalculateModifierEffect("Policy", policyType, 0, nil, nil);
 		local policyEffect :string = "";
 		if RMA.CalculateModifierEffect ~= nil then
-			policyEffect = RMA.CalculateModifierEffect("Policy", policyType, 0, nil, nil);
+			-- [MPT 条目21修复] pcall 加固：CalculateModifierEffect 内部异常不再中断
+			-- RealizeActivePoliciesRows 的填充循环（中断会让卡实例数组半空，动画帧
+			-- EnsureRowContentsFit 踩空崩 1514）；异常打 MPT_GovScreen: 留痕并回退原版行为
+			local bOK, sResult = pcall(RMA.CalculateModifierEffect, "Policy", policyType, 0, nil, nil);
+			if bOK then
+				policyEffect = sResult;
+			else
+				print("MPT_GovScreen: CalculateModifierEffect failed for "..policyType.." -> "..tostring(sResult));
+				policyEffect = "";
+			end
 		end
-		--local sPolicyImpact:string = ( policyEffect == "" and "" ) or policyEffect;	
+		--local sPolicyImpact:string = ( policyEffect == "" and "" ) or policyEffect;
 		cardInstance.Draggable:SetToolTipString(cardName .. "[NEWLINE][NEWLINE]" .. policy.Description .. (policyEffect == "" and "" or "[NEWLINE][NEWLINE]" .. policyEffect));
-		if policyEffect ~= "" then
-			cardInstance.EffectContainer:SetHide(false);
-			cardInstance.Effect:SetText(policyEffect);
-			cardInstance.Effect:SetToolTipString(policyEffect);
-		else
-			cardInstance.EffectContainer:SetHide(true);
+		-- [MPT 条目21修复] EffectContainer nil 防御：控件来自 GovernmentScreen.xml 的 ARISTOS
+		-- 补丁块，若 XML 同名覆盖未生效/被其它 mod 改掉则为 nil——回退原版行为不崩
+		if cardInstance.EffectContainer ~= nil then
+			if policyEffect ~= "" then
+				cardInstance.EffectContainer:SetHide(false);
+				cardInstance.Effect:SetText(policyEffect);
+				cardInstance.Effect:SetToolTipString(policyEffect);
+			else
+				cardInstance.EffectContainer:SetHide(true);
+			end
 		end
 	else
 		cardInstance.Draggable:SetToolTipString(cardName .. "[NEWLINE][NEWLINE]" .. policy.Description);
-		cardInstance.EffectContainer:SetHide(true);
+		if cardInstance.EffectContainer ~= nil then cardInstance.EffectContainer:SetHide(true); end
 	end
 	-- END ARISTOS
 	
@@ -1511,14 +1524,23 @@ function EnsureRowContentsFit( nRowIndex:number, tStack:table )
 
 	for _,tSlotData in ipairs(tSlotArray) do
 		local inst :table = m_ActiveCardInstanceArray[tSlotData.GC_SlotIndex+1];
-		inst.Content:SetOffsetX( nextX );
+		-- [MPT 条目21修复] 实例缺失防御：动画帧回调可能落在实例填充窗口外（填充循环中断/
+		-- 槽位数据先于实例重建），缺实例跳过该槽布局不崩；MPT_GovScreen: 定位 print（实测确认后删）
+		if inst ~= nil then
+			inst.Content:SetOffsetX( nextX );
+		else
+			print("MPT_GovScreen: EnsureRowContentsFit missing card instance, row="..tostring(nRowIndex).." slot="..tostring(tSlotData.GC_SlotIndex).." arrayCount="..tostring(table.count(m_ActiveCardInstanceArray)));
+		end
 		nextX = nextX + step;
 	end
 end
 function EnsureRowContentsOverlapProperly( nRowIndex:number, tStack:table )
 	for _,tSlotData in ipairs(m_ActivePolicyRows[nRowIndex].SlotArray) do
 		local inst :table = m_ActiveCardInstanceArray[tSlotData.GC_SlotIndex+1];
-		inst.Content:ChangeParent( inst.Content:GetParent() );
+		-- [MPT 条目21修复] 同上实例缺失防御（当前无调用点，防御顺手补齐）
+		if inst ~= nil then
+			inst.Content:ChangeParent( inst.Content:GetParent() );
+		end
 	end
 end
 
@@ -2642,6 +2664,10 @@ end
 
 -- ===========================================================================
 function OnRowAnimCallback()
+	-- [MPT 条目21修复] 界面隐藏时的动画回调直接跳过：开局加载阶段 RowAnim 亦可能触发
+	-- 本回调，此时政策卡实例数组尚未填充，EnsureRowContentsFit 会踩空（条目21修复
+	-- 日志实证 1514 崩在 OnLoadGameViewStateDone 之后、界面未打开时）
+	if ContextPtr:IsHidden() then return; end
 	function lerp(a:number, b:number, t:number)
 		return a * (1-t) + (b*t);
 	end
