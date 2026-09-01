@@ -1588,11 +1588,13 @@ local MPT_ExtractCache:table = {};	-- [ePlayerID] = { [ResourceType]=提取中�
 local MPT_ModIndexCache:table = {};
 
 -- 取 GameInfo 行的本地化名，缺失/无文本返回 nil
+-- [MPT 条目21修复] tTable/row 不可写 :table 标注——GameInfo[sTable] 动态键访问返回 userdata，
+-- 引擎对带标注赋值做运行时类型检查报 Type check failed（Lua.log 实证，同条目18 cfunction 同族）
 local function MPT_GetGameInfoName(sTable:string, sType:string)
 	if sType == nil then return nil; end
-	local tTable:table = GameInfo[sTable];
+	local tTable = GameInfo[sTable];
 	if tTable == nil then return nil; end
-	local row:table = tTable[sType];
+	local row = tTable[sType];
 	if row == nil or row.Name == nil then return nil; end
 	local s:string = Locale.Lookup(row.Name);
 	if s == nil or #s == 0 or s == row.Name then return nil; end	-- 引擎同款判定：Lookup 未定义返回原 tag
@@ -1635,7 +1637,7 @@ local function MPT_GetExtractionCount(ePlayerID:number, sResourceType:string)
 	if tCache == nil then
 		tCache = {};
 		local pPlayer:table = Players[ePlayerID];
-		local pResources:table = pPlayer and pPlayer:GetResources();
+		local pResources = pPlayer and pPlayer:GetResources();
 		if pResources ~= nil then
 			for i:number = 0, Map.GetPlotCount() - 1 do
 				local plot:table = Map.GetPlotByIndex(i);
@@ -1800,44 +1802,10 @@ end;
 -- 语义计算（如资源 = Amount × 玩家提取中地块数）。
 -- ----------------------------------------------------------------------------
 
--- 生产加成族（9 种）
-MPT_LineHandlers["EFFECT_ADJUST_UNIT_TAG_ERA_PRODUCTION"] = function(tMod)
-	local sEra:string = "";
-	if tMod.Arguments.EraType ~= nil and tMod.Arguments.EraType ~= "NO_ERA" then
-		local sName:string = MPT_GetGameInfoName("Eras", tMod.Arguments.EraType);
-		if sName then sEra = sName.." "; end
-	end
-	local sClass:string = MPT_GetGameInfoName("UnitPromotionClasses", tMod.Arguments.UnitPromotionClass) or tostring(tMod.Arguments.UnitPromotionClass or "");
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..sEra..sClass..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_UNIT_PRODUCTION"] = function(tMod)
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Units", tMod.Arguments.UnitType) or "")..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_BUILDING_PRODUCTION"] = function(tMod)
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Buildings", tMod.Arguments.BuildingType) or "")..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_DISTRICT_PRODUCTION"] = function(tMod)
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Districts", tMod.Arguments.DistrictType) or "")..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_PROJECT_PRODUCTION"] = function(tMod)
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Projects", tMod.Arguments.ProjectType) or "")..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_ALL_PROJECTS_PRODUCTION"] = function(tMod)
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_PROJECTS");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_SPACE_RACE_PROJECTS_PRODUCTION"] = function(tMod)
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_SPACE_PROJECTS");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_ALL_UNIT_PRODUCTION_MODIFIER"] = function(tMod)
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_ALL_UNITS");
-end;
-MPT_LineHandlers["EFFECT_ADJUST_WONDER_ERA_PRODUCTION"] = function(tMod)
-	local sStart:string = MPT_GetGameInfoName("Eras", tMod.Arguments.StartEra) or "";
-	local sEnd:string = MPT_GetGameInfoName("Eras", tMod.Arguments.EndEra) or "";
-	local sRange:string = "";
-	if sStart ~= "" and sEnd ~= "" then sRange = " ("..sStart.."~"..sEnd..")"; end
-	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_WONDER")..sRange;
-end;
+-- [MPT 条目21修复] 生产加成族 9 种的旧静态行 handler 已删除（迁移至上方 MPT_ImpactHandlers
+-- 实际产量通道）；此处残留会双重注册同名键——hook② 因 LineHandlers 命中而短路实际计算，
+-- 且静态行经 GameInfo[sTable] 动态键取名返回 userdata，撞 :table 标注类型检查即崩
+-- （Lua.log 实证 POLICY_MILITARY_FIRST: Type check failed: expected 'table', got 'userdata'）
 
 -- 资源数量族（动态计算：实际数量 = Amount × 玩家提取中地块数——IsResourceExtractableAt
 -- 引擎判定含被区域/奇观覆盖的地块；无提取地块时不显示该行）
@@ -1855,7 +1823,7 @@ MPT_LineHandlers["EFFECT_ADJUST_CITY_STATE_TRADE_ROUTE_FLAT_YIELD"] = function(t
 	if pPlayer == nil or n == 0 then return ""; end
 	local iCount:number = 0;
 	for _,pCity in pPlayer:GetCities():Members() do
-		local pTrade:table = pCity:GetTrade();
+		local pTrade = pCity:GetTrade();	-- [MPT 条目21修复] 接口对象去 :table 标注（userdata 风险）
 		if pTrade ~= nil then
 			for _,route in ipairs(pTrade:GetOutgoingRoutes()) do
 				local pDest:table = Players[route.DestinationCityPlayer];
@@ -1923,14 +1891,14 @@ MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod, ePlayerID
 	if sClass == nil or n == 0 or ePlayerID == nil then return ""; end
 	local classDef:table = GameInfo.GreatPersonClasses[sClass];
 	local pPlayer:table = Players[ePlayerID];
-	local pGP:table = pPlayer and pPlayer:GetGreatPeoplePoints();
+	local pGP = pPlayer and pPlayer:GetGreatPeoplePoints();
 	if classDef == nil or pGP == nil then return ""; end
 	local idx:number = classDef.Index;
 	local iPerTurn:number = pGP:GetPointsPerTurn(idx) or 0;
 	local iTotal:number = pGP:GetPointsTotal(idx) or 0;
 	-- 本 class 未招募个人的最低招募成本（点数池逐人递增，最低者即下一位）
 	local iNextCost:number = nil;
-	local pGreatPeople:table = Game.GetGreatPeople();
+	local pGreatPeople = Game.GetGreatPeople();
 	if pGreatPeople ~= nil then
 		for _,entry in ipairs(pGreatPeople:GetTimeline()) do
 			if entry.Claimant == nil and entry.Individual ~= nil then
@@ -3510,4 +3478,4 @@ function Initialize()
 end
 Initialize();
 
-print("OK loaded Real Modifier Analysis.lua from Better Report Screen");
+print("OK loaded Real Modifier Analysis.lua from Better Report Screen");
