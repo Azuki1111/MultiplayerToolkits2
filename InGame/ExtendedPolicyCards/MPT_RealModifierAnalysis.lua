@@ -2004,11 +2004,14 @@ function MPT_GetModifierLine(tMod:table, ePlayerID:number)
 			sLine = nil;
 		end
 	end
+	-- [MPT 条目21修复] 动态类不进缓存但必须返回结果——上轮重构误将 return sLine 包进
+	-- if not bDynamic 块，动态行（资源/商路/建筑支持/免费资源/伟人点）计算正确却在函数尾
+	-- 被无条件 return nil 丢弃（诊断 print 实证数值正确而卡面无行）
+	if sLine ~= nil and sLine ~= "" then
+		if not bDynamic then MPT_LineCache[tMod.ModifierId] = sLine; end
+		return sLine;
+	end
 	if not bDynamic then
-		if sLine ~= nil and sLine ~= "" then
-			MPT_LineCache[tMod.ModifierId] = sLine;
-			return sLine;
-		end
 		MPT_LineCache[tMod.ModifierId] = "";	-- 已知类型但无行（静默/参数异常），不再走 Unknown
 	end
 	return nil;
