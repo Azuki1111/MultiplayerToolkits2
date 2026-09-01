@@ -1811,7 +1811,9 @@ end;
 -- 引擎判定含被区域/奇观覆盖的地块；无提取地块时不显示该行）
 MPT_LineHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = function(tMod, ePlayerID)
 	local sRes:string = tMod.Arguments.ResourceType or "";
-	local n:number = tonumber(tMod.Arguments.Amount or 0) * MPT_GetExtractionCount(ePlayerID, sRes);
+	local iCount:number = MPT_GetExtractionCount(ePlayerID, sRes);
+	local n:number = tonumber(tMod.Arguments.Amount or 0) * iCount;
+	print("MPT_RMA: resource line "..sRes.." amount="..tostring(tMod.Arguments.Amount).." extractCount="..tostring(iCount).." player="..tostring(ePlayerID));	-- 诊断 print，定位后删
 	if n == 0 then return ""; end
 	return MPT_Sign(n).." [ICON_"..sRes.."]";
 end;
@@ -1990,7 +1992,17 @@ function MPT_GetModifierLine(tMod:table, ePlayerID:number)
 	-- nil=未识别走原链——这里只调用函数形态
 	local pHandler = MPT_LineHandlers[tMod.EffectType];
 	if type(pHandler) == "function" then
-		sLine = pHandler(tMod, ePlayerID);	-- handler 异常按 nil 兜底，不影响原链
+		-- [MPT 条目21修复] 动态计算统一用本地玩家：GovernmentScreen 的 ePlayerID 是 EPC 原版
+		-- 占位硬编码 0，多人下本地玩家通常非 0 号位，按 0 计算资源/城市数据会整行静默
+		local eCalcPlayerID:number = Game.GetLocalPlayer();
+		-- [MPT 条目21修复] handler 调用 pcall 化：单个动态 handler 异常只静默该行，不拖垮整卡收益条
+		local bOk, sResult = pcall(pHandler, tMod, eCalcPlayerID);
+		if bOk then
+			sLine = sResult;
+		else
+			print("MPT_RMA: line handler failed for "..tostring(tMod.EffectType).." -> "..tostring(sResult));
+			sLine = nil;
+		end
 	end
 	if not bDynamic then
 		if sLine ~= nil and sLine ~= "" then
@@ -3478,4 +3490,5 @@ function Initialize()
 end
 Initialize();
 
-print("OK loaded Real Modifier Analysis.lua from Better Report Screen");
+print("OK loaded Real Modifier Analysis.lua from Better Report Screen");
+
