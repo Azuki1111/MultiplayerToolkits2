@@ -1043,28 +1043,32 @@ function RealizePolicyCard( cardInstance:table, policyType:string )
 		-- [MPT 条目21] RMA 函数 nil 防御：RMA 上下文未加载（ExposedMembers.RMA 为空表）时
 		-- 回退空效果串走原版卡片行为；1.67 直接调用，RMA 缺席即崩 RealizePolicyCard
 		-- local policyEffect = RMA.CalculateModifierEffect("Policy", policyType, 0, nil, nil);
+		-- [MPT 条目21用户裁决] 卡面 Effect 不换行：第 1 返回值为分隔符串接的单行版（卡面
+		-- SetText 用），第 5 返回值为 [NEWLINE] 分行版（两处 tooltip 用）
 		local policyEffect :string = "";
+		local policyEffectNL :string = "";
 		if RMA.CalculateModifierEffect ~= nil then
 			-- [MPT 条目21修复] pcall 加固：CalculateModifierEffect 内部异常不再中断
 			-- RealizeActivePoliciesRows 的填充循环（中断会让卡实例数组半空，动画帧
 			-- EnsureRowContentsFit 踩空崩 1514）；异常打 MPT_GovScreen: 留痕并回退原版行为
-			local bOK, sResult = pcall(RMA.CalculateModifierEffect, "Policy", policyType, 0, nil, nil);
+			local bOK, sResult, _, _, _, sResultNL = pcall(RMA.CalculateModifierEffect, "Policy", policyType, 0, nil, nil);
 			if bOK then
 				policyEffect = sResult;
+				policyEffectNL = sResultNL or sResult;	-- 无第 5 返回值（异常旧串）时回退同串
 			else
 				print("MPT_GovScreen: CalculateModifierEffect failed for "..policyType.." -> "..tostring(sResult));
 				policyEffect = "";
 			end
 		end
 		--local sPolicyImpact:string = ( policyEffect == "" and "" ) or policyEffect;
-		cardInstance.Draggable:SetToolTipString(cardName .. "[NEWLINE][NEWLINE]" .. policy.Description .. (policyEffect == "" and "" or "[NEWLINE][NEWLINE]" .. policyEffect));
+		cardInstance.Draggable:SetToolTipString(cardName .. "[NEWLINE][NEWLINE]" .. policy.Description .. (policyEffectNL == "" and "" or "[NEWLINE][NEWLINE]" .. policyEffectNL));
 		-- [MPT 条目21修复] EffectContainer nil 防御：控件来自 GovernmentScreen.xml 的 ARISTOS
 		-- 补丁块，若 XML 同名覆盖未生效/被其它 mod 改掉则为 nil——回退原版行为不崩
 		if cardInstance.EffectContainer ~= nil then
 			if policyEffect ~= "" then
 				cardInstance.EffectContainer:SetHide(false);
 				cardInstance.Effect:SetText(policyEffect);
-				cardInstance.Effect:SetToolTipString(policyEffect);
+				cardInstance.Effect:SetToolTipString(policyEffectNL);
 			else
 				cardInstance.EffectContainer:SetHide(true);
 			end

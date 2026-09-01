@@ -27,10 +27,11 @@
 --     Amount%，城市集合自动跨城求和，显示为真实产量数字（+X [生产图标]）
 --   ②资源积累 = Amount × 玩家提取中地块数（Map 全图遍历 + IsResourceExtractableAt 引擎
 --     判定，含被区域/奇观覆盖）；每城免费资源 = Amount × 城市数；每座建筑支持 = Favor ×
---     建筑数；对城邦商路 = Amount × 对城邦商路条数；伟人点 = Amount × 至下一位招募回合数
---     （上限为剩余缺口；池经 Game.GetGreatPeople():GetTimeline()，点数接口同原版
---     GreatPeoplePopup 800-801 行）——五类登记 MPT_DynamicHandlers 实时计算不缓存，
---     RefreshBaseData 时失效行/提取缓存；无收益（如无提取地块/无对城邦商路）时整行不显示
+--     建筑数；对城邦商路 = Amount × 对城邦商路条数——四类登记 MPT_DynamicHandlers 实时
+--     计算不缓存，RefreshBaseData 时失效行/提取缓存；无收益（如无提取地块/无对城邦商路）
+--     时整行不显示；伟人点数经用户裁决回退静态贡献点数显示（+n [GPP 图标]，不做池计算）
+--   ③卡面 Effect 不换行（用户裁决）：多行收益卡面以 LOC_MPT_EPC_SEPARATOR 串接为单行
+--     （第 1 返回值），[NEWLINE] 分行版为第 5 返回值供 tooltip
 -- ===========================================================================
 -- print("Loading Real Modifier Analysis.lua from Better Report Screen version "..GlobalParameters.BRS_VERSION_MAJOR.."."..GlobalParameters.BRS_VERSION_MINOR);
 -- ===========================================================================
@@ -1793,13 +1794,16 @@ MPT_ImpactHandlers["EFFECT_ADJUST_WONDER_ERA_PRODUCTION"] = function(tMod, tSubj
 end;
 
 -- ----------------------------------------------------------------------------
--- MPT_LineHandlers 注册区：每条目 function(tMod, ePlayerID) -> string（单行，卡面 [NEWLINE] 分隔）
+-- MPT_LineHandlers 注册区：每条目 function(tMod, ePlayerID) -> string（单行）
 -- [MPT 条目21用户裁决] 仅保留「明确的资源数量加成/产出加成(金/信/科/文/产/食/外交支持)/
 -- 伟人点数/生产对象的生产力加成」；费用折扣/旅游/移动/经验/战力/间谍/厌战/劫掠百分比/
 -- 使者倍率/开关定性类全部静默化（不显示不红字），显示行不描述回合（/每回合 字样已除）。
 -- [MPT 条目21用户裁决·动态计算] 数值随局势变化的类型（资源提取/城邦商路/建筑支持/免费
--- 资源/伟人点总计）登记 MPT_DynamicHandlers：不进缓存实时计算，实际数量按 modifier 真实
--- 语义计算（如资源 = Amount × 玩家提取中地块数）。
+-- 资源）登记 MPT_DynamicHandlers：不进缓存实时计算，实际数量按 modifier 真实语义计算
+-- （如资源 = Amount × 玩家提取中地块数）。
+-- [MPT 条目21用户裁决] 卡面 Effect 不换行：CalculateModifierEffect 把多行收益以
+-- LOC_MPT_EPC_SEPARATOR 分隔符串接为单行（第 1 返回值），[NEWLINE] 分行版走第 5 返回值
+-- 供 tooltip。
 -- ----------------------------------------------------------------------------
 
 -- [MPT 条目21修复] 生产加成族 9 种的旧静态行 handler 已删除（迁移至上方 MPT_ImpactHandlers
@@ -1813,7 +1817,6 @@ MPT_LineHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = functi
 	local sRes:string = tMod.Arguments.ResourceType or "";
 	local iCount:number = MPT_GetExtractionCount(ePlayerID, sRes);
 	local n:number = tonumber(tMod.Arguments.Amount or 0) * iCount;
-	print("MPT_RMA: resource line "..sRes.." amount="..tostring(tMod.Arguments.Amount).." extractCount="..tostring(iCount).." player="..tostring(ePlayerID));	-- 诊断 print，定位后删
 	if n == 0 then return ""; end
 	return MPT_Sign(n).." [ICON_"..sRes.."]";
 end;
@@ -1884,46 +1887,18 @@ MPT_KnownEffects["EFFECT_ADJUST_PLAYER_TRADE_ROUTE_TOURISM_MODIFIER"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_PLAYER_OVERALL_TOURISM_REDUCTION"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_UNIT_ROCK_BAND_TOURISM_BOMB_VALUE_PEACE"] = true;
 
--- 伟人点数（动态计算：总计 = Amount × 至下一位招募的回合数，上限为剩余缺口——
--- 池数据经 Game.GetGreatPeople():GetTimeline() 取未招募个人的最低招募成本，
--- 点数接口 GetPointsTotal/GetPointsPerTurn 同原版 GreatPeoplePopup 800-801 行）
-MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod, ePlayerID)
+-- 伟人点数（[MPT 条目21用户裁决] 仅显示静态贡献点数：Amount 本身即明确的点数值——
+-- 原「总计 = Amount × 至下一位招募回合数（上限剩余缺口）」在卡为唯一点数来源时恒等于
+-- 距下一位还差的点数，数字与卡强度无关（+1/+2 卡显示相同数字），按用户裁决整体删除池
+-- 计算，回归缓存静态类。API 核实留档备查：池条目 GetTimeline()（未招募 Claimant==nil、
+-- 最低 Cost 即下一位）、GetPointsTotal/GetPointsPerTurn(class Index)，同原版
+-- GreatPeoplePopup 696-801 行，用法无误、弃用纯因显示语义）
+MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod)
 	local sClass:string = tMod.Arguments.GreatPersonClassType;
 	local n:number = tonumber(tMod.Arguments.Amount or 0);
-	if sClass == nil or n == 0 or ePlayerID == nil then return ""; end
-	local classDef:table = GameInfo.GreatPersonClasses[sClass];
-	local pPlayer:table = Players[ePlayerID];
-	local pGP = pPlayer and pPlayer:GetGreatPeoplePoints();
-	if classDef == nil or pGP == nil then return ""; end
-	local idx:number = classDef.Index;
-	local iPerTurn:number = pGP:GetPointsPerTurn(idx) or 0;
-	local iTotal:number = pGP:GetPointsTotal(idx) or 0;
-	-- 本 class 未招募个人的最低招募成本（点数池逐人递增，最低者即下一位）
-	local iNextCost:number = nil;
-	local pGreatPeople = Game.GetGreatPeople();
-	if pGreatPeople ~= nil then
-		for _,entry in ipairs(pGreatPeople:GetTimeline()) do
-			if entry.Claimant == nil and entry.Individual ~= nil then
-				local ind:table = GameInfo.GreatPersonIndividuals[entry.Individual];
-				if ind ~= nil and ind.GreatPersonClassType == sClass then
-					local iCost:number = tonumber(entry.Cost or 0);
-					if iCost > 0 and (iNextCost == nil or iCost < iNextCost) then iNextCost = iCost; end
-				end
-			end
-		end
-	end
-	if iNextCost ~= nil and iNextCost > iTotal then
-		-- 到下一位被招募前本 modifier 累计贡献 = Amount × 剩余回合数，上限为剩余缺口
-		local iRemaining:number = iNextCost - iTotal;
-		local iTurns:number = math.max(1, math.ceil(iRemaining / math.max(1, iPerTurn + n)));
-		local iGain:number = math.min(n * iTurns, iRemaining);
-		if iGain > 0 then
-			return MPT_Sign(iGain).." [ICON_"..sClass.."] ("..MPT_Phrase("LOC_MPT_EPC_TO_NEXT")..")";
-		end
-	end
-	return MPT_Sign(n).." [ICON_"..sClass.."]";	-- 池信息不可得/进度已过：退回固定点数
+	if sClass == nil or n == 0 then return ""; end
+	return MPT_Sign(n).." [ICON_"..sClass.."]";
 end;
-MPT_DynamicHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = true;
 MPT_LineHandlers["EFFECT_ADJUST_INFLUENCE_POINTS_PER_TURN"] = function(tMod)
 	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_INFLUENCE");
 end;
@@ -3316,11 +3291,13 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 		--if tTotalImpact[yield] ~= 0 then sTotalImpact = sTotalImpact..(sTotalImpact=="" and "" or " ")..GetYieldString("YIELD_"..yield, tTotalImpact[yield]); end
 	--end
 	local sTotalImpact:string = YieldTableGetInfo(tTotalImpact);
-	-- [MPT 条目21优化] 扩展类型的文本行拼入卡面串（[NEWLINE] 分行，卡面 Effect 为
-	-- auto 高多行 Label 自然分行显示；tooltip 的 tToolTip 已含同等信息）
+	-- [MPT 条目21用户裁决] 卡面 Effect 不换行：多行收益在卡面以分隔符串接为单行
+	-- （第 1 返回值）；[NEWLINE] 分行版走第 5 返回值供 tooltip（卡面/拖拽两处 SetToolTipString）
+	local sTotalImpactNL:string = sTotalImpact;
 	if #tMPTLines > 0 then
-		local sMPT:string = table.concat(tMPTLines, "[NEWLINE]");
-		sTotalImpact = (sTotalImpact ~= "" and sTotalImpact.."[NEWLINE]" or "")..sMPT;
+		local sSep:string = MPT_Phrase("LOC_MPT_EPC_SEPARATOR");
+		sTotalImpactNL = (sTotalImpact ~= "" and sTotalImpact.."[NEWLINE]" or "")..table.concat(tMPTLines, "[NEWLINE]");
+		sTotalImpact = (sTotalImpact ~= "" and sTotalImpact..sSep or "")..table.concat(tMPTLines, sSep);
 	end
 	if sTotalImpact == "" then
 		--sTotalImpact = "-"; -- just to show that there's nothing; empty string could be misleading
@@ -3334,7 +3311,7 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 	--TimerTick("All modifiers for object "..sObject..":"..sObjectType); -- debug
 	-- done!
 	--for _,st in ipairs(tToolTip) do print(sObjectType, string.len(st), st); end -- debug
-	return sTotalImpact, tTotalImpact, table.concat(tToolTip, "[NEWLINE]"), bUnknownEffect;
+	return sTotalImpact, tTotalImpact, table.concat(tToolTip, "[NEWLINE]"), bUnknownEffect, sTotalImpactNL;
 end
 
 ------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 -- 条目21优化：政策卡收益显示（EPC）显示行的自定义措辞（无参纯文本 tag，Lua .. 拼接组装行）
--- [MPT 条目21用户裁决] 显示类型收敛后仅余 12 个短语（对象名/类别/时代/资源/伟人类走原版
--- LOC tag 自动本地化）；回合描述（/每回合）已按用户要求整体去除
+-- [MPT 条目21用户裁决] 显示类型收敛后共 13 个短语（对象名/类别/时代/资源/伟人类走原版
+-- LOC tag 自动本地化）；回合描述（/每回合）已按用户要求整体去除；SEPARATOR 为卡面多行
+-- 收益的单行串接分隔符（卡面 Effect 不换行，tooltip 走 [NEWLINE] 分行版）
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 	('LOC_MPT_EPC_PRODUCTION',			'zh_Hans_CN',	'生产力'),
 	('LOC_MPT_EPC_PROJECTS',			'zh_Hans_CN',	'项目'),
@@ -14,4 +15,4 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 	('LOC_MPT_EPC_INFLUENCE',			'zh_Hans_CN',	'影响力点'),
 	('LOC_MPT_EPC_ALLIANCE',			'zh_Hans_CN',	'联盟点'),
 	('LOC_MPT_EPC_BUILD_CHARGES',		'zh_Hans_CN',	'建造者次数'),
-	('LOC_MPT_EPC_TO_NEXT',				'zh_Hans_CN',	'至下一位');
+	('LOC_MPT_EPC_SEPARATOR',			'zh_Hans_CN',	'，');
