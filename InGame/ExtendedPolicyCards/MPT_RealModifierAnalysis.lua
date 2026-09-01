@@ -36,9 +36,10 @@
 --   ④伟人点图标用 GreatPersonClasses.IconString（[ICON_GreatArtist] 等短形式文本内联
 --     token，原版政策描述同款）——ICON_GREAT_PERSON_CLASS_* 仅 UI 图集注册、无字体字形，
 --     文本内联渲染为原文（卡面实测）
---   ⑤卡面 Effect 不换行（用户裁决）：多行收益卡面串接为单行（第 1 返回值）——接缝前段
---     以 [ICON_..] 结尾仅补空格（图标天然分隔）、否则以 LOC_MPT_EPC_SEPARATOR 串接；
---     [NEWLINE] 分行版为第 5 返回值供 tooltip
+--   ⑤卡面 Effect 不换行（用户裁决）：多行收益卡面串接为单行（第 1 返回值）——icon 前置
+--     的收益族段（资源行同原版产量串 GetYieldString：icon 紧贴数字、段间空格）与前段
+--     [ICON_..] 结尾时补空格，否则以 LOC_MPT_EPC_SEPARATOR 串接；[NEWLINE] 分行版为
+--     第 5 返回值供 tooltip
 --   ⑥影响力点/联盟点/建造者次数不显示（用户裁决，MPT_KnownEffects 静默不红字）
 -- ===========================================================================
 -- print("Loading Real Modifier Analysis.lua from Better Report Screen version "..GlobalParameters.BRS_VERSION_MAJOR.."."..GlobalParameters.BRS_VERSION_MINOR);
@@ -1637,10 +1638,12 @@ local function MPT_Phrase(sTag:string)
 	return MPT_TryLocale(sTag) or sTag;
 end
 
--- [MPT 条目21用户裁决] 卡面单行串接两段：接缝处前段以 [ICON_...] 结尾时图标即天然分隔
--- （仅补空格，不加逗号），否则以 LOC_MPT_EPC_SEPARATOR 分隔符串接
+-- [MPT 条目21用户裁决] 卡面单行串接两段：①后段以 [ICON_ 开头（icon 前置的收益族行，
+-- 同原版产量串 GetYieldString 段间风格）→ 空格；②前段以 [ICON_..] 结尾（图标即天然
+-- 分隔）→ 空格；否则以 LOC_MPT_EPC_SEPARATOR 分隔符串接
 local function MPT_JoinCardSeg(sLeft:string, sRight:string)
 	if sLeft == nil or sLeft == "" then return sRight; end
+	if string.match(sRight or "", "^%[ICON_") then return sLeft.." "..sRight; end
 	if string.match(sLeft, "%[ICON_[^%]]+%]$") then return sLeft.." "..sRight; end
 	return sLeft..MPT_Phrase("LOC_MPT_EPC_SEPARATOR")..sRight;
 end
@@ -1834,7 +1837,7 @@ MPT_LineHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = functi
 	local iCount:number = MPT_GetExtractionCount(ePlayerID, sRes);
 	local n:number = tonumber(tMod.Arguments.Amount or 0) * iCount;
 	if n == 0 then return ""; end
-	return MPT_Sign(n).." [ICON_"..sRes.."]";
+	return "[ICON_"..sRes.."]"..MPT_Sign(n);	-- [MPT 条目21用户裁决] icon 前数字后紧贴，同原版产量串 GetYieldString
 end;
 MPT_DynamicHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = true;
 -- 对城邦商路平产（动态计算：实际数量 = Amount × 当前对城邦商路条数，无商路时不显示）
@@ -1888,7 +1891,7 @@ MPT_LineHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = function(tMod, ePlaye
 	if n == 0 then return ""; end
 	local nSubs:number = nSubjects or 0;
 	if nSubs <= 0 then return ""; end
-	return MPT_Sign(n * nSubs).." [ICON_"..sRes.."]";
+	return "[ICON_"..sRes.."]"..MPT_Sign(n * nSubs);	-- [MPT 条目21用户裁决] icon 前数字后紧贴，同原版产量串 GetYieldString
 end;
 MPT_DynamicHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = true;
 -- 静默化：购地/单位/全军购买费用、升级金费/资源折扣、新建街区获金、击杀战利、劫掠收益、
