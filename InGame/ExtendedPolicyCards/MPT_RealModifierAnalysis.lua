@@ -1833,7 +1833,11 @@ function MPT_GetModifierLine(tMod:table)
 		return sCached;
 	end
 	local sLine:string = nil;
-	local pHandler:function = MPT_LineHandlers[tMod.EffectType];
+	-- [MPT 条目21修复] 不能写 pHandler:function——标注位要求类型名而 function 是保留字，
+	-- 解析器报 <name> expected near 'function' 致整个 chunk 中止（条目18 cfunction/ifunction 同族坑）；
+	-- pHandler 仅被调用不参与比较，无标注即无运行时类型检查，不必写 ifunction
+	-- local pHandler:function = MPT_LineHandlers[tMod.EffectType];
+	local pHandler = MPT_LineHandlers[tMod.EffectType];
 	if pHandler ~= nil then
 		sLine = pHandler(tMod);	-- handler 异常按 nil 兜底，不影响原链
 	end
@@ -3079,7 +3083,10 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 	-- [MPT 条目21优化] 全表扫描 → 懒索引（见 MPT_GetObjectModifierIds；留痕：原循环
 	-- for mod in GameInfo[sModifiersTable]() do ... 移入索引器，含 ModifierId/ModifierID 兼容）
 	local tModIds:table = MPT_GetObjectModifierIds(sModifiersTable, sObjectTypeField, sObjectType);
-	for _,sModifierId:string in ipairs(tModIds) do
+	-- [MPT 条目21修复] 泛型 for 循环变量不带类型标注——原版 UI 无泛型 for 标注先例
+	-- （数值 for 的 for i:number= 有先例，泛型未验证），不冒险
+	-- for _,sModifierId:string in ipairs(tModIds) do
+	for _,sModifierId in ipairs(tModIds) do
 		--if mod[sObjectTypeField] == sObjectType then
 			-- stupid Firaxis, some fields are named ModifierId and some ModifierID (sic!)
 			-- local sModifierId:string = mod.ModifierId;
