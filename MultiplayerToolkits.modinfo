@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>61</Version>
+		<Version>62</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -815,6 +815,64 @@
 			<File>InGame/ExtendedPolicyCards/ExtendedPolicyCards_zh_Hans_CN.sql</File>
 			<File>InGame/ExtendedPolicyCards/ExtendedPolicyCards_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目22：商路界面增强（BTS = Better Trade Screen Lite，Astog 原作，移植 1.67 BTS/ 目录）
+			商路总览（三页签/分组/多级排序/筛选/真实收益/精确剩余回合/旅游业绩）+ 商路目的地
+			选择面板（候选列表/排序/筛选/透镜）+ 商人传送面板 + TradeSupport 共享库（缓存/Tracker）。
+			原版四个文件均 Base 单版本无 DLC 变体（已验证）→ 整文件覆盖，三个 UI 上下文走
+			ReplaceUIScript 100000 + TradeSupport.lua 纯 include 遮蔽（被两个面板上下文按名 include，
+			文件名必须保持原名），统一 ImportFiles 100010（同条目15/17/21 模式）；与 1.67 同装时
+			压制其 BTS_IMPORT_FILES(11011)，本 mod 版本生效。
+			核心修复（收益不及时刷新）：1.67 每回合只建一次收益缓存，联机同时回合下开面板前的
+			政策/建筑/贸易站/宣战议和变化全部显示旧值 → 打开面板即清缓存 + 政策变更补清缓存 +
+			新增建筑/区域/商路/宣战议和/新城失效事件（事件名均经原版 UI 使用验证）。
+			优化与裁剪（详见各 Lua 文件头横幅）：原版 2.0 弹窗互斥三事件回迁（CloseIfPopups/ReOpen/
+			WorldInput_MakeTradeRouteDestination + IsInGame 守卫）；1.67 bug 修复（上次商路预选引用
+			未定义全局、DeepLogic 已揭示格永不清空、单数产量函数非缓存分支未定义标识符、商路
+			Tracker 持久化 key 笔误）；商人自动化整体剔除（1.67 v1.34 已禁用 UI，底层死代码不移植，
+			含取消自动化按钮与复选框控件）；设置收编条目12 MPT_Settings 表 4 行（ParameterId 沿用
+			1.67 原 key BTS_*，默认值同 BTS：近似路径 0/排序序号 0/全部路径 1/选中显示 1），
+			MPT_Settings_Toggle 广播订阅取代 BTS_SettingsUpdate，1.67 独立设置面板不移植 -->
+		<ReplaceUIScript id="IG_BTS_TradeOverview">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>TradeOverview</LuaContext>
+				<LuaReplace>InGame/BetterTradeScreen/TradeOverview_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ReplaceUIScript id="IG_BTS_TradeRouteChooser">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>TradeRouteChooser</LuaContext>
+				<LuaReplace>InGame/BetterTradeScreen/TradeRouteChooser_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ReplaceUIScript id="IG_BTS_TradeOriginChooser">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>TradeOriginChooser</LuaContext>
+				<LuaReplace>InGame/BetterTradeScreen/TradeOriginChooser_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_BTS_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/BetterTradeScreen/TradeOverview_MPT.lua</File>
+			<File>InGame/BetterTradeScreen/TradeOverview.xml</File>
+			<File>InGame/BetterTradeScreen/TradeRouteChooser_MPT.lua</File>
+			<File>InGame/BetterTradeScreen/TradeRouteChooser.xml</File>
+			<File>InGame/BetterTradeScreen/TradeOriginChooser_MPT.lua</File>
+			<File>InGame/BetterTradeScreen/TradeOriginChooser.xml</File>
+			<File>InGame/BetterTradeScreen/TradeSupport.lua</File>
+		</ImportFiles>
+		<!-- 条目22：商路界面文本（商路总览/选择器/传送面板；仅游戏内消费 → 仅 IG 注册，同条目21） -->
+		<UpdateText id="IG_BTS_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_zh_Hans_CN.sql</File>
+			<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_en_US.sql</File>
+		</UpdateText>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -925,5 +983,14 @@
 		<File>InGame/ExtendedPolicyCards/MPT_RealModifierAnalysis.xml</File>
 		<File>InGame/ExtendedPolicyCards/ExtendedPolicyCards_zh_Hans_CN.sql</File>
 		<File>InGame/ExtendedPolicyCards/ExtendedPolicyCards_en_US.sql</File>
+		<File>InGame/BetterTradeScreen/TradeOverview_MPT.lua</File>
+		<File>InGame/BetterTradeScreen/TradeOverview.xml</File>
+		<File>InGame/BetterTradeScreen/TradeRouteChooser_MPT.lua</File>
+		<File>InGame/BetterTradeScreen/TradeRouteChooser.xml</File>
+		<File>InGame/BetterTradeScreen/TradeOriginChooser_MPT.lua</File>
+		<File>InGame/BetterTradeScreen/TradeOriginChooser.xml</File>
+		<File>InGame/BetterTradeScreen/TradeSupport.lua</File>
+		<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_zh_Hans_CN.sql</File>
+		<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_en_US.sql</File>
 	</Files>
 </Mod>
