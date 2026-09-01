@@ -30,8 +30,9 @@
 --     建筑数；对城邦商路 = Amount × 对城邦商路条数——四类登记 MPT_DynamicHandlers 实时
 --     计算不缓存，RefreshBaseData 时失效行/提取缓存；无收益（如无提取地块/无对城邦商路）
 --     时整行不显示；伟人点数经用户裁决回退静态贡献点数显示（+n [GPP 图标]，不做池计算）
---   ③卡面 Effect 不换行（用户裁决）：多行收益卡面以 LOC_MPT_EPC_SEPARATOR 串接为单行
---     （第 1 返回值），[NEWLINE] 分行版为第 5 返回值供 tooltip
+--   ③卡面 Effect 不换行（用户裁决）：多行收益卡面串接为单行（第 1 返回值）——接缝前段
+--     以 [ICON_..] 结尾仅补空格（图标天然分隔）、否则以 LOC_MPT_EPC_SEPARATOR 串接；
+--     [NEWLINE] 分行版为第 5 返回值供 tooltip
 -- ===========================================================================
 -- print("Loading Real Modifier Analysis.lua from Better Report Screen version "..GlobalParameters.BRS_VERSION_MAJOR.."."..GlobalParameters.BRS_VERSION_MINOR);
 -- ===========================================================================
@@ -1627,6 +1628,14 @@ end
 -- 短语本地化（功能文本 SQL 的无参 tag；失败显示原 tag 便于发现漏文本）
 local function MPT_Phrase(sTag:string)
 	return MPT_TryLocale(sTag) or sTag;
+end
+
+-- [MPT 条目21用户裁决] 卡面单行串接两段：接缝处前段以 [ICON_...] 结尾时图标即天然分隔
+-- （仅补空格，不加逗号），否则以 LOC_MPT_EPC_SEPARATOR 分隔符串接
+local function MPT_JoinCardSeg(sLeft:string, sRight:string)
+	if sLeft == nil or sLeft == "" then return sRight; end
+	if string.match(sLeft, "%[ICON_[^%]]+%]$") then return sLeft.." "..sRight; end
+	return sLeft..MPT_Phrase("LOC_MPT_EPC_SEPARATOR")..sRight;
 end
 
 -- [MPT 条目21用户裁决] 玩家全图「提取中」资源地块计数（含被区域/奇观覆盖的地块——
@@ -3291,13 +3300,15 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 		--if tTotalImpact[yield] ~= 0 then sTotalImpact = sTotalImpact..(sTotalImpact=="" and "" or " ")..GetYieldString("YIELD_"..yield, tTotalImpact[yield]); end
 	--end
 	local sTotalImpact:string = YieldTableGetInfo(tTotalImpact);
-	-- [MPT 条目21用户裁决] 卡面 Effect 不换行：多行收益在卡面以分隔符串接为单行
-	-- （第 1 返回值）；[NEWLINE] 分行版走第 5 返回值供 tooltip（卡面/拖拽两处 SetToolTipString）
+	-- [MPT 条目21用户裁决] 卡面 Effect 不换行：多行收益在卡面串接为单行（第 1 返回值），
+	-- 接缝前段以 [ICON_...] 结尾仅补空格（图标天然分隔）、否则用分隔符（MPT_JoinCardSeg）；
+	-- [NEWLINE] 分行版走第 5 返回值供 tooltip（卡面/拖拽两处 SetToolTipString）
 	local sTotalImpactNL:string = sTotalImpact;
 	if #tMPTLines > 0 then
-		local sSep:string = MPT_Phrase("LOC_MPT_EPC_SEPARATOR");
-		sTotalImpactNL = (sTotalImpact ~= "" and sTotalImpact.."[NEWLINE]" or "")..table.concat(tMPTLines, "[NEWLINE]");
-		sTotalImpact = (sTotalImpact ~= "" and sTotalImpact..sSep or "")..table.concat(tMPTLines, sSep);
+		for _,sLine in ipairs(tMPTLines) do
+			sTotalImpactNL = (sTotalImpactNL ~= "" and sTotalImpactNL.."[NEWLINE]" or "")..sLine;
+			sTotalImpact = MPT_JoinCardSeg(sTotalImpact, sLine);
+		end
 	end
 	if sTotalImpact == "" then
 		--sTotalImpact = "-"; -- just to show that there's nothing; empty string could be misleading

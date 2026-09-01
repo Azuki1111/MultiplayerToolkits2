@@ -1,6 +1,7 @@
 -- Entry 21 optimization: custom phrases for policy card effect lines (no-arg tags, Lua .. concatenation)
 -- [MPT user decision] 13 phrases after narrowing display types; card lines are joined with LOC_MPT_EPC_SEPARATOR
--- (no line breaks on cards, tooltips use the [NEWLINE] variant); turn descriptions ("/per turn") removed entirely
+-- (omitted when the seam ends with an [ICON_..] token - icons separate naturally; no line breaks on cards,
+-- tooltips use the [NEWLINE] variant); turn descriptions ("/per turn") removed entirely
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 	('LOC_MPT_EPC_PRODUCTION',			'en_US',	' Production'),
 	('LOC_MPT_EPC_PROJECTS',			'en_US',	'projects'),
