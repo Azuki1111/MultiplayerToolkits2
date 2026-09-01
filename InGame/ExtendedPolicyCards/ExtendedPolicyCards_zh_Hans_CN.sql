@@ -13,4 +13,5 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 	('LOC_MPT_EPC_RESOURCE_FREE',		'zh_Hans_CN',	'每城免费资源'),
 	('LOC_MPT_EPC_INFLUENCE',			'zh_Hans_CN',	'影响力点'),
 	('LOC_MPT_EPC_ALLIANCE',			'zh_Hans_CN',	'联盟点'),
-	('LOC_MPT_EPC_BUILD_CHARGES',		'zh_Hans_CN',	'建造者次数');
+	('LOC_MPT_EPC_BUILD_CHARGES',		'zh_Hans_CN',	'建造者次数'),
+	('LOC_MPT_EPC_TO_NEXT',				'zh_Hans_CN',	'至下一位');

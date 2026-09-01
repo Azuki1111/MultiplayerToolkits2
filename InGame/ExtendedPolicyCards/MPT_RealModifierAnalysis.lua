@@ -20,6 +20,17 @@
 --   战力/间谍/厌战/劫掠百分比/使者倍率/电力/开关定性类——不显示也不红字）。显示行一律不描述
 --   回合（/每回合 字样删除）。图标 token 以本 mod IconViewer_Data.sql（游戏 XML 全量收集的
 --   4975 个真实图标文本）核对修正：[ICON_Favor]→[ICON_FAVOR]。
+-- [MPT 条目21用户裁决·实际计算] 显示从静态参数升级为实际数值：
+--   ①生产族 9 种走 MPT_ImpactHandlers 产量通道（ApplyEffectAndCalculateImpact 顶部 hook）：
+--     城市当前生产对象（BuildQueue hash 反查四表）匹配判定（含文明替代单位/建筑/区域、
+--     PromotionClass+PrereqTech 时代、Projects.SpaceRace、奇观时代区间）→ 城市生产力 ×
+--     Amount%，城市集合自动跨城求和，显示为真实产量数字（+X [生产图标]）
+--   ②资源积累 = Amount × 玩家提取中地块数（Map 全图遍历 + IsResourceExtractableAt 引擎
+--     判定，含被区域/奇观覆盖）；每城免费资源 = Amount × 城市数；每座建筑支持 = Favor ×
+--     建筑数；对城邦商路 = Amount × 对城邦商路条数；伟人点 = Amount × 至下一位招募回合数
+--     （上限为剩余缺口；池经 Game.GetGreatPeople():GetTimeline()，点数接口同原版
+--     GreatPeoplePopup 800-801 行）——五类登记 MPT_DynamicHandlers 实时计算不缓存，
+--     RefreshBaseData 时失效行/提取缓存；无收益（如无提取地块/无对城邦商路）时整行不显示
 -- ===========================================================================
 -- print("Loading Real Modifier Analysis.lua from Better Report Screen version "..GlobalParameters.BRS_VERSION_MAJOR.."."..GlobalParameters.BRS_VERSION_MINOR);
 -- ===========================================================================
@@ -1570,7 +1581,10 @@ end
 -- ===========================================================================
 local MPT_LineHandlers:table = {};
 local MPT_KnownEffects:table = {};	-- 已识别但不显示的类型（用户裁决，见下方静默注册区）：hook② 跳过原链避免红字 Unknown，不产生显示行
+local MPT_ImpactHandlers:table = {};	-- [MPT 条目21用户裁决] 实际产量计算类（生产族）：返回 tImpact 走产量通道，DecodeModifier 自动跨城求和
+local MPT_DynamicHandlers:table = {};	-- 动态计算类（数值随局势变化）：结果不进 MPT_LineCache 缓存
 local MPT_LineCache:table = {};
+local MPT_ExtractCache:table = {};	-- [ePlayerID] = { [ResourceType]=提取中地块数 }（IsResourceExtractableAt 引擎判定，含被区域/奇观覆盖）
 local MPT_ModIndexCache:table = {};
 
 -- 取 GameInfo 行的本地化名，缺失/无文本返回 nil
@@ -1612,11 +1626,178 @@ local function MPT_Phrase(sTag:string)
 	return MPT_TryLocale(sTag) or sTag;
 end
 
+-- [MPT 条目21用户裁决] 玩家全图「提取中」资源地块计数（含被区域/奇观覆盖的地块——
+-- IsResourceExtractableAt 为引擎提取判定，同 CitySupport GetCityResourceData 547 行用法）。
+-- 结果按 ePlayerID 缓存，RefreshBaseData 时失效重建。
+local function MPT_GetExtractionCount(ePlayerID:number, sResourceType:string)
+	if ePlayerID == nil or sResourceType == nil then return 0; end
+	local tCache:table = MPT_ExtractCache[ePlayerID];
+	if tCache == nil then
+		tCache = {};
+		local pPlayer:table = Players[ePlayerID];
+		local pResources:table = pPlayer and pPlayer:GetResources();
+		if pResources ~= nil then
+			for i:number = 0, Map.GetPlotCount() - 1 do
+				local plot:table = Map.GetPlotByIndex(i);
+				if plot ~= nil then
+					local eResource:number = plot:GetResourceType();
+					if eResource ~= -1 and plot:GetOwner() == ePlayerID and pResources:IsResourceExtractableAt(plot) then
+						local resDef:table = GameInfo.Resources[eResource];
+						if resDef ~= nil then
+							tCache[resDef.ResourceType] = (tCache[resDef.ResourceType] or 0) + 1;
+						end
+					end
+				end
+			end
+		end
+		MPT_ExtractCache[ePlayerID] = tCache;
+	end
+	return tCache[sResourceType] or 0;
+end
+
 -- ----------------------------------------------------------------------------
--- MPT_LineHandlers 注册区：每条目 function(tMod) -> string（单行，卡面 [NEWLINE] 分隔）
+-- [MPT 条目21用户裁决] 实际产量计算族（MPT_ImpactHandlers，走 tImpact 产量通道）：
+-- 对象生产力加成按「城市当前生产对象匹配判定 → 城市生产力 × Amount%」逐城计算，
+-- COLLECTION 城市集合时由 DecodeModifier 的 YieldTableAdd 自动跨城求和。
+-- 当前生产对象经 pBuildQueue:GetCurrentProductionTypeHash() 后按 hash 反查四表
+-- （GameInfo Buildings/Units/Districts/Projects 支持按 hash 索引，同 CitySupport 203-206 行）。
+-- ----------------------------------------------------------------------------
+local function MPT_GetCurrentProduction(pCity:table)
+	local pBuildQueue:table = pCity:GetBuildQueue();
+	if pBuildQueue == nil then return nil; end
+	local hash:number = pBuildQueue:GetCurrentProductionTypeHash();
+	if hash == nil or hash == 0 then return nil; end
+	local buildingDef:table = GameInfo.Buildings[hash];
+	if buildingDef ~= nil then return buildingDef, "BUILDING"; end
+	local unitDef:table = GameInfo.Units[hash];
+	if unitDef ~= nil then return unitDef, "UNIT"; end
+	local districtDef:table = GameInfo.Districts[hash];
+	if districtDef ~= nil then return districtDef, "DISTRICT"; end
+	local projectDef:table = GameInfo.Projects[hash];
+	if projectDef ~= nil then return projectDef, "PROJECT"; end
+	return nil;
+end
+
+-- 单城实际加成：当前生产对象匹配 → 城市生产力 × Amount%（不匹配返回 0）
+local function MPT_CityProductionImpact(tMod:table, pCity:table, pMatch)
+	local def:table, sKind:string = MPT_GetCurrentProduction(pCity);
+	if def == nil or not pMatch(def, sKind) then return 0; end
+	return pCity:GetYield(YieldTypes.PRODUCTION) * (tonumber(tMod.Arguments.Amount or 0) / 100.0);
+end
+
+-- 通用包装：City 主体算单城、Player 主体遍历全部城市求和（COLLECTION_OWNER 类修饰符）
+-- [MPT 条目21修复] pMatch 参数不可写 :function 标注（保留字做类型名，解析期报错，见 1836 行前科）
+local function MPT_ImpactProduction(tMod:table, tSubject:table, sSubjectType:string, pMatch)
+	local tImpact:table = YieldTableNew();
+	if tSubject.SubjectType == SubjectTypes.City and tSubject.City ~= nil then
+		tImpact.PRODUCTION = MPT_CityProductionImpact(tMod, tSubject.City, pMatch);
+	elseif tSubject.SubjectType == SubjectTypes.Player and tSubject.Player ~= nil then
+		local iTotal:number = 0;
+		for _,pCity in tSubject.Player:GetCities():Members() do
+			iTotal = iTotal + MPT_CityProductionImpact(tMod, pCity, pMatch);
+		end
+		tImpact.PRODUCTION = iTotal;
+	else
+		return nil;
+	end
+	return tImpact;
+end
+
+-- 时代判定：单位经 PrereqTech → Technologies.EraType（奇观另经 PrereqCivic → Civics.EraType）
+local function MPT_GetDefEra(def:table)
+	if def.PrereqTech ~= nil then
+		local techDef:table = GameInfo.Technologies[def.PrereqTech];
+		if techDef ~= nil then return techDef.EraType; end
+	end
+	if def.PrereqCivic ~= nil then
+		local civicDef:table = GameInfo.Civics[def.PrereqCivic];
+		if civicDef ~= nil then return civicDef.EraType; end
+	end
+	return nil;
+end
+
+-- 1/9 组：单位生产力（精确 + 文明替代单位）
+MPT_ImpactHandlers["EFFECT_ADJUST_UNIT_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		if sKind ~= "UNIT" then return false; end
+		if def.UnitType == tMod.Arguments.UnitType then return true; end
+		local rep:table = GameInfo.UnitReplaces[def.UnitType];
+		return rep ~= nil and rep.ReplacesUnitType == tMod.Arguments.UnitType;
+	end);
+end;
+-- 兵种+时代生产力（最多使用）：PromotionClass 匹配 + PrereqTech 时代匹配（NO_ERA 不限时代）
+MPT_ImpactHandlers["EFFECT_ADJUST_UNIT_TAG_ERA_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		if sKind ~= "UNIT" or def.PromotionClass ~= tMod.Arguments.UnitPromotionClass then return false; end
+		local sEra:string = tMod.Arguments.EraType;
+		if sEra == nil or sEra == "NO_ERA" then return true; end
+		return MPT_GetDefEra(def) == sEra;
+	end);
+end;
+-- 建筑生产力（含文明替代建筑）
+MPT_ImpactHandlers["EFFECT_ADJUST_BUILDING_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		if sKind ~= "BUILDING" then return false; end
+		if def.BuildingType == tMod.Arguments.BuildingType then return true; end
+		local rep:table = GameInfo.BuildingReplaces[def.BuildingType];
+		return rep ~= nil and rep.ReplacesBuildingType == tMod.Arguments.BuildingType;
+	end);
+end;
+-- 区域生产力（含文明替代区域）
+MPT_ImpactHandlers["EFFECT_ADJUST_DISTRICT_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		if sKind ~= "DISTRICT" then return false; end
+		if def.DistrictType == tMod.Arguments.DistrictType then return true; end
+		local rep:table = GameInfo.DistrictReplaces[def.DistrictType];
+		return rep ~= nil and rep.ReplacesDistrictType == tMod.Arguments.DistrictType;
+	end);
+end;
+-- 项目生产力（精确）
+MPT_ImpactHandlers["EFFECT_ADJUST_PROJECT_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		return sKind == "PROJECT" and def.ProjectType == tMod.Arguments.ProjectType;
+	end);
+end;
+-- 全项目生产力
+MPT_ImpactHandlers["EFFECT_ADJUST_ALL_PROJECTS_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		return sKind == "PROJECT";
+	end);
+end;
+-- 太空项目生产力（Projects.SpaceRace 列判定）
+MPT_ImpactHandlers["EFFECT_ADJUST_SPACE_RACE_PROJECTS_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		return sKind == "PROJECT" and def.SpaceRace ~= nil and def.SpaceRace ~= 0;
+	end);
+end;
+-- 全单位生产力
+MPT_ImpactHandlers["EFFECT_ADJUST_ALL_UNIT_PRODUCTION_MODIFIER"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		return sKind == "UNIT";
+	end);
+end;
+-- 时代奇观生产力：奇观（Buildings.IsWonder）且前置科技/市政时代在 [StartEra, EndEra] 区间
+MPT_ImpactHandlers["EFFECT_ADJUST_WONDER_ERA_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
+	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
+		if sKind ~= "BUILDING" or def.IsWonder == nil or def.IsWonder == 0 then return false; end
+		local sEra:string = MPT_GetDefEra(def);
+		if sEra == nil then return false; end
+		local eraDef:table = GameInfo.Eras[sEra];
+		local startDef:table = GameInfo.Eras[tMod.Arguments.StartEra];
+		local endDef:table = GameInfo.Eras[tMod.Arguments.EndEra];
+		if eraDef == nil or startDef == nil or endDef == nil then return false; end
+		return eraDef.Index >= startDef.Index and eraDef.Index <= endDef.Index;
+	end);
+end;
+
+-- ----------------------------------------------------------------------------
+-- MPT_LineHandlers 注册区：每条目 function(tMod, ePlayerID) -> string（单行，卡面 [NEWLINE] 分隔）
 -- [MPT 条目21用户裁决] 仅保留「明确的资源数量加成/产出加成(金/信/科/文/产/食/外交支持)/
 -- 伟人点数/生产对象的生产力加成」；费用折扣/旅游/移动/经验/战力/间谍/厌战/劫掠百分比/
 -- 使者倍率/开关定性类全部静默化（不显示不红字），显示行不描述回合（/每回合 字样已除）。
+-- [MPT 条目21用户裁决·动态计算] 数值随局势变化的类型（资源提取/城邦商路/建筑支持/免费
+-- 资源/伟人点总计）登记 MPT_DynamicHandlers：不进缓存实时计算，实际数量按 modifier 真实
+-- 语义计算（如资源 = Amount × 玩家提取中地块数）。
 -- ----------------------------------------------------------------------------
 
 -- 生产加成族（9 种）
@@ -1658,29 +1839,67 @@ MPT_LineHandlers["EFFECT_ADJUST_WONDER_ERA_PRODUCTION"] = function(tMod)
 	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_WONDER")..sRange;
 end;
 
--- 资源数量/产出族（购地/购买/升级费用折扣、旅游、击杀战利、劫掠、新建街区获金已静默化）
-MPT_LineHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = function(tMod)
+-- 资源数量族（动态计算：实际数量 = Amount × 玩家提取中地块数——IsResourceExtractableAt
+-- 引擎判定含被区域/奇观覆盖的地块；无提取地块时不显示该行）
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = function(tMod, ePlayerID)
 	local sRes:string = tMod.Arguments.ResourceType or "";
-	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_RESOURCE_"..string.sub(sRes, string.len("RESOURCE_")+1).."]";
+	local n:number = tonumber(tMod.Arguments.Amount or 0) * MPT_GetExtractionCount(ePlayerID, sRes);
+	if n == 0 then return ""; end
+	return MPT_Sign(n).." [ICON_"..sRes.."]";
 end;
-MPT_LineHandlers["EFFECT_ADJUST_CITY_STATE_TRADE_ROUTE_FLAT_YIELD"] = function(tMod)
-	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0))..MPT_YieldIcon(tMod.Arguments.YieldType).." ("..MPT_Phrase("LOC_MPT_EPC_CS_TRADE")..")";
+MPT_DynamicHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = true;
+-- 对城邦商路平产（动态计算：实际数量 = Amount × 当前对城邦商路条数，无商路时不显示）
+MPT_LineHandlers["EFFECT_ADJUST_CITY_STATE_TRADE_ROUTE_FLAT_YIELD"] = function(tMod, ePlayerID)
+	local pPlayer:table = Players[ePlayerID];
+	local n:number = tonumber(tMod.Arguments.Amount or 0);
+	if pPlayer == nil or n == 0 then return ""; end
+	local iCount:number = 0;
+	for _,pCity in pPlayer:GetCities():Members() do
+		local pTrade:table = pCity:GetTrade();
+		if pTrade ~= nil then
+			for _,route in ipairs(pTrade:GetOutgoingRoutes()) do
+				local pDest:table = Players[route.DestinationCityPlayer];
+				if pDest ~= nil and pDest:IsMinor() then iCount = iCount + 1; end
+			end
+		end
+	end
+	if iCount == 0 then return ""; end
+	return MPT_Sign(n * iCount)..MPT_YieldIcon(tMod.Arguments.YieldType).." ("..MPT_Phrase("LOC_MPT_EPC_CS_TRADE")..")";
 end;
-MPT_LineHandlers["EFFECT_ADJUST_PLAYER_EXTRA_FAVOR_PER_TURN"] = function(tMod)
+MPT_DynamicHandlers["EFFECT_ADJUST_CITY_STATE_TRADE_ROUTE_FLAT_YIELD"] = true;
+-- 外交支持族：每回合/决议返还为全局固定量；每座建筑动态计算（实际数量 = Favor × 拥有建筑数）
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_EXTRA_FAVOR_PER_TURN"] = function(tMod, ePlayerID)
 	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_FAVOR]";
 end;
-MPT_LineHandlers["EFFECT_ADJUST_PLAYER_BUILDING_FAVOR"] = function(tMod)
-	return MPT_Sign(tonumber(tMod.Arguments.Favor or 0)).." [ICON_FAVOR] ("..MPT_Phrase("LOC_MPT_EPC_PER_BUILDING")..(MPT_GetGameInfoName("Buildings", tMod.Arguments.BuildingType) or "")..")";
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_BUILDING_FAVOR"] = function(tMod, ePlayerID)
+	local pPlayer:table = Players[ePlayerID];
+	local buildingDef:table = GameInfo.Buildings[tMod.Arguments.BuildingType];
+	local n:number = tonumber(tMod.Arguments.Favor or 0);
+	if pPlayer == nil or buildingDef == nil or n == 0 then return ""; end
+	local iCount:number = 0;
+	for _,pCity in pPlayer:GetCities():Members() do
+		if pCity:GetBuildings():HasBuilding(buildingDef.Index) then iCount = iCount + 1; end
+	end
+	if iCount == 0 then return ""; end
+	return MPT_Sign(n * iCount).." [ICON_FAVOR] ("..MPT_Phrase("LOC_MPT_EPC_PER_BUILDING")..(MPT_GetGameInfoName("Buildings", tMod.Arguments.BuildingType) or "")..")";
 end;
-MPT_LineHandlers["EFFECT_ADJUST_PLAYER_FAVOR_REFUND_FOR_SUCCESSFUL_RESOLUTION"] = function(tMod)
+MPT_DynamicHandlers["EFFECT_ADJUST_PLAYER_BUILDING_FAVOR"] = true;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_FAVOR_REFUND_FOR_SUCCESSFUL_RESOLUTION"] = function(tMod, ePlayerID)
 	return MPT_Pct(tonumber(tMod.Arguments.Percent or 0)).." [ICON_FAVOR] ("..MPT_Phrase("LOC_MPT_EPC_RESOLUTION")..")";
 end;
 -- [MPT 条目21用户裁决] 免费电力不显示（用户要求去掉电力加成）
 MPT_KnownEffects["EFFECT_ADJUST_CITY_FREE_POWER"] = true;
-MPT_LineHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = function(tMod)
+-- 每城免费资源（动态计算：实际数量 = Amount × 城市数）
+MPT_LineHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = function(tMod, ePlayerID)
+	local pPlayer:table = Players[ePlayerID];
 	local sRes:string = tMod.Arguments.ResourceType or "";
-	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_"..sRes.."] ("..MPT_Phrase("LOC_MPT_EPC_RESOURCE_FREE")..")";
+	local n:number = tonumber(tMod.Arguments.Amount or 0);
+	if pPlayer == nil or n == 0 then return ""; end
+	local iCities:number = pPlayer:GetCities():GetCount();
+	if iCities == 0 then return ""; end
+	return MPT_Sign(n * iCities).." [ICON_"..sRes.."]";
 end;
+MPT_DynamicHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = true;
 -- 静默化：购地/单位/全军购买费用、升级金费/资源折扣、新建街区获金、击杀战利、劫掠收益、
 -- 商路/外来旅游业绩、乐队演出旅游
 MPT_KnownEffects["EFFECT_ADJUST_PLOT_PURCHASE_COST"] = true;
@@ -1695,14 +1914,46 @@ MPT_KnownEffects["EFFECT_ADJUST_PLAYER_TRADE_ROUTE_TOURISM_MODIFIER"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_PLAYER_OVERALL_TOURISM_REDUCTION"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_UNIT_ROCK_BAND_TOURISM_BOMB_VALUE_PEACE"] = true;
 
--- 伟人点/影响力/联盟族（使者翻倍已静默化；显示不描述回合）
-MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod)
-	local sIcon:string = "";
-	if tMod.Arguments.GreatPersonClassType ~= nil then
-		sIcon = "[ICON_"..tostring(tMod.Arguments.GreatPersonClassType).."]";	-- ICON_GREAT_PERSON_CLASS_*（IconViewer 数据表核实存在）
+-- 伟人点数（动态计算：总计 = Amount × 至下一位招募的回合数，上限为剩余缺口——
+-- 池数据经 Game.GetGreatPeople():GetTimeline() 取未招募个人的最低招募成本，
+-- 点数接口 GetPointsTotal/GetPointsPerTurn 同原版 GreatPeoplePopup 800-801 行）
+MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod, ePlayerID)
+	local sClass:string = tMod.Arguments.GreatPersonClassType;
+	local n:number = tonumber(tMod.Arguments.Amount or 0);
+	if sClass == nil or n == 0 or ePlayerID == nil then return ""; end
+	local classDef:table = GameInfo.GreatPersonClasses[sClass];
+	local pPlayer:table = Players[ePlayerID];
+	local pGP:table = pPlayer and pPlayer:GetGreatPeoplePoints();
+	if classDef == nil or pGP == nil then return ""; end
+	local idx:number = classDef.Index;
+	local iPerTurn:number = pGP:GetPointsPerTurn(idx) or 0;
+	local iTotal:number = pGP:GetPointsTotal(idx) or 0;
+	-- 本 class 未招募个人的最低招募成本（点数池逐人递增，最低者即下一位）
+	local iNextCost:number = nil;
+	local pGreatPeople:table = Game.GetGreatPeople();
+	if pGreatPeople ~= nil then
+		for _,entry in ipairs(pGreatPeople:GetTimeline()) do
+			if entry.Claimant == nil and entry.Individual ~= nil then
+				local ind:table = GameInfo.GreatPersonIndividuals[entry.Individual];
+				if ind ~= nil and ind.GreatPersonClassType == sClass then
+					local iCost:number = tonumber(entry.Cost or 0);
+					if iCost > 0 and (iNextCost == nil or iCost < iNextCost) then iNextCost = iCost; end
+				end
+			end
+		end
 	end
-	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0))..sIcon;
+	if iNextCost ~= nil and iNextCost > iTotal then
+		-- 到下一位被招募前本 modifier 累计贡献 = Amount × 剩余回合数，上限为剩余缺口
+		local iRemaining:number = iNextCost - iTotal;
+		local iTurns:number = math.max(1, math.ceil(iRemaining / math.max(1, iPerTurn + n)));
+		local iGain:number = math.min(n * iTurns, iRemaining);
+		if iGain > 0 then
+			return MPT_Sign(iGain).." [ICON_"..sClass.."] ("..MPT_Phrase("LOC_MPT_EPC_TO_NEXT")..")";
+		end
+	end
+	return MPT_Sign(n).." [ICON_"..sClass.."]";	-- 池信息不可得/进度已过：退回固定点数
 end;
+MPT_DynamicHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = true;
 MPT_LineHandlers["EFFECT_ADJUST_INFLUENCE_POINTS_PER_TURN"] = function(tMod)
 	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_INFLUENCE");
 end;
@@ -1749,15 +2000,18 @@ MPT_KnownEffects["EFFECT_ADJUST_PLAYER_OPEN_BORDERS_FROM_INFLUENCE"] = true;
 MPT_KnownEffects["DISABLE_PLAYER_GRIEVANCE_DECAY"] = true;
 
 -- ----------------------------------------------------------------------------
--- MPT 行入口：按 EffectType 取格式化行，结果按 ModifierId 缓存
--- （返回 nil = 非 MPT 显示类型：含未识别（走原链可能红字）与已识别静默（用户裁决不显示））
+-- MPT 行入口：按 EffectType 取格式化行，结果按 ModifierId 缓存（动态计算类跳过缓存实时求值；
+-- 返回 nil = 非 MPT 显示类型：含未识别（走原链可能红字）与已识别静默（用户裁决不显示））
 -- ----------------------------------------------------------------------------
-function MPT_GetModifierLine(tMod:table)
+function MPT_GetModifierLine(tMod:table, ePlayerID:number)
 	if tMod == nil or tMod.EffectType == nil then return nil; end
-	local sCached:string = MPT_LineCache[tMod.ModifierId];
-	if sCached ~= nil then
-		if sCached == "" then return nil; end
-		return sCached;
+	local bDynamic:boolean = (MPT_DynamicHandlers[tMod.EffectType] == true);
+	if not bDynamic then
+		local sCached:string = MPT_LineCache[tMod.ModifierId];
+		if sCached ~= nil then
+			if sCached == "" then return nil; end
+			return sCached;
+		end
 	end
 	local sLine:string = nil;
 	-- [MPT 条目21修复] 不能写 pHandler:function——标注位要求类型名而 function 是保留字，
@@ -1768,13 +2022,15 @@ function MPT_GetModifierLine(tMod:table)
 	-- nil=未识别走原链——这里只调用函数形态
 	local pHandler = MPT_LineHandlers[tMod.EffectType];
 	if type(pHandler) == "function" then
-		sLine = pHandler(tMod);	-- handler 异常按 nil 兜底，不影响原链
+		sLine = pHandler(tMod, ePlayerID);	-- handler 异常按 nil 兜底，不影响原链
 	end
-	if sLine ~= nil and sLine ~= "" then
-		MPT_LineCache[tMod.ModifierId] = sLine;
-		return sLine;
+	if not bDynamic then
+		if sLine ~= nil and sLine ~= "" then
+			MPT_LineCache[tMod.ModifierId] = sLine;
+			return sLine;
+		end
+		MPT_LineCache[tMod.ModifierId] = "";	-- 已知类型但无行（静默/参数异常），不再走 Unknown
 	end
-	MPT_LineCache[tMod.ModifierId] = "";	-- 已知类型但无行（静默/参数异常），不再走 Unknown
 	return nil;
 end
 
@@ -2389,7 +2645,18 @@ function ApplyEffectAndCalculateImpact(tMod:table, tSubject:table, sSubjectType:
 	
 	-- MAIN DISPATCHER FOR EFFECTS
 	local tImpact:table = YieldTableNew();
-	
+
+	-- [MPT 条目21用户裁决] 生产族实际产量计算（MPT_ImpactHandlers）：按城市当前生产对象
+	-- 匹配后取「城市生产力 × Amount%」，City 主体算单城、Player 主体遍历全城求和
+	-- （DecodeModifier 对城市集合自动 YieldTableAdd 汇总）。异常/nil 静默零产量不红字
+	local pMPTImpactHandler = MPT_ImpactHandlers[tMod.EffectType];
+	if pMPTImpactHandler ~= nil then
+		local bOk, tResult = pcall(pMPTImpactHandler, tMod, tSubject, sSubjectType);
+		if bOk and tResult ~= nil then return tResult; end
+		print("MPT_RMA: impact handler failed for "..tostring(tMod.EffectType).." -> "..tostring(tResult));
+		return YieldTableNew();
+	end
+
 	if tMod.EffectType == "EFFECT_ATTACH_MODIFIER" then
 		-- well, do nothing here but return tImpact, this will clear unknown flag
 	
@@ -3024,8 +3291,8 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 			-- this the place to check for extra conditions
 			if sSubjectFilter == nil or tMod.SubjectReqSetId == sSubjectFilter then
 				table.insert(tToolTip, sText);
-				-- [MPT 条目21优化] 扩展类型文本行（direct）
-				local sMPTLine:string = MPT_GetModifierLine(tMod);
+				-- [MPT 条目21优化] 扩展类型文本行（direct；ePlayerID 供动态计算类实时求值）
+				local sMPTLine:string = MPT_GetModifierLine(tMod, ePlayerID);
 				if sMPTLine then table.insert(tMPTLines, sMPTLine); end
 				if sAttachedId then
 					table.insert(tToolTip, "Attached modifier");
@@ -3038,7 +3305,7 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 					end
 					table.insert(tToolTip, sText);
 					-- [MPT 条目21优化] 扩展类型文本行（attached，tMod 已是子 modifier）
-					local sMPTLineAttached:string = MPT_GetModifierLine(tMod);
+					local sMPTLineAttached:string = MPT_GetModifierLine(tMod, ePlayerID);
 					if sMPTLineAttached then table.insert(tMPTLines, sMPTLineAttached); end
 					-- 2019-04-14 Reset yields to 0 if there are no valid subjects that qualify for attaching
 					if tSubjects ~= nil and #tSubjects == 0 then
@@ -3104,6 +3371,10 @@ function RefreshBaseData(ePlayerID:number)
 	local pCities	:table = pPlayer:GetCities();
 
 	tCities = {}; -- clear old values
+	-- [MPT 条目21用户裁决] 基础数据重建时同步失效 MPT 行缓存与资源提取缓存（动态计算类的
+	-- 数值随城市/地块变化，须跨回合重算）
+	MPT_LineCache = {};
+	MPT_ExtractCache = {};
 	
 	for _,pCity in pCities:Members() do	
 		local cityName:string = pCity:GetName();

@@ -12,4 +12,5 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 	('LOC_MPT_EPC_RESOURCE_FREE',		'en_US',	'free resource per city'),
 	('LOC_MPT_EPC_INFLUENCE',			'en_US',	'influence points'),
 	('LOC_MPT_EPC_ALLIANCE',			'en_US',	'alliance points'),
-	('LOC_MPT_EPC_BUILD_CHARGES',		'en_US',	'builder charges');
+	('LOC_MPT_EPC_BUILD_CHARGES',		'en_US',	'builder charges'),
+	('LOC_MPT_EPC_TO_NEXT',				'en_US',	'towards next');
