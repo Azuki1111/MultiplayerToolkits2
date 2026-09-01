@@ -8,6 +8,12 @@
 --   删除第 1 行 print：其读取 GlobalParameters.BRS_VERSION_MAJOR/MINOR（由 BRS 的
 --   BetterReportScreen_Database.sql 写入，本 mod 不移植该 SQL），nil 参与字符串连接会
 --   崩整个 chunk（条目18 cfunction 同类坑）；RMA 全文仅此一处读 BRS 全局，删除即完全独立。
+-- [MPT 条目21优化] 政策卡收益类型扩展：政策卡实际使用 90 种 EffectType（含 attach 一层，
+--   经 Cache/DebugGameplay.sqlite 逐一枚举），引擎原仅处理 31 种，其余一律红字 Unknown。
+--   新增 MPT 文本行通道（MPT_LineHandlers 58 种 EffectType + 两个 hook + 行缓存
+--   MPT_LineCache + modifiers 懒索引 MPT_GetObjectModifierIds），分区见 FetchAndCacheData
+--   之后的「MPT 文本行通道」横幅区；产量计算与原 31 种处理逻辑零改动。
+--   顺带优化：CalculateModifierEffect 由全表扫描改按 (表,字段,类型) 懒索引。
 -- ===========================================================================
 -- print("Loading Real Modifier Analysis.lua from Better Report Screen version "..GlobalParameters.BRS_VERSION_MAJOR.."."..GlobalParameters.BRS_VERSION_MINOR);
 -- ===========================================================================
@@ -1543,6 +1549,324 @@ function FetchAndCacheData(sModifierId:string)
 	return tModifier; 
 end
 
+-- ===========================================================================
+-- [MPT 条目21优化] 政策卡收益类型扩展（MPT 文本行通道）
+-- 引擎原产量通道（tImpact→YieldTableGetInfo）只认 10 种产量 key，且政策卡实际使用的
+-- 59 种 EffectType 未被 ApplyEffectAndCalculateImpact 处理（一律红字 Unknown）。
+-- 本分区注册 MPT_LineHandlers（EffectType → 行格式化函数）：静态参数驱动的短文本行，
+-- 由 CalculateModifierEffect（hook ①，收集进卡面串与 tooltip）与 DecodeModifier
+-- （hook ②，命中则跳过原链避免误标 Unknown）两个 hook 消费。产量计算零改动（保真）。
+-- 行结果按 ModifierId 缓存（MPT_LineCache）——参数静态不随局面变化，零陈旧风险；
+-- 自定义措辞取自功能文本 SQL（ExtendedPolicyCards_*.sql，tag 前缀 LOC_MPT_EPC_），
+-- 对象名/类别名/时代/资源/能力名走原版 LOC tag 自动本地化。
+-- 差集与参数形态来源：Cache/DebugGameplay.sqlite 逐一枚举（90 种政策可达 EffectType
+-- − 引擎已处理 31 种），图标经 Base/Assets/UI/Icons/Icons_*.xml 核实存在。
+-- ===========================================================================
+local MPT_LineHandlers:table = {};
+local MPT_LineCache:table = {};
+local MPT_ModIndexCache:table = {};
+
+-- 取 GameInfo 行的本地化名，缺失/无文本返回 nil
+local function MPT_GetGameInfoName(sTable:string, sType:string)
+	if sType == nil then return nil; end
+	local tTable:table = GameInfo[sTable];
+	if tTable == nil then return nil; end
+	local row:table = tTable[sType];
+	if row == nil or row.Name == nil then return nil; end
+	local s:string = Locale.Lookup(row.Name);
+	if s == nil or #s == 0 or s == row.Name then return nil; end	-- 引擎同款判定：Lookup 未定义返回原 tag
+	return s;
+end
+
+-- 带符号百分比（参数驱动，符号跟随 Amount；nil/非数字兜底 0）
+local function MPT_Pct(iAmount:number)
+	return Locale.ToNumber(iAmount or 0, "+#,###.#;-#,###.#").."%";
+end
+
+-- 带符号数值
+local function MPT_Sign(iAmount:number)
+	return Locale.ToNumber(iAmount or 0, "+#,###.#;-#,###.#");
+end
+
+-- 产量图标（复用引擎 GetYieldTextIcon，YIELD_ 前缀形参）
+local function MPT_YieldIcon(sYieldType:string)
+	return GetYieldTextIcon(sYieldType);
+end
+
+-- 短语本地化：命中返回文本，失败返回 nil（调用方自行决定兜底）
+local function MPT_TryLocale(sTag:string)
+	local s:string = Locale.Lookup(sTag);
+	if s == nil or #s == 0 or s == sTag then return nil; end	-- 引擎同款判定：Lookup 未定义返回原 tag
+	return s;
+end
+
+-- 短语本地化（功能文本 SQL 的无参 tag；失败显示原 tag 便于发现漏文本）
+local function MPT_Phrase(sTag:string)
+	return MPT_TryLocale(sTag) or sTag;
+end
+
+-- ----------------------------------------------------------------------------
+-- MPT_LineHandlers 注册区：每条目 function(tMod) -> string（单行，卡面 [NEWLINE] 分隔）
+-- ----------------------------------------------------------------------------
+local MPT_PerTurn:string = MPT_Phrase("LOC_MPT_EPC_PER_TURN");
+
+-- 生产加成族（9 种）
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_TAG_ERA_PRODUCTION"] = function(tMod)
+	local sEra:string = "";
+	if tMod.Arguments.EraType ~= nil and tMod.Arguments.EraType ~= "NO_ERA" then
+		local sName:string = MPT_GetGameInfoName("Eras", tMod.Arguments.EraType);
+		if sName then sEra = sName.." "; end
+	end
+	local sClass:string = MPT_GetGameInfoName("UnitPromotionClasses", tMod.Arguments.UnitPromotionClass) or tostring(tMod.Arguments.UnitPromotionClass or "");
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..sEra..sClass..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_PRODUCTION"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Units", tMod.Arguments.UnitType) or "")..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_BUILDING_PRODUCTION"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Buildings", tMod.Arguments.BuildingType) or "")..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_DISTRICT_PRODUCTION"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Districts", tMod.Arguments.DistrictType) or "")..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PROJECT_PRODUCTION"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Projects", tMod.Arguments.ProjectType) or "")..MPT_Phrase("LOC_MPT_EPC_PRODUCTION");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_ALL_PROJECTS_PRODUCTION"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_PROJECTS");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_SPACE_RACE_PROJECTS_PRODUCTION"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_SPACE_PROJECTS");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_ALL_UNIT_PRODUCTION_MODIFIER"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_ALL_UNITS");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_WONDER_ERA_PRODUCTION"] = function(tMod)
+	local sStart:string = MPT_GetGameInfoName("Eras", tMod.Arguments.StartEra) or "";
+	local sEnd:string = MPT_GetGameInfoName("Eras", tMod.Arguments.EndEra) or "";
+	local sRange:string = "";
+	if sStart ~= "" and sEnd ~= "" then sRange = " ("..sStart.."~"..sEnd..")"; end
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_WONDER")..sRange;
+end;
+
+-- 购买/升级/资源族
+MPT_LineHandlers["EFFECT_ADJUST_PLOT_PURCHASE_COST"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_PLOT_COST");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_ALL_UNITS_PURCHASE_COST"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_ALL_UNITS")..MPT_Phrase("LOC_MPT_EPC_PURCHASE");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_PURCHASE_COST"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..(MPT_GetGameInfoName("Units", tMod.Arguments.UnitType) or "")..MPT_Phrase("LOC_MPT_EPC_PURCHASE");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_UNIT_UPGRADE_DISCOUNT_PERCENT"] = function(tMod)
+	return "-"..tostring(tonumber(tMod.Arguments.Amount or 0)).."% "..MPT_Phrase("LOC_MPT_EPC_UPGRADE_COST");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_UNIT_UPGRADE_RESOURCE_COST_DISCOUNT"] = function(tMod)
+	return "-"..tostring(tonumber(tMod.Arguments.Amount or 0)).."% "..MPT_Phrase("LOC_MPT_EPC_UPGRADE_RES");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = function(tMod)
+	local sRes:string = tMod.Arguments.ResourceType or "";
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_RESOURCE_"..string.sub(sRes, string.len("RESOURCE_")+1).."]"..MPT_PerTurn;
+end;
+MPT_LineHandlers["EFFECT_ADJUST_CITY_STATE_TRADE_ROUTE_FLAT_YIELD"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0))..MPT_YieldIcon(tMod.Arguments.YieldType).." ("..MPT_Phrase("LOC_MPT_EPC_CS_TRADE")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_DISTRICT_CREATE_YIELD"] = function(tMod)
+	return MPT_YieldIcon(tMod.Arguments.YieldType).." "..MPT_Phrase("LOC_MPT_EPC_DISTRICT_GOLD");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_POST_COMBAT_YIELD"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_POST_COMBAT").." "..tostring(tonumber(tMod.Arguments.PercentDefeatedStrength or 0)).."% "..MPT_YieldIcon(tMod.Arguments.YieldType);
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_PLUNDER_YIELDS"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_PLUNDER");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_EXTRA_FAVOR_PER_TURN"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_Favor]"..MPT_PerTurn;
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_BUILDING_FAVOR"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Favor or 0)).." [ICON_Favor] ("..MPT_Phrase("LOC_MPT_EPC_PER_BUILDING")..(MPT_GetGameInfoName("Buildings", tMod.Arguments.BuildingType) or "")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_FAVOR_REFUND_FOR_SUCCESSFUL_RESOLUTION"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Percent or 0)).." [ICON_Favor] ("..MPT_Phrase("LOC_MPT_EPC_RESOLUTION")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_TRADE_ROUTE_TOURISM_MODIFIER"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_TOURISM");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_OVERALL_TOURISM_REDUCTION"] = function(tMod)
+	return "-"..tostring(tonumber(tMod.Arguments.Modifier or 0)).."% "..MPT_Phrase("LOC_MPT_EPC_TOURISM_IN");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_ROCK_BAND_TOURISM_BOMB_VALUE_PEACE"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_ROCKBAND");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_CITY_FREE_POWER"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_POWER] ("..MPT_Phrase("LOC_MPT_EPC_POWER_FREE")..")";
+end;
+MPT_LineHandlers["EFFECT_GRANT_FREE_RESOURCE_EXTRACTED"] = function(tMod)
+	local sRes:string = tMod.Arguments.ResourceType or "";
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_"..sRes.."] ("..MPT_Phrase("LOC_MPT_EPC_RESOURCE_FREE")..")";
+end;
+
+-- 伟人点/使者/联盟族
+MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod)
+	local sIcon:string = "";
+	if tMod.Arguments.GreatPersonClassType ~= nil then
+		sIcon = "[ICON_"..tostring(tMod.Arguments.GreatPersonClassType).."]";	-- ICON_GREAT_PERSON_CLASS_*
+	end
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0))..sIcon..MPT_PerTurn;
+end;
+MPT_LineHandlers["EFFECT_ADJUST_INFLUENCE_POINTS_PER_TURN"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_INFLUENCE")..MPT_PerTurn;
+end;
+MPT_LineHandlers["EFFECT_ADJUST_DUPLICATE_FIRST_INFLUENCE_TOKEN"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_ENVOY_FIRST");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_DUPLICATE_INFLUENCE_TOKEN_WHEN_RIVAL_GOVERNMENT"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_ENVOY_RIVAL");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_ALLIANCE_POINTS_FOR_MODIFIER"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_ALLIANCE")..MPT_PerTurn;
+end;
+
+-- 建造/军事单位数值族
+MPT_LineHandlers["EFFECT_ADJUST_INQUISITION_START_CHARGES"] = function(tMod)
+	return "-"..tostring(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_INQ_CHARGES");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_BUILD_CHARGES"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_BUILD_CHARGES] ("..MPT_Phrase("LOC_MPT_EPC_BUILD_CHARGES")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_MOVEMENT"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_MOVES] ("..MPT_Phrase("LOC_MPT_EPC_UNIT_MOVEMENT")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_ENEMY_TERRITORY_START_MOVEMENT"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_MOVES] ("..MPT_Phrase("LOC_MPT_EPC_MOVEMENT_ENEMY")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_FRIENDLY_TERRITORY_START_MOVEMENT"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_MOVES] ("..MPT_Phrase("LOC_MPT_EPC_MOVEMENT_FRIENDLY")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_EXPERIENCE_MODIFIER"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." [ICON_PROMOTION] ("..MPT_Phrase("LOC_MPT_EPC_XP")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_BARBARIAN_COMBAT"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_STRENGTH] ("..MPT_Phrase("LOC_MPT_EPC_BARBARIAN")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_CITY_OUTER_DEFENSE"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_STRENGTH] ("..MPT_Phrase("LOC_MPT_EPC_OUTER_DEFENSE")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_CITY_RANGED_STRIKE"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_STRENGTH] ("..MPT_Phrase("LOC_MPT_EPC_RANGED_STRIKE")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_STRENGTH_REDUCTION_FOR_DAMAGE_MODIFIER"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." ("..MPT_Phrase("LOC_MPT_EPC_DAMAGE_REDUCTION")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_PILLAGE_DISTRICT_MODIFIER"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_PILLAGE_DISTRICT");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_PILLAGE_IMPROVEMENT_MODIFIER"] = function(tMod)
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_PILLAGE_IMPROVEMENT");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_STRENGTH_MODIFIER"] = function(tMod)
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." [ICON_STRENGTH] ("..MPT_Phrase("LOC_MPT_EPC_COMBAT_STRENGTH")..")";
+end;
+MPT_LineHandlers["EFFECT_ADJUST_WAR_WEARINESS"] = function(tMod)
+	local sScope:string = "";
+	if tonumber(tMod.Arguments.Domestic or 0) == 1 then sScope = MPT_Phrase("LOC_MPT_EPC_DOMESTIC"); end
+	return MPT_Pct(tonumber(tMod.Arguments.Amount or 0)).." "..MPT_Phrase("LOC_MPT_EPC_WAR_WEARINESS")..sScope;
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_SPY_BONUS"] = function(tMod)
+	local sPhrase:string = MPT_Phrase("LOC_MPT_EPC_SPY_DEF");
+	if tonumber(tMod.Arguments.Offense or 0) == 1 then sPhrase = MPT_Phrase("LOC_MPT_EPC_SPY_OFF"); end
+	return MPT_Sign(tonumber(tMod.Arguments.Amount or 0)).." "..sPhrase;
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_STEAL_TECH_BOOSTS"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_STEAL_BOOST");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_UNIT_SPY_OFFENSIVE_OPERATION_TIME"] = function(tMod)
+	return "-"..tostring(tonumber(tMod.Arguments.ReductionPercent or 0)).."% "..MPT_Phrase("LOC_MPT_EPC_SPY_TIME");
+end;
+
+-- 开关/定性族
+MPT_LineHandlers["EFFECT_GRANT_ABILITY"] = function(tMod)
+	local sAbility:string = tostring(tMod.Arguments.AbilityType or "");
+	local sName:string = MPT_GetGameInfoName("UnitAbilities", sAbility);	-- 官方 Name（多数为 NULL）
+	if sName == nil then
+		-- 自有文本（LOC_MPT_EPC_ABILITY_<去掉 ABILITY_ 前缀>），缺失则回退能力 ID 原文
+		sName = MPT_TryLocale("LOC_MPT_EPC_ABILITY_"..string.sub(sAbility, string.len("ABILITY_")+1)) or sAbility;
+	end
+	return MPT_Phrase("LOC_MPT_EPC_ABILITY")..sName;
+end;
+MPT_LineHandlers["EFFECT_GRANT_UNIT_TYPE_UNLIMITED_PROMOTION_CHOICES"] = function(tMod)
+	return (MPT_GetGameInfoName("Units", tMod.Arguments.UnitType) or "")..MPT_Phrase("LOC_MPT_EPC_NO_PROMO_LIMIT");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_DISABLE_HEALING"] = function(tMod)
+	local sPhrase:string = MPT_Phrase("LOC_MPT_EPC_NO_HEAL");
+	if tonumber(tMod.Arguments.Foreign or 0) == 1 then sPhrase = MPT_Phrase("LOC_MPT_EPC_NO_HEAL_FOREIGN"); end
+	return sPhrase;
+end;
+MPT_LineHandlers["EFFECT_ADJUST_DISABLE_INFLUENCE"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_NO_INFLUENCE");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_DISABLE_SETTLING"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_NO_SETTLING");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_BLOCK_UNIT_ENTRY"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_BLOCK_ENTRY")..": "..(MPT_GetGameInfoName("Units", tMod.Arguments.UnitType) or "");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_UNIT_BUILD_DISABLED"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_BUILD_DISABLED")..": "..(MPT_GetGameInfoName("Units", tMod.Arguments.UnitType) or "");
+end;
+MPT_LineHandlers["EFFECT_ADJUST_PLAYER_OPEN_BORDERS_FROM_INFLUENCE"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_OPEN_BORDERS");
+end;
+MPT_LineHandlers["DISABLE_PLAYER_GRIEVANCE_DECAY"] = function(tMod)
+	return MPT_Phrase("LOC_MPT_EPC_NO_GRIEVANCE_DECAY");
+end;
+
+-- ----------------------------------------------------------------------------
+-- MPT 行入口：按 EffectType 取格式化行，结果按 ModifierId 缓存（nil 表示非 MPT 扩展类型）
+-- ----------------------------------------------------------------------------
+function MPT_GetModifierLine(tMod:table)
+	if tMod == nil or tMod.EffectType == nil then return nil; end
+	local sCached:string = MPT_LineCache[tMod.ModifierId];
+	if sCached ~= nil then
+		if sCached == "" then return nil; end
+		return sCached;
+	end
+	local sLine:string = nil;
+	local pHandler:function = MPT_LineHandlers[tMod.EffectType];
+	if pHandler ~= nil then
+		sLine = pHandler(tMod);	-- handler 异常按 nil 兜底，不影响原链
+	end
+	if sLine ~= nil and sLine ~= "" then
+		MPT_LineCache[tMod.ModifierId] = sLine;
+		return sLine;
+	end
+	MPT_LineCache[tMod.ModifierId] = "";	-- 已知类型但无行（参数异常），不再走 Unknown
+	return nil;
+end
+
+-- ----------------------------------------------------------------------------
+-- [MPT 条目21优化] (modifiers 表, 类型字段, 类型值) → ModifierId 列表 懒索引
+-- 替代 CalculateModifierEffect 对 GameInfo.XxxModifiers() 的全表扫描
+-- （政府界面每次打开 59 卡 × 全表扫，政策表 100+ 行；索引一次构建全周期复用）
+-- ----------------------------------------------------------------------------
+local function MPT_GetObjectModifierIds(sTable:string, sField:string, sType:string)
+	local sKey:string = sTable.."|"..sField.."|"..sType;
+	local tCached:table = MPT_ModIndexCache[sKey];
+	if tCached then return tCached; end
+	local tIds:table = {};
+	for row in GameInfo[sTable]() do
+		if row[sField] == sType then
+			-- stupid Firaxis, some fields are named ModifierId and some ModifierID (sic!) —— 原逻辑移入
+			local sId:string = row.ModifierId;
+			if not sId then sId = row.ModifierID; end
+			if sId then table.insert(tIds, sId); end
+		end
+	end
+	MPT_ModIndexCache[sKey] = tIds;
+	return tIds;
+end
+
 ------------------------------------------------------------------------------
 -- Returns 5 values:
 --  string - decoded into text (tooltip), contains info about structure, owner, subjects and final impact
@@ -1611,7 +1935,16 @@ function DecodeModifier(sModifierId:string, ePlayerID:number, iCityID:number, tM
 	local bUnknownEffect:boolean = false;
 	local tImpact:table = YieldTableNew();
 	for i,subject in pairs(tSubjects) do
-		local tSubjectImpact:table = ApplyEffectAndCalculateImpact(tMod, subject, sSubjectType); -- it will return nil if effect unknown
+		-- [MPT 条目21优化] 已知扩展类型（MPT_LineHandlers 有注册）跳过原链——
+		-- 原链对未处理 EffectType 返回 nil 会误标红字 Unknown；扩展类型的收益以
+		-- 文本行通道在 CalculateModifierEffect 展示，此处按零产量处理
+		-- local tSubjectImpact:table = ApplyEffectAndCalculateImpact(tMod, subject, sSubjectType); -- it will return nil if effect unknown
+		local tSubjectImpact:table = nil;
+		if MPT_LineHandlers[tMod.EffectType] then
+			tSubjectImpact = YieldTableNew();
+		else
+			tSubjectImpact = ApplyEffectAndCalculateImpact(tMod, subject, sSubjectType);
+		end
 		if tSubjectImpact then
 			--dprint("Impact for subject ", subject.Name); dshowyields(tSubjectImpact); -- debug
 			YieldTableAdd(tImpact, tSubjectImpact);
@@ -2741,16 +3074,23 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 	local tTotalImpact:table = YieldTableNew();
 	local tToolTip:table = {}; -- tooltip
 	local bUnknownEffect:boolean = false;
+	local tMPTLines:table = {};	-- [MPT 条目21优化] 扩展类型的文本行（卡面串与 tooltip 共用）
 	local sSubjectFilter:string = ( sInfluence and "PLAYER_HAS_"..sInfluence.."_INFLUENCE" or nil );
-	for mod in GameInfo[sModifiersTable]() do
-		if mod[sObjectTypeField] == sObjectType then
+	-- [MPT 条目21优化] 全表扫描 → 懒索引（见 MPT_GetObjectModifierIds；留痕：原循环
+	-- for mod in GameInfo[sModifiersTable]() do ... 移入索引器，含 ModifierId/ModifierID 兼容）
+	local tModIds:table = MPT_GetObjectModifierIds(sModifiersTable, sObjectTypeField, sObjectType);
+	for _,sModifierId:string in ipairs(tModIds) do
+		--if mod[sObjectTypeField] == sObjectType then
 			-- stupid Firaxis, some fields are named ModifierId and some ModifierID (sic!)
-			local sModifierId:string = mod.ModifierId;
-			if not sModifierId then sModifierId = mod.ModifierID; end -- fix for BeliefModifiers, GoodyHutSubTypes, ImprovementModifiers
+			-- local sModifierId:string = mod.ModifierId;
+			-- if not sModifierId then sModifierId = mod.ModifierID; end -- fix for BeliefModifiers, GoodyHutSubTypes, ImprovementModifiers
 			local sText:string, pYields:table, sAttachedId:string, bUnknown:boolean, tMod:table, tSubjects:table, sSubjectType:string = DecodeModifier(sModifierId, ePlayerID, iCityID);
 			-- this the place to check for extra conditions
 			if sSubjectFilter == nil or tMod.SubjectReqSetId == sSubjectFilter then
 				table.insert(tToolTip, sText);
+				-- [MPT 条目21优化] 扩展类型文本行（direct）
+				local sMPTLine:string = MPT_GetModifierLine(tMod);
+				if sMPTLine then table.insert(tMPTLines, sMPTLine); end
 				if sAttachedId then
 					table.insert(tToolTip, "Attached modifier");
 					-- in some cases the subjects will be passed down to be processed again
@@ -2761,6 +3101,9 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 						sText, pYields, sAttachedId, bUnknown, tMod = DecodeModifier(sAttachedId, ePlayerID, iCityID);
 					end
 					table.insert(tToolTip, sText);
+					-- [MPT 条目21优化] 扩展类型文本行（attached，tMod 已是子 modifier）
+					local sMPTLineAttached:string = MPT_GetModifierLine(tMod);
+					if sMPTLineAttached then table.insert(tMPTLines, sMPTLineAttached); end
 					-- 2019-04-14 Reset yields to 0 if there are no valid subjects that qualify for attaching
 					if tSubjects ~= nil and #tSubjects == 0 then
 						pYields = nil;
@@ -2771,7 +3114,7 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 				bUnknownEffect = bUnknownEffect or bUnknown;
 				table.insert(tToolTip, TOOLTIP_SEP);
 			end -- extra conditions
-		end
+		--end -- [MPT] 类型过滤移入索引器
 	end
 	if #tToolTip == 0 then
 		table.insert(tToolTip, "No modifiers for this object.");
@@ -2787,6 +3130,12 @@ function CalculateModifierEffect(sObject:string, sObjectType:string, ePlayerID:n
 		--if tTotalImpact[yield] ~= 0 then sTotalImpact = sTotalImpact..(sTotalImpact=="" and "" or " ")..GetYieldString("YIELD_"..yield, tTotalImpact[yield]); end
 	--end
 	local sTotalImpact:string = YieldTableGetInfo(tTotalImpact);
+	-- [MPT 条目21优化] 扩展类型的文本行拼入卡面串（[NEWLINE] 分行，卡面 Effect 为
+	-- auto 高多行 Label 自然分行显示；tooltip 的 tToolTip 已含同等信息）
+	if #tMPTLines > 0 then
+		local sMPT:string = table.concat(tMPTLines, "[NEWLINE]");
+		sTotalImpact = (sTotalImpact ~= "" and sTotalImpact.."[NEWLINE]" or "")..sMPT;
+	end
 	if sTotalImpact == "" then
 		--sTotalImpact = "-"; -- just to show that there's nothing; empty string could be misleading
 		table.insert(tToolTip, "Yields not affected.");
