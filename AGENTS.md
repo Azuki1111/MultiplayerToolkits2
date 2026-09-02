@@ -14,7 +14,7 @@
 - Mod id：`00000000-7369-4685-ab5f-bf77bc22b54e`（规约：GUID 前 8 位为 0）
 - `<Version>` 是模组版本一致性校验指纹，**结构性更新必须递增**（当前值见 modinfo，随条目提交同步递增）
 - `AffectsSavedGames=0`，`CompatibleVersions=1.2,2.0`
-- 前端功能全部走 FrontEndActions；InGameActions 注册游戏内功能（条目5 起逐条移植 1.67）与通用文本。
+- 前端功能全部走 FrontEndActions；InGameActions 注册游戏内功能（条目5 起逐条移植 1.65）与通用文本。
 
 ## 目录结构与功能模块
 
@@ -36,30 +36,30 @@
 | `FrontEnd/ModCheck/`、`FrontEnd/ModList/` | 条目4.1 模组校验（`MPT_ModCheck` 注册表，mod 自我登记 modId）/ 条目4.2 非官方模组清单（数据走运行时 Modding API），各带专属文本 |
 | `Shared/PlayerMark/` | 条目4.4/4.8 玩家标记：专属文本 + `TPT_PlayerData` 数据表（`PlayerMark_Data.sql`）+ 3 张标记 DDS |
 | `FrontEnd/IconViewer/`、`FrontEnd/TextureViewer/` | 条目4.5 图标查看器（`MPT_IconCollection` 5056 图标）/ 条目4.6 贴图查看器（`MPT_TextureCollection` 5017 行），各带专属文本 |
-| `InGame/RevealMapCorners/` | 条目5 显示地图角落（1.67 RMC）：建两个极地真实地图钉撑开小地图世界矩形（小地图矩形只认引擎数据，UI 自制实例无效）；副作用留两个可见 pin |
-| `InGame/GreatPersonNames/` | 条目6 伟人名字更新（1.67 GPN）：魔女环境检测后写入纪念名字，LoadOrder 5000000 压后覆盖，非魔女环境保护原版 |
-| `InGame/EndGameMenu/` | 条目7 战败后观战按钮（1.67 EGM）：整文件同名覆盖 + 通配 include 注入；修复战败画面反复弹出（SetHide 致原版防重入守卫失效） |
+| `InGame/RevealMapCorners/` | 条目5 显示地图角落（1.65 RMC）：建两个极地真实地图钉撑开小地图世界矩形（小地图矩形只认引擎数据，UI 自制实例无效）；副作用留两个可见 pin |
+| `InGame/GreatPersonNames/` | 条目6 伟人名字更新（1.65 GPN）：魔女环境检测后写入纪念名字，LoadOrder 5000000 压后覆盖，非魔女环境保护原版 |
+| `InGame/EndGameMenu/` | 条目7 战败后观战按钮（1.65 EGM）：整文件同名覆盖 + 通配 include 注入；修复战败画面反复弹出（SetHide 致原版防重入守卫失效） |
 | `InGame/WorldTracker/` | 条目8 快捷操作面板：空 Context + ChangeParent 挂 WorldTracker.PanelStack，展开区「投降」「重新开始」「玩家标记」「设置」+ 投票区；「重新开始」响应 TODO |
 | `InGame/SurrenderVote/` | 条目8续 团队投降投票（Gameplay 侧）：AddGameplayScripts 注册，EXECUTE_SCRIPT 收 UI 指令，票数 ≥ 半数 → 该队城市全部叛变自由城（自定义战败：只写 Game:SetProperty，不动引擎判负）；每时代每队一次 |
-| `InGame/TopPanelExt/` | 条目9 顶部面板扩展（1.67 TPE）：ReplaceUIScript 覆盖，追加食物/生产力/人口/奢侈品统计与战略资源队友清单 |
-| `InGame/DealRestriction/` | 条目10 交易与外交限制（1.67 DDV 整模块）：交易四模式/无友谊默认开/和解三模式；`MPT_TradeRules.lua` 统一解析器（条目9/10 两上下文 include 共用）；SQL 经 ActionCriteria（ConfigurationValueMatches）条件执行 = 本 mod criteria 首例；参数与 DealView 导入门控 Disable_MPH（ModInUse inverse，防 MPH 同名 Parameters 主键冲突） |
+| `InGame/TopPanelExt/` | 条目9 顶部面板扩展（1.65 TPE）：ReplaceUIScript 覆盖，追加食物/生产力/人口/奢侈品统计与战略资源队友清单 |
+| `InGame/DealRestriction/` | 条目10 交易与外交限制（1.65 DDV 整模块）：交易四模式/无友谊默认开/和解三模式；`MPT_TradeRules.lua` 统一解析器（条目9/10 两上下文 include 共用）；SQL 经 ActionCriteria（ConfigurationValueMatches）条件执行 = 本 mod criteria 首例；参数与 DealView 导入门控 Disable_MPH（ModInUse inverse，防 MPH 同名 Parameters 主键冲突） |
 | `InGame/PlayerMark/` | 条目11 游戏内玩家标记面板：include Shared/MPT_DataStorage.lua 与前端同一份存档互通；QuickPanel 按钮打开 |
-| `InGame/ForcedEndTurn/` | 条目12 强制结束回合按钮（1.67 FEB）：ActionPanel 右下角按钮左键强制结束回合（ACTION_ENDTURN REASON="UserForced"），右键 LuaEvents.ForcedEndTurn 预留；显隐由设置面板 MPT_Settings_Toggle 广播控制 |
-| `InGame/SettingsPanel/` | 条目12 游戏内设置面板：**全 mod 游戏内设置的统一收编点**（MPT_Settings 参数表；新设置 = 加行 + MPT_Settings_Toggle 广播，条目16/19/20/22/24/25 均此模式）。规约：ParameterId 沿用 1.67 原 key（同装幂等共享）；面板开关事件 MPT_SettingsPanel_Toggle 与参数广播 MPT_Settings_Toggle 必须分离（共用会自关闭）；点击复选框不落盘仅关闭时保存；存档走条目4.3 多表存储（表名 = ParameterId） |
-| `InGame/AutoUpdate/` | 条目13 游戏内自动更新（1.67 Update）：空 Context 同名 Lua 自动执行；进局检查已启用的非官方工坊 mod 更新 + EnsureEnabled 保本 mod 启用；退主菜单按 SubscriptionId 触发本 mod 工坊更新 |
-| `InGame/TechCivicProgress/` | 条目14 真实科文进度（1.67 TCP）：`TechAndCivicSupport.lua` 同名覆盖共享脚本（被 7 个 context include，只改数据层 GetResearchData/GetCivicData，Chooser 自动生效）+ 两树 MPT 版 include 探测官方最高版本（Exp2→Exp1→Base）后覆盖 GetCurrentData/PopulateNode。**`MPT_EngineBoost` 引擎精确科文预估定点链（反编译验证）供条目24 等 include 复用** |
-| `InGame/TeamVisibleResources/` | 条目15 队友资源可见性（1.67 STR）：ReplaceUIScript+ImportFiles 双注册模式首例；迷雾格显示队友已解锁资源图标；外部刷新 LuaEvents.MPT_WorldViewIcon_Rebuild |
-| `InGame/DisableMapPins/` | 条目16 禁用地图钉（1.67 RMP）：高级选项开关 `CPL_NO_PINS`（沿用 1.67 名）；空壳替换 MapPinListPanel（联机卡顿元凶，**同名覆盖文件名必须保持原名**）；三个 InGame action 由 criteria 门控（不勾选零改动） |
-| `InGame/InstantFoundCity/` | 条目17 建立城市免确认（1.67 RCT）：ReplaceUIScript 覆盖 UnitPanel，文件内重建原版 include 链（BSM→XP2→XP1→Base，命中 Initialize 即 break）后重定义回调；**原版回调闭包点击时才解析全局名，函数名保持原名不可 MPT 化** |
-| `InGame/CityBannerRefresh/` | 条目18 城市横幅刷新（1.67 PCF）：文件名前缀走原版通配 include 钩子进同上下文（仅 ImportFiles 无 LuaContext）；市民变动单城刷新 + 公民自动重排；**单订阅调度器 + UI.GetElapsedTime 真实时钟**（已沉淀技能库 lua-advanced-patterns.md） |
-| `InGame/NotificationClear/` | 条目19 清理通知按钮（1.67 NOC）：通配 include 钩子链式覆写通知增删；按钮懒创建天然恒居栈底；**计数对账（Reconcile）单一事实**堵五处漏减；开关收编条目12 |
-| `InGame/SmartTurnTimer/` | 条目20 智能回合计时器（1.67 TimerPro + NHK 热键按钮）：房主按半数真人回合末用时 PID 平衡 TURN_TIMER_TIME 广播全房 + 宣战/掉线/城邦自动加时 + 投票 120s + 聊天指令 p+/p+++/p-（仅房主监听）+ P++/P-- 按钮 + ]/[ 热键（InputActions 前后端各注册一次）。MPT_TIMER_MODE（OFF/SMART/TIERED）与 MPT_TIMER_CHAT 两 Game 参数**仅 FE 注册**；TIERED 曲线 = `SmartTurnTimer_Tiers.sql` 建表（**仅 IG UpdateDatabase**），改 VALUES 行即自定义曲线；首回合强制 STANDARD = 回合开始事件驱动幂等初始化（已沉淀技能库）；**与 1.67 计时器互相拉扯，勿同开** |
-| `InGame/ExtendedPolicyCards/` | 条目21 政策卡收益显示（1.67 EPC，RMA 引擎 MPT_ 改名整携）：RMA 空 Context 自动执行（ExposedMembers.RMA 跨上下文调用）+ GovernmentScreen 整文件覆盖；MPT 文本行通道覆盖 90 种 EffectType（引擎原 31 种）；显示 20 种收敛（MPT_KnownEffects 静默）+ 生产族/资源五类实际计算；三层防御（RMA 调用 pcall 化/控件 nil 防御/动画帧实例空洞守卫）。**规约：迁移式重构必须 grep 验证旧注册清零；改动后 luaparser 剥标注自检 + 游戏 Lua.log 实测** |
-| `InGame/BetterTradeScreen/` | 条目22 商路界面增强（1.67 BTS）：商路总览/目的地选择/商人传送三面板 + `TradeSupport.lua` 共享库（**文件名必须原名**，被两面板按名 include）；核心修复「收益不及时刷新」= Open() 即清缓存 + 回合内变更事件失效（政策/建筑/宣战议和等，事件名均经原版 UI 验证存在）；文本仅 IG 注册（消费侧注册先例） |
-| `InGame/BetterCityStates/` | 条目23 城邦界面增强（1.67 BCS 四处魔改 + BSM 观察者补丁并入）：`CityStates_MPT.lua` = 原版 Base+XP1+XP2 压平合并体 ReplaceUIScript（压过 1.67 两套注册与 BSM 9999）；MPT_IsSpectator 读 BSM SPEC_NUM/SPEC_ID_k 属性单文件兼容（**BSM 观察者生态协议已沉淀技能库 patterns/workshop-cross-domain-patterns.md**；diff 核实不采纳 BSM 无效/回归改动） |
-| `InGame/DiplomacyRibbonExt/` | 条目24 外交丝带扩展（1.67 DPR fork + BSM 观察者逻辑并入 + 条目14 精确科文仪表）：DiplomacyRibbon/WorldRankings 两上下文各 ReplaceUIScript+ImportFiles；**XML 组级显隐规约：分组容器必须用 Stack 嵌套 Stack（ForgeUI Container 不参与 Stack 布局），子控件一律不带 Hidden="1"**（父组隐藏即整组不可见，子控件自带标记会致组显示后仍不可见）；**动态 tooltip 性能规约 = 构建按数据身份去重复用实例栈 + CalculateSize/ReprocessAnchoring 收缩外框**（InstanceManager 回收仅隐藏不销毁）；观察者局五连修复（隐形热区遮挡点击/UTF-8 字节截断乱码等，已沉淀技能库案例 61/62；BSM GAP 延迟协议依赖 1.67 MPH 已剔除）；WorldRankings 隐藏他玩家情报、保留胜利进度；参数/热键沿用 1.67 原 key |
-| `InGame/BER/` + `InGame/BCT/` | 条目25 大将军时代提示（1.67 BER）+ 工人劳动力显示（1.67 BCT），目录/命名对齐 1.67 源结构（条目25规范）：`BER/UnitFlagManager_MPT.lua` 整文件替换（复用晋升徽标控件写时代名，防御 include 链 BuilderCharges_MPT→BarbarianClansMode→原版，压过 1.67 BER/BCT）+ `BCT/UnitFlagManager_BuilderCharges_MPT.lua`（工人劳动力徽标，MPT 名 ImportFiles 供链首环探测，与 1.67 同名文件不同名同装不双叠）。**规约（引擎墙，已沉淀技能库 ui/references/popup-panel-detail.md）：跨上下文注入旗标控件两路实验（AddUserInterfaces 迷你上下文 / LookUpControl 代理 + ChangeParent）均实测不生效已废止，唯一可行 = 整文件替换复用上下文内既有控件**；开关收编条目12（GreatGeneralEraReminder_Show，单通道 MPT_Settings_Toggle） |
-| `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目12+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
+| `InGame/ForcedEndTurn/` | 条目12 强制结束回合按钮（1.65 FEB）：ActionPanel 右下角按钮左键强制结束回合（ACTION_ENDTURN REASON="UserForced"），右键 LuaEvents.ForcedEndTurn 预留；显隐由设置面板 MPT_Settings_Toggle 广播控制 |
+| `InGame/SettingsPanel/` | 条目12 游戏内设置面板：**全 mod 游戏内设置的统一收编点**（MPT_Settings 参数表；新设置 = 加行 + MPT_Settings_Toggle 广播，条目16/19/20/22/24/25 均此模式）。规约：ParameterId 沿用 1.65 原 key（同装幂等共享）；面板开关事件 MPT_SettingsPanel_Toggle 与参数广播 MPT_Settings_Toggle 必须分离（共用会自关闭）；点击复选框不落盘仅关闭时保存；存档走条目4.3 多表存储（表名 = ParameterId） |
+| `InGame/AutoUpdate/` | 条目13 游戏内自动更新（1.65 Update）：空 Context 同名 Lua 自动执行；进局检查已启用的非官方工坊 mod 更新 + EnsureEnabled 保本 mod 启用；退主菜单按 SubscriptionId 触发本 mod 工坊更新 |
+| `InGame/TechCivicProgress/` | 条目14 真实科文进度（1.65 TCP）：`TechAndCivicSupport.lua` 同名覆盖共享脚本（被 7 个 context include，只改数据层 GetResearchData/GetCivicData，Chooser 自动生效）+ 两树 MPT 版 include 探测官方最高版本（Exp2→Exp1→Base）后覆盖 GetCurrentData/PopulateNode。**`MPT_EngineBoost` 引擎精确科文预估定点链（反编译验证）供条目24 等 include 复用** |
+| `InGame/TeamVisibleResources/` | 条目15 队友资源可见性（1.65 STR）：ReplaceUIScript+ImportFiles 双注册模式首例；迷雾格显示队友已解锁资源图标；外部刷新 LuaEvents.MPT_WorldViewIcon_Rebuild |
+| `InGame/DisableMapPins/` | 条目16 禁用地图钉（1.65 RMP）：高级选项开关 `CPL_NO_PINS`（沿用 1.65 名）；空壳替换 MapPinListPanel（联机卡顿元凶，**同名覆盖文件名必须保持原名**）；三个 InGame action 由 criteria 门控（不勾选零改动） |
+| `InGame/InstantFoundCity/` | 条目17 建立城市免确认（1.65 RCT）：ReplaceUIScript 覆盖 UnitPanel，文件内重建原版 include 链（BSM→XP2→XP1→Base，命中 Initialize 即 break）后重定义回调；**原版回调闭包点击时才解析全局名，函数名保持原名不可 MPT 化** |
+| `InGame/CityBannerRefresh/` | 条目18 城市横幅刷新（1.65 PCF）：文件名前缀走原版通配 include 钩子进同上下文（仅 ImportFiles 无 LuaContext）；市民变动单城刷新 + 公民自动重排；**单订阅调度器 + UI.GetElapsedTime 真实时钟**（已沉淀技能库 lua-advanced-patterns.md） |
+| `InGame/NotificationClear/` | 条目19 清理通知按钮（1.65 NOC）：通配 include 钩子链式覆写通知增删；按钮懒创建天然恒居栈底；**计数对账（Reconcile）单一事实**堵五处漏减；开关收编条目12 |
+| `InGame/SmartTurnTimer/` | 条目20 智能回合计时器（1.65 TimerPro + NHK 热键按钮）：房主按半数真人回合末用时 PID 平衡 TURN_TIMER_TIME 广播全房 + 宣战/掉线/城邦自动加时 + 投票 120s + 聊天指令 p+/p+++/p-（仅房主监听）+ P++/P-- 按钮 + ]/[ 热键（InputActions 前后端各注册一次）。MPT_TIMER_MODE（OFF/SMART/TIERED）与 MPT_TIMER_CHAT 两 Game 参数**仅 FE 注册**；TIERED 曲线 = `SmartTurnTimer_Tiers.sql` 建表（**仅 IG UpdateDatabase**），改 VALUES 行即自定义曲线；首回合强制 STANDARD = 回合开始事件驱动幂等初始化（已沉淀技能库）；**与 1.65 计时器互相拉扯，勿同开** |
+| `InGame/ExtendedPolicyCards/` | 条目21 政策卡收益显示（1.65 EPC，RMA 引擎 MPT_ 改名整携）：RMA 空 Context 自动执行（ExposedMembers.RMA 跨上下文调用）+ GovernmentScreen 整文件覆盖；MPT 文本行通道覆盖 90 种 EffectType（引擎原 31 种）；显示 20 种收敛（MPT_KnownEffects 静默）+ 生产族/资源五类实际计算；三层防御（RMA 调用 pcall 化/控件 nil 防御/动画帧实例空洞守卫）。**规约：迁移式重构必须 grep 验证旧注册清零；改动后 luaparser 剥标注自检 + 游戏 Lua.log 实测** |
+| `InGame/BetterTradeScreen/` | 条目22 商路界面增强（1.65 BTS）：商路总览/目的地选择/商人传送三面板 + `TradeSupport.lua` 共享库（**文件名必须原名**，被两面板按名 include）；核心修复「收益不及时刷新」= Open() 即清缓存 + 回合内变更事件失效（政策/建筑/宣战议和等，事件名均经原版 UI 验证存在）；文本仅 IG 注册（消费侧注册先例） |
+| `InGame/BetterCityStates/` | 条目23 城邦界面增强（1.65 BCS 四处魔改 + BSM 观察者补丁并入）：`CityStates_MPT.lua` = 原版 Base+XP1+XP2 压平合并体 ReplaceUIScript（压过 1.65 两套注册与 BSM 9999）；MPT_IsSpectator 读 BSM SPEC_NUM/SPEC_ID_k 属性单文件兼容（**BSM 观察者生态协议已沉淀技能库 patterns/workshop-cross-domain-patterns.md**；diff 核实不采纳 BSM 无效/回归改动） |
+| `InGame/DiplomacyRibbonExt/` | 条目24 外交丝带扩展（1.65 DPR fork + BSM 观察者逻辑并入 + 条目14 精确科文仪表）：DiplomacyRibbon/WorldRankings 两上下文各 ReplaceUIScript+ImportFiles；**XML 组级显隐规约：分组容器必须用 Stack 嵌套 Stack（ForgeUI Container 不参与 Stack 布局），子控件一律不带 Hidden="1"**（父组隐藏即整组不可见，子控件自带标记会致组显示后仍不可见）；**动态 tooltip 性能规约 = 构建按数据身份去重复用实例栈 + CalculateSize/ReprocessAnchoring 收缩外框**（InstanceManager 回收仅隐藏不销毁）；观察者局五连修复（隐形热区遮挡点击/UTF-8 字节截断乱码等，已沉淀技能库案例 61/62；BSM GAP 延迟协议依赖 1.65 MPH 已剔除）；WorldRankings 隐藏他玩家情报、保留胜利进度；参数/热键沿用 1.65 原 key |
+| `InGame/BER/` + `InGame/BCT/` | 条目25 大将军时代提示（1.65 BER）+ 工人劳动力显示（1.65 BCT），目录/命名对齐 1.65 源结构（条目25规范）：`BER/UnitFlagManager_MPT.lua` 整文件替换（复用晋升徽标控件写时代名，防御 include 链 BuilderCharges_MPT→BarbarianClansMode→原版，压过 1.65 BER/BCT）+ `BCT/UnitFlagManager_BuilderCharges_MPT.lua`（工人劳动力徽标，MPT 名 ImportFiles 供链首环探测，与 1.65 同名文件不同名同装不双叠）。**规约（引擎墙，已沉淀技能库 ui/references/popup-panel-detail.md）：跨上下文注入旗标控件两路实验（AddUserInterfaces 迷你上下文 / LookUpControl 代理 + ChangeParent）均实测不生效已废止，唯一可行 = 整文件替换复用上下文内既有控件**；开关收编条目12（GreatGeneralEraReminder_Show，单通道 MPT_Settings_Toggle） |
+| `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目12+ 随 1.65 对应缩写目录逐一移植，进度见 计划.md） |
 
 ## 加载机制（.modinfo）
 
@@ -74,10 +74,10 @@ LoadOrder 分层规约（注释写死在 modinfo 顶部）：**1-99 配置 | 100
 - Configuration 参数仅 FrontEnd 注册（开局建库继承）；**IG 重复注册主键冲突**——IG 侧只建自有数据表（条目20 模式）。
 - **新文件必须同时登记进对应 action 和 modinfo 末尾的 `<Files>` 列表**，否则不会被打包加载。
 
-### 命名与共存规约（与 1.67 同装）
+### 命名与共存规约（与 1.65 同装）
 
-- InGame 目录用描述性命名（非 1.67 缩写）；自有代码标识符（事件/函数/控件/文本 tag）一律 MPT_ 前缀防撞名。
-- 与 1.67 共享的开关/热键（参数 ParameterId、InputActions、对应文本 tag）沿用 1.67 原 key，同装幂等共享。
+- InGame 目录用描述性命名（非 1.65 缩写）；自有代码标识符（事件/函数/控件/文本 tag）一律 MPT_ 前缀防撞名。
+- 与 1.65 共享的开关/热键（参数 ParameterId、InputActions、对应文本 tag）沿用 1.65 原 key，同装幂等共享。
 - 功能文本注册在消费侧：仅前端消费 → 仅 FE UpdateText；仅游戏内消费 → 仅 IG（条目21/22 先例）；通用文本（FrontEnd/Text/）双环境注册。
 
 ## 开发规范（源自 计划.md，务必遵守）
@@ -117,5 +117,5 @@ Mod id GUID 前 8 位为 0；`<Name>/<Description>/<Teaser>/<Authors>/<SpecialTh
 ## 参考路径
 
 - 游戏本体：`D:\Game\Steam\steamapps\common\Sid Meier's Civilization VI`（原版 UI 在 `Base\Assets\UI\`）
-- 工坊 mod：`D:\Game\Steam\steamapps\workshop\content\289070`（联机工具箱1.67 = 3693899014）
+- 工坊 mod：`D:\Game\Steam\steamapps\workshop\content\289070`（联机工具箱1.65 = 3693899014）
 - 参考实现：`D:\文档\My Games\Sid Meier's Civilization VI\Mods\乔尔定制mod\UI\StagingRoom.lua`
