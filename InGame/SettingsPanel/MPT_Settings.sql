@@ -16,9 +16,13 @@
 --   配置参数 MPT_TIMER_MODE（见 InGame/SmartTurnTimer/Config_SmartTimer.xml），
 --   布尔行已移除（布尔无法表达四模式，两套开关并存会互相打架）。
 -- 条目22语义差异留痕：1.67 BTS 设置存 GameConfiguration 配置库（BTS_Settings 表 +
---   BTS_SettingsUpdate 事件 + 独立设置面板），本 mod 收编 MPT_Settings 行 +
---   MPT_Settings_Toggle 广播；与 1.67 同装时设置互不相通（商路 UI 文件由本 mod
---   ImportFiles 100010 压制 1.67 的 11011 生效，1.67 配置值无人读取）。
+-- BTS_SettingsUpdate 事件 + 独立设置面板），本 mod 收编 MPT_Settings 行 +
+-- MPT_Settings_Toggle 广播；与 1.67 同装时设置互不相通（商路 UI 文件由本 mod
+-- ImportFiles 100010 压制 1.67 的 11011 生效，1.67 配置值无人读取）。
+-- 条目26 增两行：NDR 交易提醒（NotificationPanel_DealRemind 沿用 1.67 原 key，默认开，
+--   开关语义同 1.67 仅控提示音、自动展开不受控）+ GPR 他人招募伟人通知
+--   （NotificationPanel_GreatPersonRecruited 自造 key——源 mod 2459772036 无设置体系，
+--   命名与 NotificationPanel_DealRemind 对称，默认开）。
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS MPT_Settings (
 	ParameterId TEXT NOT NULL,
@@ -39,4 +43,6 @@ VALUES
 		("BTS_ShowTraderPathOnSelection",			"LOC_MPT_SETTINGS_BTS_TPATH_NAME",	"LOC_MPT_SETTINGS_BTS_TPATH_TT",		1),
 		("DiplomacyRibbon_PlayerInfo_PlayerName",	"LOC_MPT_SETTINGS_DPR_PNAME_NAME",	"LOC_MPT_SETTINGS_DPR_PNAME_TT",		1),
 		("DiplomacyRibbon_PlayerInfo_CiviName",		"LOC_MPT_SETTINGS_DPR_CNAME_NAME",	"LOC_MPT_SETTINGS_DPR_CNAME_TT",		1),
-		("GreatGeneralEraReminder_Show",			"LOC_MPT_SETTINGS_BER_NAME",		"LOC_MPT_SETTINGS_BER_TT",			1);
+		("GreatGeneralEraReminder_Show",			"LOC_MPT_SETTINGS_BER_NAME",		"LOC_MPT_SETTINGS_BER_TT",			1),
+		("NotificationPanel_DealRemind",			"LOC_MPT_SETTINGS_NDR_NAME",		"LOC_MPT_SETTINGS_NDR_TT",			1),
+		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",			1);

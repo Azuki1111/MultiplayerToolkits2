@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目26：他人招募伟人通知——通知类型定义（移植工坊 mod 2459772036 GreatPersonRecruited.xml 原样）。
+	原版无此通知类型（已验证 Base+DLC 全树零命中），必须自带：SeverityType=MID 中级严重度，
+	ExpiresEndOfTurn=True 回合末自动过期，AutoNotify=False 不弹引擎原生提示（仅通知栏条目）。 -->
+<GameInfo>
+	<Types>
+		<Row Type="NOTIFICATION_OTHER_PLAYER_RECRUITED_GREATPERSON" Kind="KIND_NOTIFICATION"/>
+	</Types>
+	<Notifications>
+		<Row NotificationType="NOTIFICATION_OTHER_PLAYER_RECRUITED_GREATPERSON"
+			 SeverityType="MID"
+			 ExpiresEndOfTurn="True"
+			 AutoNotify="False" />
+	</Notifications>
+</GameInfo>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目26：他人招募伟人通知——图标定义（移植工坊 mod 2459772036 GreatPersonRecruited_Icons.xml 原样）。
+	原版图标表无此条目（已验证），映射到原版通知图集 ICON_ATLAS_NOTIFICATIONS[8]，
+	即原版 CLAIM_GREAT_PERSON 通知同款伟人图标。 -->
+<GameData>
+	<IconDefinitions>
+		<!-- ICON_ATLAS_NOTIFICATIONS[8] is the default Great Person icon (aka ICON_NOTIFICATION_CLAIM_GREAT_PERSON) -->
+		<Row Name="ICON_NOTIFICATION_OTHER_PLAYER_RECRUITED_GREATPERSON" Atlas="ICON_ATLAS_NOTIFICATIONS" Index="8" />
+	</IconDefinitions>
+</GameData>

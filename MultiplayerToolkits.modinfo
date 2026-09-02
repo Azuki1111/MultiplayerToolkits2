@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>81</Version>
+		<Version>82</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -1023,6 +1023,49 @@
 			<File>InGame/BER/UnitFlagManager_MPT.lua</File>
 			<File>InGame/BCT/UnitFlagManager_BuilderCharges_MPT.lua</File>
 		</ImportFiles>
+		<!-- 条目26：通知栏提醒扩展（NDR = Notification Deal Remind 交易提醒 + GPR 他人招募伟人通知）
+			两 lua 文件名前缀 NotificationPanel_ 被原版通配 include("NotificationPanel_", true)
+			拉入 NotificationPanel 上下文（同条目7/18/19 机制），仅 ImportFiles 导入 VFS 无需
+			LuaContext；DealRemind 链式覆写 OnDefaultAddNotification（外交通知自动展开 + 九种
+			请求文本命中播提示音，3 秒冷却），GreatPerson 链式覆写 RegisterHandlers（挂
+			NOTIFICATION_OTHER_PLAYER_RECRUITED_GREATPERSON handler，他人招募伟人即发本地通知，
+			Activate 复用原版 OnClaimGreatPersonActivate）。开关收编条目12 MPT_Settings 两行
+			（NotificationPanel_DealRemind 沿用 1.67 原 key 默认开 / NotificationPanel_GreatPersonRecruited
+			自造 key 默认开），lua 侧订阅 MPT_Settings_Toggle 广播（DealRemind 加 TPT 双通道，
+			1.67 同装其面板可控）；与 1.67 同装时其 NDR/NOC 与本条目两文件四通配共载（交易提醒
+			双响）、与源 mod 2459772036 同装伟人通知双份，均建议二选一启用 -->
+		<ImportFiles id="IG_NDR_Import">
+			<Properties>
+				<LoadOrder>1010</LoadOrder>
+			</Properties>
+			<File>InGame/NotificationDealRemind/NotificationPanel_MPT_DealRemind.lua</File>
+			<File>InGame/NotificationDealRemind/NotificationPanel_MPT_GreatPerson.lua</File>
+		</ImportFiles>
+		<!-- 条目26：伟人招募通知类型定义（原版无此通知类型，源 mod 2459772036 自带等价移植：
+			Types KIND_NOTIFICATION + Notifications MID/回合末过期/不弹引擎原生提示） -->
+		<UpdateDatabase id="IG_NDR_Data">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/NotificationDealRemind/GreatPersonRecruited_Data.xml</File>
+		</UpdateDatabase>
+		<!-- 条目26：伟人招募通知图标（原版图标表无此条目，映射原版通知图集
+			ICON_ATLAS_NOTIFICATIONS[8] = CLAIM_GREAT_PERSON 同款伟人图标） -->
+		<UpdateIcons id="IG_NDR_Icons">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/NotificationDealRemind/GreatPersonRecruited_Icons.xml</File>
+		</UpdateIcons>
+		<!-- 条目26：伟人招募通知文本（仅 IG 注册，同条目21/22 消费侧注册先例；tag 沿用
+			源 mod 原名，源 mod 仅 en/de 双语，中文本 mod 补全） -->
+		<UpdateText id="IG_NDR_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/NotificationDealRemind/GreatPersonRecruited_Text_zh_Hans_CN.sql</File>
+			<File>InGame/NotificationDealRemind/GreatPersonRecruited_Text_en_US.sql</File>
+		</UpdateText>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -1155,5 +1198,11 @@
 		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_en_US.sql</File>
 		<File>InGame/BER/UnitFlagManager_MPT.lua</File>
 		<File>InGame/BCT/UnitFlagManager_BuilderCharges_MPT.lua</File>
+		<File>InGame/NotificationDealRemind/NotificationPanel_MPT_DealRemind.lua</File>
+		<File>InGame/NotificationDealRemind/NotificationPanel_MPT_GreatPerson.lua</File>
+		<File>InGame/NotificationDealRemind/GreatPersonRecruited_Data.xml</File>
+		<File>InGame/NotificationDealRemind/GreatPersonRecruited_Icons.xml</File>
+		<File>InGame/NotificationDealRemind/GreatPersonRecruited_Text_zh_Hans_CN.sql</File>
+		<File>InGame/NotificationDealRemind/GreatPersonRecruited_Text_en_US.sql</File>
 	</Files>
 </Mod>
