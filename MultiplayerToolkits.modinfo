@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>74</Version>
+		<Version>75</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -741,10 +741,13 @@
 			房主回合末按「半数真人结束回合用时」PID 自动平衡 TURN_TIMER_TIME 并 BroadcastGameConfig
 			广播全房；宣战/掉线加时、议会投票 120s、聊天指令 p+/p+++/p-、聊天框旁加/减时快捷按钮、
 			]/[ 加减时热键。空 Context + 同名 Lua（同条目12/13 机制，1.67 两 Context 合并单文件）。
-			工作模式：条目20扩展 Game 配置参数 MPT_TIMER_MODE（四模式 DomainValues 下拉，见
-			FE_SmartTimer_Config：OFF 全关/BASIC 仅聊天指令且回合末直减落实/PID 完整/FIXED 纯
-			阶梯曲线），Lua 按 Events.TurnEnd 分发，指令类功能仅 BASIC+SMART，自动调节仅 SMART，
-			按钮显隐经 GameConfigChanged 随配置广播刷新（替代初版 MPT_Settings 布尔行，已回退）；
+			工作模式：条目20扩展2 两项 Game 配置（见 FE_SmartTimer_Config）——MPT_TIMER_CHAT
+			启用聊天指令布尔（p+/p+++/p- 与按钮/热键总开关，原 BASIC 模式语义由「任意模式
+			+此开关」组合表达）+ MPT_TIMER_MODE 三值下拉（OFF 全关/SMART PID 完整/TIERED
+			阶段计时器：回合节点表 MPT_TimerTiers（SmartTurnTimer_Tiers.sql，IG 建表）相邻
+			节点间线性插值平滑曲线，首尾节点外保持，聊天指令的下一回合效果在曲线值上 ±5/15
+			落实），Lua 按 Events.TurnEnd 分发，自动调节仅 SMART，按钮显隐经 GameConfigChanged
+			随配置广播刷新（替代初版 MPT_Settings 布尔行，已回退）；
 			优化（零全局污染/DB.MakeHash 替代魔法数/真人统计合并/PID 单次计算/nil 防御/单调时钟
 			冷却/联机门控）与语义差异见文件头横幅；15 秒滴答音与 NHK 强制结束回合不移植；
 			与 1.67 同装时双方计时器会互相拉扯，勿同开 -->
@@ -766,6 +769,16 @@
 				<LoadOrder>10</LoadOrder>
 			</Properties>
 			<File>InGame/SmartTurnTimer/SmartTurnTimer_InputActions.xml</File>
+		</UpdateDatabase>
+		<!-- 条目20扩展2：阶段计时器回合节点表（MPT_TimerTiers：Turn 回合数/Time 秒数，
+			默认 (30,30)/(50,80)/(70,180)）——仅 IG 注册（表仅游戏内脚本经
+			GameInfo.MPT_TimerTiers() 消费，Lua 懒加载缓存并在相邻节点间线性插值平滑曲线；
+			自定义曲线直接改 VALUES 行即可） -->
+		<UpdateDatabase id="IG_SmartTimer_Tiers">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/SmartTurnTimer/SmartTurnTimer_Tiers.sql</File>
 		</UpdateDatabase>
 		<UpdateText id="IG_SmartTimer_Text">
 			<Properties>
@@ -974,6 +987,7 @@
 		<File>InGame/SmartTurnTimer/SmartTurnTimer.xml</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer.lua</File>
 		<File>InGame/SmartTurnTimer/Config_SmartTimer.xml</File>
+		<File>InGame/SmartTurnTimer/SmartTurnTimer_Tiers.sql</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_InputActions.xml</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_zh_Hans_CN.sql</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer_en_US.sql</File>

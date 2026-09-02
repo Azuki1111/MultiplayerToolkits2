@@ -1,21 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
-条目20扩展：回合计时器工作模式参数（Game 配置，GameOptions 组下拉四选一）。
-仅 FE 注册（条目16 CPL_NO_PINS 同款：Configuration 参数须前端注册，游戏开局建库
-继承；IG 重复注册会主键冲突）。SortIndex=21 紧随原版回合计时器类型（20）；
-ChangeableAfterGameStart=1：房主可开局后在暂停菜单游戏选项中切换，经配置广播全房。
-四个 DomainValues：OFF 关闭所有计时器 / BASIC 基础(仅聊天指令) / SMART 智能计时器
-(PID) / FIXED 固定计时器(回合阶梯 30T 起 80s、50T 起 120s、70T 起 180s 后保持)。
-（XML 注释内容不可出现连续半角连字符）
+条目20扩展2：回合计时器两项 Game 配置（GameOptions 组，条目16 CPL_NO_PINS 同款注册）。
+① MPT_TIMER_MODE 工作模式（下拉三选一，SortIndex=21 紧随原版回合计时器类型 20）：
+   OFF 关闭所有计时器 / SMART 智能计时器(PID) / TIERED 阶段计时器(回合节点平滑线性
+   曲线，节点数据见 SmartTurnTimer_Tiers.sql)
+② MPT_TIMER_CHAT 启用聊天指令（布尔，SortIndex=22）：p+/p+++/p- 与快捷按钮/热键的
+   总开关（关闭模式下即使开启也不生效——mod 完全不介入）
+两项均 ChangeableAfterGameStart=1：房主可开局后在暂停菜单游戏选项中修改，经配置广播
+全房。仅 FE 注册（Configuration 参数须前端注册，游戏开局建库继承；IG 重复注册主键
+冲突）。（XML 注释内容不可出现连续半角连字符）
 =========================================================================== -->
 <GameInfo>
 	<Parameters>
 		<Row ParameterId="MPT_TIMER_MODE" Name="LOC_MPT_TIMER_MODE_NAME" Description="LOC_MPT_TIMER_MODE_DESC" Domain="StandardMPTTimerModes" DefaultValue="MPT_TIMER_MODE_SMART" ConfigurationGroup="Game" ConfigurationId="MPT_TIMER_MODE" GroupId="GameOptions" ChangeableAfterGameStart="1" SortIndex="21" />
+		<Row ParameterId="MPT_TIMER_CHAT" Name="LOC_MPT_TIMER_CHAT_NAME" Description="LOC_MPT_TIMER_CHAT_DESC" Domain="bool" DefaultValue="1" ConfigurationGroup="Game" ConfigurationId="MPT_TIMER_CHAT" GroupId="GameOptions" ChangeableAfterGameStart="1" SortIndex="22" />
 	</Parameters>
 	<DomainValues>
 		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_OFF" Name="LOC_MPT_TIMER_MODE_OFF" Description="LOC_MPT_TIMER_MODE_OFF_DESC" SortIndex="1"/>
-		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_BASIC" Name="LOC_MPT_TIMER_MODE_BASIC" Description="LOC_MPT_TIMER_MODE_BASIC_DESC" SortIndex="2"/>
-		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_SMART" Name="LOC_MPT_TIMER_MODE_SMART" Description="LOC_MPT_TIMER_MODE_SMART_DESC" SortIndex="3"/>
-		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_FIXED" Name="LOC_MPT_TIMER_MODE_FIXED" Description="LOC_MPT_TIMER_MODE_FIXED_DESC" SortIndex="4"/>
+		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_SMART" Name="LOC_MPT_TIMER_MODE_SMART" Description="LOC_MPT_TIMER_MODE_SMART_DESC" SortIndex="2"/>
+		<Row Domain="StandardMPTTimerModes" Value="MPT_TIMER_MODE_TIERED" Name="LOC_MPT_TIMER_MODE_TIERED" Description="LOC_MPT_TIMER_MODE_TIERED_DESC" SortIndex="3"/>
 	</DomainValues>
 </GameInfo>

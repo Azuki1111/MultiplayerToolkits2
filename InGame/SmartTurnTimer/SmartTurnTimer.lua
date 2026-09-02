@@ -6,35 +6,44 @@
 --   广播全房；宣战/玩家掉线自动加时；世界议会投票阶段固定 120 秒；聊天指令
 --   p+ / p+++ / p--；聊天框旁加时/减时快捷按钮（所有玩家可用，非房主自动代发聊天
 --   指令由房主代执行）+ [ / ] 加/减时热键（房主直接改配置广播）。
--- 工作模式（条目20扩展：Game 配置参数 MPT_TIMER_MODE，GameOptions 组下拉四选一，
---   房主建房选择、可开局后在暂停菜单游戏选项中修改，广播全房）：
---   OFF   关闭所有计时器——本 mod 完全不介入，回合时间由原版计时器参数决定
---   BASIC 基础计时器——只包含聊天指令与快捷按钮/热键（p+ 立即加时、p+++ 本回合无
---         计时下回合恢复、p-- 下回合减 15 秒，无任何自动调节）
---   SMART 智能计时器——完整功能：PID 自动平衡 + 聊天指令 + 宣战/掉线自动加时 +
---         投票阶段 120 秒 + 过时代前馈
---   FIXED 固定计时器——按回合阶梯递增的纯固定曲线，不包含聊天指令与任何自动调节：
---         初始 30 秒；到达第 30 回合 80 秒 / 第 50 回合 120 秒 / 第 70 回合 180 秒，
---         之后保持 180 秒；开局即强制标准计时并使首回合就是 30 秒
+-- 两项 Game 配置（条目20扩展2，GameOptions 组、ChangeableAfterGameStart=1 房主可
+--   开局后在暂停菜单游戏选项中修改，广播全房；Config_SmartTimer.xml 注册）：
+--   ① MPT_TIMER_CHAT 启用聊天指令（布尔，默认开）：p+/p+++/p-、快捷按钮、热键的
+--      总开关（独立于模式——原「基础模式」语义由「任意模式+此开关」组合表达）
+--   ② MPT_TIMER_MODE 工作模式（下拉三选一，默认智能计时器）：
+--      OFF   关闭所有计时器——本 mod 完全不介入，回合时间由原版计时器参数决定
+--            （聊天指令即使开启也不生效）
+--      SMART 智能计时器——PID 自动平衡 + 宣战/掉线自动加时 + 投票阶段 120 秒 +
+--            过时代前馈
+--      TIERED 阶段计时器——回合节点平滑曲线：时间按回合节点表（SmartTurnTimer_Tiers.sql
+--            建的 MPT_TimerTiers 表，Turn 回合数/Time 秒数）在相邻节点间线性插值，
+--            首节点前保持首节点值、末节点后保持末节点值；默认节点 (30,30)/(50,80)/
+--            (70,180) → 1~30T 保持 30 秒、30~50T 线性升至 80 秒、50~70T 线性升至
+--            180 秒、之后保持；开局即强制标准计时并使首回合=曲线在回合 1 的值；
+--            聊天指令的 p+/p-- 在本模式下按「下一回合曲线值 ±5/15」落实（与 SMART
+--            手动修正量同幅），p+++ 下回合恢复标准计时
 -- 加载机制：空 Context 经 AddUserInterfaces(Context=InGame) 注册，同名本文件自动作为
 --   该 Context 脚本执行（同条目12/13 机制）；热键经 GameInfo.InputActions +
 --   InputActionDefaultGestures 注册（SmartTurnTimer_InputActions.xml，前后端各注册一次，
 --   主菜单按键绑定界面也要显示），Lua 侧 Input.GetActionId + Events.InputActionTriggered
 --   消费。两文件合并单 Context（1.67 为 TimerPro/TurnTime_HotKey 两个独立 Context）。
--- 设置接入（条目20扩展）：Game 参数 MPT_TIMER_MODE 经 Config_SmartTimer.xml 注册
---   （FE UpdateDatabase，条目16 CPL_NO_PINS 同款——Configuration 参数须前端注册，
---   游戏侧经开局建库继承；GameConfiguration.GetValue 返回模式字符串），替代初版
---   MPT_Settings 布尔行（布尔无法表达四模式，且两套开关并存会互相打架）；
---   按钮显隐经 Events.GameConfigChanged 随配置广播刷新。
+-- 设置接入：两项参数经 Config_SmartTimer.xml FE UpdateDatabase 注册（条目16 CPL_NO_PINS
+--   同款——Configuration 参数须前端注册，游戏侧经开局建库继承；GameConfiguration.GetValue
+--   模式返回字符串、布尔返回 true/false）；节点表 MPT_TimerTiers 经
+--   SmartTurnTimer_Tiers.sql InGameActions UpdateDatabase 注册（仅游戏内消费，
+--   GameInfo.MPT_TimerTiers() 读取，开局后静态故懒加载缓存）；按钮显隐经
+--   Events.GameConfigChanged 随配置广播刷新。
 -- 与 1.67 的语义差异（留痕）：
---   1. 1.67 为布尔 TOOLS_COMMAND（仅开/关）；本 mod 为四模式 Game 配置参数，语义
---      回归全局（全房统一跟随房主配置，非每玩家本地）。
---   2. 1.67 房主热键不受 TOOLS_COMMAND 限制；本文件热键统一由模式门控
---      （BASIC/SMART 生效，FIXED/OFF 忽略），模式语义一致。
+--   1. 1.67 为布尔 TOOLS_COMMAND（仅开/关）；本 mod 拆为「聊天指令布尔 + 三值模式」
+--      两项 Game 配置（条目20扩展2）——1.67 的「基础模式（仅聊天指令）」语义由
+--      「任意模式 + 聊天指令关自动调节」组合表达，聊天指令的可用性不再与模式绑定
+--      （阶段计时器亦可开聊天指令，1.67 固定曲线不含聊天的约束随拆分取消）。
+--   2. 1.67 房主热键不受 TOOLS_COMMAND 限制；本文件热键统一由「聊天指令开关 + 模式
+--      非 OFF」门控，语义一致。
 --   3. 15 秒滴答音（TOOLS_15_TIME）按用户要求不移植；NHK 强制结束回合段落不移植
 --      （条目12 FEB 已承担）。
---   4. 聊天指令链路不变：非房主按钮/热键发 p++/p-- 进公共聊天，房主开 BASIC/SMART
---      模式才响应（FIXED 明确不包含聊天指令，OFF 无监听）。
+--   4. 聊天指令链路不变：非房主按钮/热键发 p++/p-- 进公共聊天，房主开聊天指令且
+--      模式非 OFF 才响应。
 -- 相对 1.67 的优化：
 --   1. 零全局污染：1.67 泄漏 ResetVariables/Cooldown/GetHumanNum/Initialize 等十余个
 --      全局函数与全局状态变量，全部改 chunk local + MPT_Timer_ 前缀。
@@ -48,14 +57,15 @@
 --   5. nil/类型防御：TURN_TIMER_TIME 非 number 时兜底 60（前端预设默认值，条目2 同值；
 --      1.67 直接参与算术，无标准计时开局读 nil 崩脚隐患）；PlayerConfigurations/
 --      Players/Game.GetEras() 索引守卫（条目15/18 先例）；聊天文本 type 守卫；
---      模式值 type 守卫（参数未注册时兜底 OFF，fail-safe 不介入）。
+--      模式值 type 守卫（参数未注册时兜底 OFF，fail-safe 不介入）；节点表行值
+--      type 守卫（脏行跳过）。
 --   6. 冷却计时 os.time()（墙钟，受改表/对时影响）→ UI.GetElapsedTime 单调真实时钟，
 --      Lua 闭包包装（条目18修复同款，规避引擎 cfunction 类型检查）。
 --   7. 联机门控：GameConfiguration.IsAnyMultiplayer() 为假时全部逻辑跳过——1.67 单人
 --      局也空跑平衡并广播配置。
 --   8. TurnTimerUpdated 1.67 双订阅（剩余时间记录 + 15 秒滴答音）→ 单订阅仅记录。
 --   9. 按钮显隐 XML 默认 Hidden 防加载瞬间闪现，LateInitialize 刷一次 + 订阅
---      Events.GameConfigChanged 随配置广播刷新（含房主开局后切模式）。
+--      Events.GameConfigChanged 随配置广播刷新（含房主开局后切模式/开关）。
 --   10. 1.67 文本 bug 修正：减时按钮 tooltip「下回合减少20秒」与实际 p-- 的 -15 秒
 --       不符，本 mod 文本按实际值写。
 -- 保留 1.67 语义（数值原样）：PID 参数 Kp=0.5/Ki=0.08/Kd=0.25、控制量限幅 [-10,+10]、
@@ -68,16 +78,15 @@
 --   导致时间振荡（用户确认不管控），勿同时开启两边的智能计时器。
 -- 注册：AddUserInterfaces(900, Context=InGame) + ImportFiles(900) 同名配对 +
 --   UpdateDatabase(InputActions, 10) 前后端各一次 + UpdateDatabase(Config 参数, 10 FE)
---   + UpdateText(100) 前后端各一次。
+--   + UpdateDatabase(节点表, 10 IG) + UpdateText(100) 前后端各一次。
 -- ===========================================================================
 
 -- ===========================================================================
 -- 模式常量（值与 Config_SmartTimer.xml 的 DomainValues 对应）
 -- ===========================================================================
 local MPT_MODE_OFF		= "MPT_TIMER_MODE_OFF";		-- 关闭所有计时器
-local MPT_MODE_BASIC	= "MPT_TIMER_MODE_BASIC";	-- 基础（只包含聊天指令）
 local MPT_MODE_SMART	= "MPT_TIMER_MODE_SMART";	-- 智能计时器（PID 调节）
-local MPT_MODE_FIXED	= "MPT_TIMER_MODE_FIXED";	-- 固定计时器（回合阶梯）
+local MPT_MODE_TIERED	= "MPT_TIMER_MODE_TIERED";	-- 阶段计时器（回合节点平滑线性曲线）
 
 -- ===========================================================================
 -- 常量（1.67 原值，调参处集中于此）
@@ -92,10 +101,8 @@ local MPT_ControlMin		: number = -10;		-- 单回合控制量最大降幅
 local MPT_Filter			: number = 0.5;		-- 输入信号一阶滤波系数
 local MPT_Attenuation		: number = 0.98;	-- 衰减比（抑制后期回合时间过长）
 local MPT_TimeCorrection	: number = 0.05;	-- 后期修正：时间越长玩家用时越发散
-local MPT_TimeFallback		: number = 60;		-- TURN_TIMER_TIME 非 number 时的兜底值（条目2 前端预设同值）
+local MPT_TimeFallback		: number = 60;		-- TURN_TIMER_TIME 非 number / 节点表为空时的兜底值（条目2 前端预设同值）
 local MPT_TurnTimerNoneHash	: number = DB.MakeHash("TURNTIMER_NONE");	-- 优化2：替代 1.67 魔法数 2133509568
-local MPT_FixedStartTime	: number = 30;		-- 固定计时器：初始（及第 30 回合前）时间
-local MPT_FixedTiers		: table = { {30, 80}, {50, 120}, {70, 180} };	-- 固定计时器阶梯：{起始回合, 秒数}，之后保持末档
 
 -- ===========================================================================
 -- 状态（全 local——优化1）
@@ -115,6 +122,7 @@ local MPT_Integral			: number = 0;		-- PID 积分项
 local MPT_LastError			: number = 0;		-- PID 上一次误差
 local MPT_TurnTimer			: table = { ElapsedTime = 0, MaxTurnTime = 0, TimeRemaining = 0 };	-- 回合时钟记录
 local MPT_Cooldowns			: table = {};		-- 冷却表（防同类型事件短时间多次触发）
+local MPT_TierNodes			: table = nil;		-- 阶段曲线节点缓存（MPT_TimerTiers 表懒加载，开局建库后静态）
 local MPT_AddTimeActionId	: number = -1;		-- 加时热键动作 ID（Initialize 时取）
 local MPT_ReduceTimeActionId	: number = -1;	-- 减时热键动作 ID
 
@@ -141,13 +149,15 @@ local function MPT_Timer_GetMode()
 end
 
 -- ============================================================================
--- MPT_Timer_IsCommandMode(mode)：该模式是否响应聊天指令/快捷按钮/热键。
---   BASIC（只包含聊天指令）与 SMART（含 PID）为 true；FIXED 明确不含聊天指令、
---   OFF 全关为 false。
--- 用法：if MPT_Timer_IsCommandMode(MPT_Timer_GetMode()) then ...
+-- MPT_Timer_ChatEnabled()：聊天指令/快捷按钮/热键是否可用——「启用聊天指令」布尔
+--   开启且模式非 OFF（关闭模式下 mod 完全不介入，条目20扩展2）。
+-- 用法：if MPT_Timer_ChatEnabled() then ...
 -- ============================================================================
-local function MPT_Timer_IsCommandMode(mode)
-	return mode == MPT_MODE_BASIC or mode == MPT_MODE_SMART;
+local function MPT_Timer_ChatEnabled()
+	if MPT_Timer_GetMode() == MPT_MODE_OFF then
+		return false;
+	end
+	return GameConfiguration.GetValue("MPT_TIMER_CHAT") == true;
 end
 
 -- ============================================================================
@@ -165,18 +175,50 @@ local function MPT_Timer_GetConfigTime()
 end
 
 -- ============================================================================
--- MPT_Timer_FixedTimeForTurn(turnNumber)：固定计时器阶梯曲线——初始 30 秒；到达
---   第 30/50/70 回合升为 80/120/180 秒，之后保持 180 秒（条目20扩展）。
--- 用法：MPT_Timer_FixedTimeForTurn(35) → 80
+-- MPT_Timer_GetTierNodes()：阶段曲线节点（MPT_TimerTiers 表，{Turn,Time} 升序）。
+--   懒加载并缓存——开局建库后静态不变（条目20扩展2）；行值 type 守卫跳过脏行。
+-- 用法：local nodes = MPT_Timer_GetTierNodes();
 -- ============================================================================
-local function MPT_Timer_FixedTimeForTurn(turnNumber)
-	local fixedTime :number = MPT_FixedStartTime;
-	for _, tier in ipairs(MPT_FixedTiers) do
-		if turnNumber >= tier[1] then
-			fixedTime = tier[2];
+local function MPT_Timer_GetTierNodes()
+	if MPT_TierNodes == nil then
+		MPT_TierNodes = {};
+		local rows = GameInfo.MPT_TimerTiers();
+		if rows ~= nil then
+			for row in rows do
+				if type(row.Turn) == "number" and type(row.Time) == "number" then
+					table.insert(MPT_TierNodes, { Turn = row.Turn, Time = row.Time });
+				end
+			end
+			table.sort(MPT_TierNodes, function(a, b) return a.Turn < b.Turn; end);
 		end
 	end
-	return fixedTime;
+	return MPT_TierNodes;
+end
+
+-- ============================================================================
+-- MPT_Timer_TieredTimeForTurn(turnNumber)：阶段计时器平滑曲线——回合节点表相邻两
+--   节点间线性插值，首节点前保持首节点时间、末节点后保持末节点时间（条目20扩展2）。
+--   表空/无有效行时兜底 MPT_TimeFallback。
+-- 用法：MPT_Timer_TieredTimeForTurn(35) → 节点(30,30)/(50,80) 间插值 = 50
+-- ============================================================================
+local function MPT_Timer_TieredTimeForTurn(turnNumber)
+	local nodes = MPT_Timer_GetTierNodes();
+	if nodes == nil or #nodes == 0 then
+		return MPT_TimeFallback;
+	end
+	if turnNumber <= nodes[1].Turn then
+		return nodes[1].Time;	-- 首节点前：保持首节点值
+	end
+	for i = 2, #nodes do
+		local prev = nodes[i - 1];
+		local curr = nodes[i];
+		if turnNumber <= curr.Turn then
+			-- 相邻节点间线性插值（平滑曲线）
+			local ratio :number = (turnNumber - prev.Turn) / (curr.Turn - prev.Turn);
+			return math.floor(prev.Time + (curr.Time - prev.Time) * ratio + 0.5);
+		end
+	end
+	return nodes[#nodes].Time;	-- 末节点后：保持末节点值
 end
 
 -- ============================================================================
@@ -253,14 +295,15 @@ end
 
 -- ============================================================================
 -- MPT_Timer_OnMultiplayerChat(fromPlayer, toPlayer, text, eTargetType)：聊天指令
---   （仅 BASIC/SMART 模式，FIXED 明确不含聊天指令）。
---   仅房主监听公共频道（toPlayer == -1）时响应（1.67 同款链路）：
---   p+ / p++   加时 20 秒（剩余<8 秒时改 +24，每回合一次，立即广播）
+--   （「启用聊天指令」开启且模式非 OFF 时；仅房主监听公共频道 toPlayer == -1，
+--   1.67 同款链路）：
+--   p+ / p++   加时 20 秒（剩余<8 秒时改 +24，每回合一次，立即广播；下回合经模式
+--              各自的回合末逻辑小幅顺延）
 --   p+++ / p++++ 本回合无回合时间（下回合恢复 STANDARD）
---   p- / p--   下回合 -15 秒（SMART 经平衡修正、BASIC 经回合末直减）
+--   p- / p--   下回合 -15 秒（SMART 经平衡修正、TIERED 经曲线值直减）
 -- ============================================================================
 local function MPT_Timer_OnMultiplayerChat(fromPlayer, toPlayer, text, eTargetType)
-	if not MPT_IsMultiplayer or not MPT_Timer_IsCommandMode(MPT_Timer_GetMode())
+	if not MPT_IsMultiplayer or not MPT_Timer_ChatEnabled()
 		or Network.GetLocalPlayerID() ~= Network.GetGameHostPlayerID()
 		or toPlayer ~= -1 or type(text) ~= "string" then
 		return;
@@ -295,13 +338,13 @@ local function MPT_Timer_OnMultiplayerChat(fromPlayer, toPlayer, text, eTargetTy
 end
 
 -- ============================================================================
--- MPT_Timer_OnTurnEndFixed(currentTurn)：固定计时器模式回合末（Events.TurnEnd，
---   仅房主写配置）——按下一回合的阶梯曲线写 TURN_TIMER_TIME 并广播，无任何自动
---   调节（条目20扩展）。首回合强制标准计时：FIXED 模式语义即「要有计时器」，不再
---   沿用 SMART 的「原计时为 NONE 则尊重」守卫（LateInitialize 已在开局设置过，
---   此处兜底中途切模式场景）。
+-- MPT_Timer_OnTurnEndTiered(currentTurn)：阶段计时器模式回合末（Events.TurnEnd，
+--   仅房主写配置）——按下一回合的平滑曲线写 TURN_TIMER_TIME 并广播（条目20扩展2）。
+--   首回合强制标准计时（阶段模式语义即「要有计时器」，LateInitialize 已在开局设置
+--   过，此处兜底中途切模式场景）；聊天指令的「下一回合」效果在曲线值上落实：
+--   p+ 顺延 +5 / p-- 减 15（与 SMART 手动修正量同幅，1.67 语义），下限最小时间。
 -- ============================================================================
-local function MPT_Timer_OnTurnEndFixed(currentTurn)
+local function MPT_Timer_OnTurnEndTiered(currentTurn)
 	if Network.GetLocalPlayerID() ~= Network.GetGameHostPlayerID() then
 		return;
 	end
@@ -310,35 +353,21 @@ local function MPT_Timer_OnTurnEndFixed(currentTurn)
 		MPT_FirstTurnInit = false;
 		GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");
 	end
+	if MPT_ActionNone then
+		GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");	-- p+++ 仅本回合无计时，下回合恢复
+	end
 
 	local nextTurn :number = (currentTurn or 0) + 1;	-- 本回合末设置的是下一回合的时长
-	GameConfiguration.SetValue("TURN_TIMER_TIME", MPT_Timer_FixedTimeForTurn(nextTurn));
-	Network.BroadcastGameConfig();
-end
-
--- ============================================================================
--- MPT_Timer_OnTurnEndBasic()：基础模式回合末（Events.TurnEnd，仅房主写配置）——
---   无 PID/无自动调节，仅落实聊天指令的「下一回合」效果，保持 1.67 指令语义：
---   p+++ 恢复标准计时；p-- 直减 15 秒（下限最小时间）；无指令则不动配置。
--- ============================================================================
-local function MPT_Timer_OnTurnEndBasic()
-	if Network.GetLocalPlayerID() ~= Network.GetGameHostPlayerID() then
-		return;
-	end
-
-	local changed :boolean = false;
-	if MPT_ActionNone then
-		GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");
-		changed = true;
+	local tierTime :number = MPT_Timer_TieredTimeForTurn(nextTurn);
+	if MPT_ActionAdd then
+		tierTime = tierTime + 5;
 	end
 	if MPT_ActionReduce then
-		GameConfiguration.SetValue("TURN_TIMER_TIME",
-			math.max(MPT_MinTime, MPT_Timer_GetConfigTime() - 15));
-		changed = true;
+		tierTime = tierTime - 15;
 	end
-	if changed then
-		Network.BroadcastGameConfig();
-	end
+	tierTime = math.ceil(math.max(tierTime, MPT_MinTime));
+	GameConfiguration.SetValue("TURN_TIMER_TIME", tierTime);
+	Network.BroadcastGameConfig();
 	MPT_Timer_ResetVariables();
 end
 
@@ -433,16 +462,14 @@ end
 
 -- ============================================================================
 -- MPT_Timer_OnTurnEnd(currentTurn)：Events.TurnEnd 入口——按工作模式分发
---   （条目20扩展）：FIXED→固定曲线；BASIC→仅落实聊天指令；SMART→PID 平衡；
---   OFF/未知→不介入（仅清状态）。
+--   （条目20扩展2）：SMART→PID 平衡；TIERED→阶段平滑曲线；OFF/未知→不介入
+--   （仅清状态）。
 -- ============================================================================
 local function MPT_Timer_OnTurnEnd(currentTurn)
 	if not MPT_IsMultiplayer then return; end
 	local mode = MPT_Timer_GetMode();
-	if mode == MPT_MODE_FIXED then
-		MPT_Timer_OnTurnEndFixed(currentTurn);
-	elseif mode == MPT_MODE_BASIC then
-		MPT_Timer_OnTurnEndBasic();
+	if mode == MPT_MODE_TIERED then
+		MPT_Timer_OnTurnEndTiered(currentTurn);
 	elseif mode == MPT_MODE_SMART then
 		MPT_Timer_OnTurnEndSmart();
 	else
@@ -452,8 +479,8 @@ end
 
 -- ============================================================================
 -- MPT_Timer_OnDeclareWar(firstPlayerID, secondPlayerID)：宣战加时（仅 SMART——
---   自动调节属智能计时器，BASIC/FIXED 不含）。大文明间宣战 +20 秒（3 秒冷却）；
---   剩余<10 秒时对城邦宣战 +8 秒（防卡秒顶城邦）。
+--   自动调节属智能计时器）。大文明间宣战 +20 秒（3 秒冷却）；剩余<10 秒时对城邦
+--   宣战 +8 秒（防卡秒顶城邦）。
 -- ============================================================================
 local function MPT_Timer_OnDeclareWar(firstPlayerID, secondPlayerID)
 	if not MPT_IsMultiplayer or MPT_Timer_GetMode() ~= MPT_MODE_SMART
@@ -569,13 +596,13 @@ local function MPT_Timer_OnPlayerTurnBegin(ePlayer)
 end
 
 -- ============================================================================
--- MPT_Timer_OnInputActionTriggered(actionId)：[ / ] 加减时热键（仅 BASIC/SMART；
---   差异2：统一模式门控——1.67 房主热键不受 TOOLS_COMMAND 限制）。
+-- MPT_Timer_OnInputActionTriggered(actionId)：[ / ] 加减时热键（「启用聊天指令」
+--   开启且模式非 OFF；差异2：统一开关门控——1.67 房主热键不受 TOOLS_COMMAND 限制）。
 --   加时 ]：房主直接 +20 秒广播；非房主代发聊天指令 p++（由房主监听执行）。
 --   减时 [：房主 -10 秒（下限 40 秒，触底换提示音）；非房主代发 p--。
 -- ============================================================================
 local function MPT_Timer_OnInputActionTriggered(actionId)
-	if not MPT_IsMultiplayer or not MPT_Timer_IsCommandMode(MPT_Timer_GetMode()) then return; end
+	if not MPT_IsMultiplayer or not MPT_Timer_ChatEnabled() then return; end
 
 	if actionId == MPT_AddTimeActionId then
 		if Network.GetLocalPlayerID() == Network.GetGameHostPlayerID() then
@@ -610,23 +637,22 @@ end
 
 -- ============================================================================
 -- MPT_Timer_UpdateButtonsVisibility()：刷新聊天框旁加时/减时按钮显隐。
---   联机且模式为 BASIC/SMART 时显示（FIXED 明确不含聊天指令故无按钮；优化9：
---   XML 默认 Hidden 防闪现，LateInitialize 刷一次 + GameConfigChanged 随房主
---   配置广播刷新）。Controls nil 守卫：广播可能早于按钮挂载到达。
+--   联机且 MPT_Timer_ChatEnabled() 时显示（优化9：XML 默认 Hidden 防闪现，
+--   LateInitialize 刷一次 + GameConfigChanged 随房主配置广播刷新）。
+--   Controls nil 守卫：广播可能早于按钮挂载到达。
 -- 用法：MPT_Timer_UpdateButtonsVisibility()
 -- ============================================================================
 local function MPT_Timer_UpdateButtonsVisibility()
 	if Controls.AddTimeButton == nil or Controls.ReduceTimeButton == nil then return; end
-	local hide :boolean = not (MPT_IsMultiplayer
-		and MPT_Timer_IsCommandMode(MPT_Timer_GetMode()));
+	local hide :boolean = not (MPT_IsMultiplayer and MPT_Timer_ChatEnabled());
 	Controls.AddTimeButton:SetHide(hide);
 	Controls.ReduceTimeButton:SetHide(hide);
 end
 
 -- ============================================================================
 -- MPT_Timer_OnGameConfigChanged()：游戏配置广播（房主改任何配置都会触发）——
---   刷按钮显隐（模式参数 ChangeableAfterGameStart=1，房主可开局后在暂停菜单
---   游戏选项中切模式，全房经此事件同步）。
+--   刷按钮显隐（两项参数 ChangeableAfterGameStart=1，房主可开局后在暂停菜单
+--   游戏选项中切换，全房经此事件同步）。
 -- ============================================================================
 local function MPT_Timer_OnGameConfigChanged()
 	MPT_Timer_UpdateButtonsVisibility();
@@ -636,9 +662,9 @@ end
 -- MPT_Timer_LateInitialize()：LoadScreenClose 后初始化（1.67 同款时序——确保
 --   WorldTracker 上下文已加载，ChangeParent 才有挂载点）。
 --   ①按钮挂到聊天框容器并注册点击（所有玩家点击都发聊天指令，房主由自己的聊天
---     监听代执行）②FIXED 模式开局初始化（房主：强制标准计时 + 首回合 30 秒，
---     使「初始 30 秒」从第 1 回合即生效；SMART 不动——沿用 1.67 首回合末初始化时序）
---   ③刷显隐 ④订阅全部游戏事件。
+--     监听代执行）②阶段计时器开局初始化（房主：强制标准计时 + 首回合取曲线在
+--     回合 1 的值，使平滑曲线从第 1 回合生效；SMART 不动——沿用 1.67 首回合末
+--     初始化时序）③刷显隐 ④订阅全部游戏事件。
 -- ============================================================================
 local function MPT_Timer_LateInitialize()
 	local chatContainer = ContextPtr:LookUpControl("/InGame/WorldTracker/ChatPanelContainer");
@@ -664,13 +690,13 @@ local function MPT_Timer_LateInitialize()
 		end);
 	end
 
-	-- 固定计时器开局初始化（条目20扩展）：只处理尚未消费首回合标志的场景
+	-- 阶段计时器开局初始化（条目20扩展2）：只处理尚未消费首回合标志的场景
 	if MPT_IsMultiplayer and MPT_FirstTurnInit
-		and MPT_Timer_GetMode() == MPT_MODE_FIXED
+		and MPT_Timer_GetMode() == MPT_MODE_TIERED
 		and Network.GetLocalPlayerID() == Network.GetGameHostPlayerID() then
 		MPT_FirstTurnInit = false;
 		GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");
-		GameConfiguration.SetValue("TURN_TIMER_TIME", MPT_FixedStartTime);
+		GameConfiguration.SetValue("TURN_TIMER_TIME", MPT_Timer_TieredTimeForTurn(1));
 		Network.BroadcastGameConfig();
 	end
 
