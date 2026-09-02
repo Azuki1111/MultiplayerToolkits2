@@ -1,7 +1,8 @@
 -- ============================================================================
 -- 条目12：游戏内设置参数表 MPT_Settings（移植 1.67 Settings/TPT_Settings.sql 简化版）
 -- 仅保留本 mod 已移植功能的参数行（当前：FEB 强制结束回合按钮 / 条目19 NOC 禁用
---   清理通知按钮 / 条目22 BTS 商路界面增强 4 选项）；
+--   清理通知按钮 / 条目22 BTS 商路界面增强 4 选项）；条目25 增 BER 大将军时代提示行
+--   （GreatGeneralEraReminder_Show 沿用 1.67 原 key，默认开）；
 -- 表名用 MPT_Settings（本 mod 数据表 MPT_ 前缀规约）——1.67 的 TPT_Settings 建表
 -- 无 IF NOT EXISTS，同名表两 mod 共存时后加载者报错，故隔离；
 -- ParameterId 保留 1.67 原 key（ForcedEndButton_Show / NotificationPanel_QuickClear，
@@ -37,4 +38,5 @@ VALUES
 		("BTS_ShowAllRoutePaths",					"LOC_MPT_SETTINGS_BTS_LPATH_NAME",	"LOC_MPT_SETTINGS_BTS_LPATH_TT",		1),
 		("BTS_ShowTraderPathOnSelection",			"LOC_MPT_SETTINGS_BTS_TPATH_NAME",	"LOC_MPT_SETTINGS_BTS_TPATH_TT",		1),
 		("DiplomacyRibbon_PlayerInfo_PlayerName",	"LOC_MPT_SETTINGS_DPR_PNAME_NAME",	"LOC_MPT_SETTINGS_DPR_PNAME_TT",		1),
-		("DiplomacyRibbon_PlayerInfo_CiviName",		"LOC_MPT_SETTINGS_DPR_CNAME_NAME",	"LOC_MPT_SETTINGS_DPR_CNAME_TT",		1);
+		("DiplomacyRibbon_PlayerInfo_CiviName",		"LOC_MPT_SETTINGS_DPR_CNAME_NAME",	"LOC_MPT_SETTINGS_DPR_CNAME_TT",		1),
+		("GreatGeneralEraReminder_Show",			"LOC_MPT_SETTINGS_BER_NAME",		"LOC_MPT_SETTINGS_BER_TT",			1);

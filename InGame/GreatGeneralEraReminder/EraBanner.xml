@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目25：大将军时代提示（BER，移植联机工具箱 1.67 BER/UnitFlagManager_GreatGeneralEraReminder.lua）
+横幅 Instance 模板：大将军/海军统帅单位旗帜下沿的时代名横幅（Image 底 + Label 时代名）。
+视觉参数照抄 1.67（ActionPanel_TurnTimerFrame 横幅纹理、110x20、旗标底部居中上移 6 像素、
+FontFlair12 白色、文字微下移 1 像素），由 1.67 的「复用晋升徽标控件改造」改为官方蛮族氏族
+DLC 同款「实例模板新建控件」做法（BC 的 TribeStatusFlag 即此模式：模板内带 ID 控件自动挂
+实例表，Lua 直接 m_Instance.XXX 访问，无需运行时装配）。
+注册：AddUserInterfaces 指向 UnitFlagManager 子上下文。模板必须注册进该上下文
+（ContextPtr:BuildInstanceForControl 仅解析本上下文模板，控制句柄不可经 LuaEvents 跨
+上下文传递，外部状态无法定位动态旗标实例），而官方 DLC 此 action 仅用过 InGame，此处为
+扩展用法：若引擎不把追加布局合并注册进目标上下文，全局取还函数不存在，调用方 nil 防御
+静默关闭，回退方案为同名覆盖原版 UnitFlagManager.xml。
+同名 EraBanner.lua 持实例池（MPT_ERA_Acquire/MPT_ERA_Release），协议照抄原版官方动态
+实例模式（原版 AttentionMarkerInstance 即构建后 ChangeParent 挂 FlagRoot、UnitFlag.destroy
+时 ReleaseInstanceByParent 按父控件归还，见原版 UnitFlagManager.lua 191 至 210 行）。
+=========================================================================== -->
+<Context>
+	<Container ID="MPT_ERA_Pool" Hidden="1"/>
+	<Instance Name="MPTEraBanner">
+		<Image ID="EraBanner" Anchor="C,B" Size="110,20" Offset="0,-6" Texture="ActionPanel_TurnTimerFrame" Hidden="1">
+			<Label ID="EraLabel" Anchor="C,C" Offset="0,1" Style="FontFlair12" Color="255,255,255,255"/>
+		</Image>
+	</Instance>
+</Context>

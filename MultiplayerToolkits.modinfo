@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>76</Version>
+		<Version>78</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -349,6 +349,33 @@
 			</Properties>
 			<File>InGame/SmartTurnTimer/SmartTurnTimer_zh_Hans_CN.sql</File>
 			<File>InGame/SmartTurnTimer/SmartTurnTimer_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目24：外交丝带扩展（DPR）能见度模式参数——SETTINGS_DIPLOMACYRIBBON_TPT 三档
+			（标准/团队/公开），原样沿用 1.67 DPR 原 key/Domain（与 1.67 同装同 key 幂等共享），
+			仅 FE 注册（条目16/20 规约：Configuration 参数须前端注册开局建库继承），
+			ChangeableAfterGameStart=0（信息披露规则开局后不可改），Lua 运行时读取 nil 兜底标准 -->
+		<UpdateDatabase id="FE_DPR_Config">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/DiplomacyRibbonExt/Config_DiploRibbon.xml</File>
+		</UpdateDatabase>
+		<!-- 条目24：DPR 快捷键（; 切换科文仪表 / ' 切换储量产出两组）——沿用 1.67 原 ActionId，
+			前后端各注册一次（条目20 规约：FE 按键绑定界面显示 / IG 运行时取用） -->
+		<UpdateDatabase id="FE_DPR_Input">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/DiplomacyRibbonExt/InputActions_DiploRibbon.xml</File>
+		</UpdateDatabase>
+		<!-- 条目24：DPR 文本（参数三档 + 热键 + 丝带 tooltip，沿用 1.67 LOC_DPR_* 原 tag）——
+			FE+IG 双注册：参数文本大厅高级选项可见、热键名主菜单可见、tooltip 游戏内可见 -->
+		<UpdateText id="FE_DPR_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_zh_Hans_CN.sql</File>
+			<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_en_US.sql</File>
 		</UpdateText>
 	</FrontEndActions>
 	<InGameActions>
@@ -911,6 +938,98 @@
 			<File>InGame/BetterCityStates/CityStates_MPT.lua</File>
 			<File>InGame/BetterCityStates/CityStates.xml</File>
 		</ImportFiles>
+		<!-- 条目24：外交丝带扩展（DPR = Diplomacy Ribbon 扩展，移植 1.67 DPR/ 目录）+ BSM 观察者兼容——
+			DiplomacyRibbon_MPT.lua 基底 = 1.67 DPR 完整独立 fork（2007 行，样式基准）+ BSM（观察者
+			mod，工坊 1916397407）观察者逻辑并入（点头像切 POV 的三键名 BSM 生态协议原样保留/观察者
+			丝带显示全部玩家四象限排序/六视图+20 秒轮播/非观战局零侵入）+ 条目14 MPT_EngineBoost
+			引擎精确科文预估；DiplomacyRibbon.xml 按「组」重构 StatStack（Group_Stock/Group_Rate/
+			Group_TechCivis/Group_Observer，组级 SetHide 替代 DPR 约 40 行逐 Label 隐藏与 BSM
+			HideSpecInfo 40 余行逐控件隐藏）。原版 DiplomacyRibbon.xml 为 Exp2 整文件替换 Base 版 →
+			ReplaceUIScript 100000 + ImportFiles 100010（同条目15/17/21/22/23 模式）；与 1.67 同装
+			压制其 DPR 101/102（参数/热键同 key 自然共享），与 BSM 同装压制其 9999 丝带（其余 BSM
+			组件不受影响）。WorldRankings 同条目移植（用户裁决：隐藏其他玩家情报数据——支配页军力
+			评分恒 -1、两处次要决胜摘要移除；不隐藏胜利进度——Base+Exp2 合并单文件保留全部胜利视图） -->
+		<ReplaceUIScript id="IG_DPR_DiplomacyRibbon">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>DiplomacyRibbon</LuaContext>
+				<LuaReplace>InGame/DiplomacyRibbonExt/DiplomacyRibbon_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_DPR_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/DiplomacyRibbonExt/DiplomacyRibbon_MPT.lua</File>
+			<File>InGame/DiplomacyRibbonExt/DiplomacyRibbon.xml</File>
+		</ImportFiles>
+		<ReplaceUIScript id="IG_DPR_WorldRankings">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>WorldRankings</LuaContext>
+				<LuaReplace>InGame/DiplomacyRibbonExt/WorldRankings_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_DPR_WRImport">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/DiplomacyRibbonExt/WorldRankings_MPT.lua</File>
+			<File>InGame/DiplomacyRibbonExt/WorldRankings.xml</File>
+		</ImportFiles>
+		<!-- 条目24：DPR 快捷键 IG 侧注册（与 FE_DPR_Input 同文件前后端各一次） -->
+		<UpdateDatabase id="IG_DPR_Input">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/DiplomacyRibbonExt/InputActions_DiploRibbon.xml</File>
+		</UpdateDatabase>
+		<!-- 条目24：DPR 文本 IG 侧注册（与 FE_DPR_Text 同文件，丝带 tooltip 游戏内消费） -->
+		<UpdateText id="IG_DPR_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_zh_Hans_CN.sql</File>
+			<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目25：大将军时代提示（BER = Great General Era Reminder，移植 1.67 BER/ 目录单文件）
+			大将军/海军统帅单位旗帜下沿显示所属时代名横幅。UnitFlagManager 无通配 include 钩子，
+			整文件替换（条目15/17/21/22/24 模式）：ReplaceUIScript 100000 压过 1.67 BER 的 10001
+			（同装时其 BER 上下文不再加载，其设置面板 BER 开关失联属预期，开关以本 mod 面板为准）。
+			表现层与 1.67 不同（用户裁决）：1.67 复用晋升徽标控件改造，本移植改官方蛮族氏族 DLC
+			同款「实例模板新建控件」——EraBanner.xml 声明 MPTEraBanner 模板 + EraBanner.lua 实例池
+			（MPT_ERA_Acquire/Release，照抄原版 AttentionMarker 动态实例模式：挂 FlagRoot、
+			UnitFlag.destroy 时 ReleaseInstanceByParent 归还），经 AddUserInterfaces 注入
+			UnitFlagManager 子上下文（官方此 action 仅用过 InGame，扩展用法：模板须注册进旗标
+			上下文，控制句柄不可跨上下文传递；若引擎不合并注册则功能静默关闭，lua 有 nil 防御，
+			回退方案为同名覆盖原版 UnitFlagManager.xml）。开关入条目12 MPT_Settings
+			（1.67 原 key GreatGeneralEraReminder_Show，默认开） -->
+		<ReplaceUIScript id="IG_BER_Replace">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>UnitFlagManager</LuaContext>
+				<LuaReplace>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_BER_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</File>
+		</ImportFiles>
+		<AddUserInterfaces id="IG_BER_Banner">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>UnitFlagManager</Context>
+			</Properties>
+			<File>InGame/GreatGeneralEraReminder/EraBanner.xml</File>
+		</AddUserInterfaces>
+		<ImportFiles id="IG_BER_Banner_Import">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/GreatGeneralEraReminder/EraBanner.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -1033,5 +1152,16 @@
 		<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_en_US.sql</File>
 		<File>InGame/BetterCityStates/CityStates_MPT.lua</File>
 		<File>InGame/BetterCityStates/CityStates.xml</File>
+		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbon_MPT.lua</File>
+		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbon.xml</File>
+		<File>InGame/DiplomacyRibbonExt/WorldRankings_MPT.lua</File>
+		<File>InGame/DiplomacyRibbonExt/WorldRankings.xml</File>
+		<File>InGame/DiplomacyRibbonExt/Config_DiploRibbon.xml</File>
+		<File>InGame/DiplomacyRibbonExt/InputActions_DiploRibbon.xml</File>
+		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_zh_Hans_CN.sql</File>
+		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_en_US.sql</File>
+		<File>InGame/GreatGeneralEraReminder/EraBanner.xml</File>
+		<File>InGame/GreatGeneralEraReminder/EraBanner.lua</File>
+		<File>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</File>
 	</Files>
 </Mod>

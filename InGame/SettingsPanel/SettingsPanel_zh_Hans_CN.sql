@@ -21,8 +21,11 @@ VALUES
 	('LOC_MPT_SETTINGS_DPR_PNAME_NAME',	'zh_Hans_CN',	'外交丝带：显示玩家名'),
 	('LOC_MPT_SETTINGS_DPR_PNAME_TT',	'zh_Hans_CN',	'在外交丝带头像卡片顶部显示玩家名（条目24 DPR）'),
 	('LOC_MPT_SETTINGS_DPR_CNAME_NAME',	'zh_Hans_CN',	'外交丝带：显示文明名'),
-	('LOC_MPT_SETTINGS_DPR_CNAME_TT',	'zh_Hans_CN',	'在外交丝带头像卡片顶部显示文明简称（条目24 DPR）');
+	('LOC_MPT_SETTINGS_DPR_CNAME_TT',	'zh_Hans_CN',	'在外交丝带头像卡片顶部显示文明简称（条目24 DPR）'),
+	('LOC_MPT_SETTINGS_BER_NAME',	'zh_Hans_CN',	'固定显示大将军时代'),
+	('LOC_MPT_SETTINGS_BER_TT',	'zh_Hans_CN',	'在大将军下面显示所属时代标签（条目25 BER）');
 -- 条目20初版曾在此加智能计时器开关文本（LOC_MPT_SETTINGS_TIMER_ENABLE_*），条目20扩展
 -- 改用四模式 Game 配置参数（文本移至 InGame/SmartTurnTimer/ 双语 SQL），已删除。
 -- 条目22：BTS 4 选项文本移植自 1.67 BTS/Text/BTS_Text_EN.xml 的 LOC_BTS_SETTING_*，
 -- tag 换 LOC_MPT_SETTINGS_BTS_* 前缀（项目规约），措辞有润色。
+-- 条目25：BER 开关文本沿用 1.67 原文案（1.67 仅 zh 且重复注册两遍，此处补 en_US）。

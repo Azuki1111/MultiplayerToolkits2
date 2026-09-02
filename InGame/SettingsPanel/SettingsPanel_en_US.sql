@@ -21,9 +21,13 @@ VALUES
 	('LOC_MPT_SETTINGS_DPR_PNAME_NAME',	'en_US',	'Diplomacy Ribbon: Show player name'),
 	('LOC_MPT_SETTINGS_DPR_PNAME_TT',	'en_US',	'Show the player name at the top of each ribbon card (item 24 DPR)'),
 	('LOC_MPT_SETTINGS_DPR_CNAME_NAME',	'en_US',	'Diplomacy Ribbon: Show civilization name'),
-	('LOC_MPT_SETTINGS_DPR_CNAME_TT',	'en_US',	'Show the civilization short name at the top of each ribbon card (item 24 DPR)');
+	('LOC_MPT_SETTINGS_DPR_CNAME_TT',	'en_US',	'Show the civilization short name at the top of each ribbon card (item 24 DPR)'),
+	('LOC_MPT_SETTINGS_BER_NAME',	'en_US',	'Always Show Great General Era'),
+	('LOC_MPT_SETTINGS_BER_TT',	'en_US',	'Show the era label below Great General unit flags (item 25 BER)');
 -- The initial item-20 smart timer switch texts (LOC_MPT_SETTINGS_TIMER_ENABLE_*) were
 -- replaced by the 4-mode Game config parameter in the item-20 extension; texts moved to
 -- InGame/SmartTurnTimer/ localized SQL files.
 -- Item 22: the 4 BTS option texts are ported from 1.67 BTS/Text/BTS_Text_EN.xml
 -- (LOC_BTS_SETTING_*), retagged to LOC_MPT_SETTINGS_BTS_* per project convention.
+-- Item 25: BER switch texts follow the 1.67 wording (1.67 shipped zh only, registered
+-- twice by mistake; en_US added here per project convention).
