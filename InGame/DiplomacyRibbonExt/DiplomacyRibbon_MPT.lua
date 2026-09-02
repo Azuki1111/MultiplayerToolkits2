@@ -1586,14 +1586,15 @@ function UpdateStatValues( playerID, uiLeader )
 		uiLeader.NavyUnit:SetText(SpecStr_Navy.. tostring(unit_sea))
 		uiLeader.AirUnit:SetText(SpecStr_Air.. tostring(unit_air))
 		-- 核弹（原 BSM 同名行）。条目24修复：两类武器同行在 63px 列宽被 61px 截断遮挡（用户实测截图）——
-		-- 拆两行 [NEWLINE]，每行「数量+图标」约 30px 富余
+		-- 拆两行 [NEWLINE]，每行约 35px 富余。条目24修复2：数字改放图标右侧（用户裁决「数字放右边」，
+		-- 对齐全列 icon 左数字右的行式——原 BSM 数量前置）
 		local playerWMDs  = Players[playerID]:GetWMDs()
 		local strNuke = ""
 		for entry in GameInfo.WMDs() do
 			if (entry.WeaponType == "WMD_NUCLEAR_DEVICE") then
-				strNuke = playerWMDs:GetWeaponCount(entry.Index).." [ICON_Nuclear]"
+				strNuke = "[ICON_Nuclear] "..playerWMDs:GetWeaponCount(entry.Index)
 			elseif (entry.WeaponType == "WMD_THERMONUCLEAR_DEVICE") then
-				strNuke = strNuke.."[NEWLINE]"..playerWMDs:GetWeaponCount(entry.Index).." [ICON_ThermoNuclear]"
+				strNuke = strNuke.."[NEWLINE][ICON_ThermoNuclear] "..playerWMDs:GetWeaponCount(entry.Index)
 			end
 		end
 		uiLeader.Nukes:SetText(strNuke)
