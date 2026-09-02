@@ -143,8 +143,8 @@
 							<Label		ID="SpecData"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="" ReduceWidth="61"/>	<!-- 原 BSM Data（Host/Ping） -->
 							<!-- Eras 视图（原 BSM Governement/Cities/CurrentAge/EraScore；Cities 与 DPR 人口行冲突改名 Spec_Cities）。
 								条目24修复：原 BSM 三处 Offset="0,10" 在嵌套 Stack 行距内把行压进下一行造成遮挡（用户实测截图），全部移除；
-								Current:/Next: 前缀文案本地化 -->
-							<Stack		ID="Group_SpecEras"		StackGrowth="Bottom" StackPadding="3" Hidden="1">
+								Current:/Next: 前缀文案本地化；Housing/Citizen 内联图标大于行高，StackPadding 3→8 加行距防图标互侵（用户实测） -->
+							<Stack		ID="Group_SpecEras"		StackGrowth="Bottom" StackPadding="8" Hidden="1">
 								<Label	ID="Governement"		Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Governe."	ReduceWidth="61"/>
 								<Label	ID="Spec_Cities"		Style="FontNormal12" FontStyle="shadow" Offset="1,0" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="[ICON_City]-"	ReduceWidth="61"/>
 								<Label	ID="CurrentAge0"		Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="LOC_MPT_DPR_SPEC_CURRENT"	ReduceWidth="61"/>
@@ -160,10 +160,11 @@
 								<Label	ID="Strategic1"			Style="FontNormal12" FontStyle="shadow"  Offset="1,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String=""	ReduceWidth="61"/>
 								<Label	ID="Nukes"				Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String=""	ReduceWidth="61"/>
 							</Stack>
-							<!-- Yield 视图补充行（原 BSM Cities_Prod/Cities_Food） -->
+							<!-- Yield 视图补充行（原 BSM Cities_Prod/Cities_Food）；Cities_Prod 与 DPR 生产力总量恒等已移出产出视图
+								（条目24修复，见 Lua）；两行补 ToolTip（用户实测原缺） -->
 							<Stack		ID="Group_SpecYield"	StackGrowth="Bottom" StackPadding="3" Hidden="1">
-								<Label	ID="Cities_Prod"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Production]-"	   ReduceWidth="61"/>
-								<Label	ID="Cities_Food"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Food]-"	   ReduceWidth="61"/>
+								<Label	ID="Cities_Prod"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Production]-"  ToolTip="LOC_DPR_PRODUCTION_YIELD"	ReduceWidth="61"/>
+								<Label	ID="Cities_Food"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Food]-"  ToolTip="LOC_DPR_FOOD_SURPLUS_YIELD"	ReduceWidth="61"/>
 							</Stack>
 							<!-- Total 视图（累计产出，REPLAYDATASET） -->
 							<Stack		ID="Group_SpecTotal"	StackGrowth="Bottom" StackPadding="3" Hidden="1">

@@ -12,6 +12,8 @@ VALUES
 	('LOC_SETTINGS_DIPLOMACYRIBBON_DESC',	'zh_Hans_CN',	'设置外交信息能见度'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_NORM_NAME',	'zh_Hans_CN',	'标准(推荐)'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_NORM_DESC',	'zh_Hans_CN',	'标准的规则[NEWLINE][NEWLINE][icon_You]不显示非团队玩家的军事实力、总人口、总生产力、总粮食'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_DEFAULT_NAME',	'zh_Hans_CN',	'默认'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_DEFAULT_DESC',	'zh_Hans_CN',	'在「标准(推荐)」的基础上显示所有玩家的军事实力[NEWLINE][NEWLINE][icon_You]不显示非团队玩家的总人口、总生产力、总粮食'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_NAME',	'zh_Hans_CN',	'外交能见度模式([COLOR:ResGoldLabelCS]团队[ENDCOLOR])'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_DESC',	'zh_Hans_CN',	'外交能见度模式[NEWLINE][NEWLINE][icon_You]团队成员之间互相公开信息，非团队玩家需要更高能见度才能查看'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_PUBLIC_NAME',	'zh_Hans_CN',	'公开(完全透明)'),

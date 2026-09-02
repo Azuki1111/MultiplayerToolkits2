@@ -7,6 +7,8 @@ VALUES
 	('LOC_SETTINGS_DIPLOMACYRIBBON_DESC',	'en_US',	'Set up Hide Stats Evolved'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_NORM_NAME',	'en_US',	'Standard(Recommend)'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_NORM_DESC',	'en_US',	'Standard Rules[NEWLINE][NEWLINE][icon_You]Does not show the military strength, total population, total productivity, and total food of players who are not on your team'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_DEFAULT_NAME',	'en_US',	'Default'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_DEFAULT_DESC',	'en_US',	'Based on Standard (Recommend), but also shows the military strength of all players[NEWLINE][NEWLINE][icon_You]Still hides the total population, total productivity, and total food of players who are not on your team'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_NAME',	'en_US',	'Hide Stats Evolved Mode([COLOR:ResGoldLabelCS]Team[ENDCOLOR])'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_DESC',	'en_US',	'Hide Stats Evolved Mode[NEWLINE][NEWLINE][icon_You]Team members share information with each other, and other players need a higher visibility level to view it'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_PUBLIC_NAME',	'en_US',	'Public(Fully Visible)'),
