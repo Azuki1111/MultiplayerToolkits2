@@ -47,8 +47,14 @@
 -- 相对 1.67 的优化：
 --   1. 零全局污染：1.67 泄漏 ResetVariables/Cooldown/GetHumanNum/Initialize 等十余个
 --      全局函数与全局状态变量，全部改 chunk local + MPT_Timer_ 前缀。
---   2. 魔法数 2133509568 → DB.MakeHash("TURNTIMER_NONE")（原版 ActionPanel.lua 同款
+--   2. 魔法数 2133509568 → DB.MakeHash("TURNTIMER_STANDARD")（原版 ActionPanel.lua 同款
 --      Hash 参数比较写法，SetTurnTimerType 内部用同一哈希函数）。
+-- 条目20修复（初版移植笔误致功能缺失，用户实测反馈）：首回合初始化的类型比较误写为
+--   ~= TURNTIMER_NONE 哈希并加「已是 NONE 即房主有意关闭不强制」曲解注释——原版默认
+--   无限计时下条件恒为假，1.67 的「进入游戏后首次回合结束时把计时器类型替换成标准
+--   回合时间（而不是无限回合时间）」整个失效（智能模式从第 2 回合起才有计时且起始
+--   时间不归 30）。修正为 ~= TURNTIMER_STANDARD 哈希（已是标准则跳过）——即使哈希
+--   算法有出入，最坏退化为「首次回合结束必定强制标准」，行为仍符合 1.67 观察语义。
 --   3. 真人统计合并：1.67 在 GetHumanNum / 半数采样 / 回合开始重置 / 投票判定 四处
 --      重复全遍历真人，合并为单一 MPT_Timer_CountHumans()（一次遍历同时返回总数与
 --      已结束数）；首回合初始化人数判定也复用（1.67 该处未排除观察者，此处修正）。
@@ -102,7 +108,7 @@ local MPT_Filter			: number = 0.5;		-- 输入信号一阶滤波系数
 local MPT_Attenuation		: number = 0.98;	-- 衰减比（抑制后期回合时间过长）
 local MPT_TimeCorrection	: number = 0.05;	-- 后期修正：时间越长玩家用时越发散
 local MPT_TimeFallback		: number = 60;		-- TURN_TIMER_TIME 非 number / 节点表为空时的兜底值（条目2 前端预设同值）
-local MPT_TurnTimerNoneHash	: number = DB.MakeHash("TURNTIMER_NONE");	-- 优化2：替代 1.67 魔法数 2133509568
+local MPT_TurnTimerStandardHash	: number = DB.MakeHash("TURNTIMER_STANDARD");	-- 优化2：1.67 魔法数 2133509568 的可读化（首回合「已是标准则不动」比较；条目20修复）
 
 -- ===========================================================================
 -- 状态（全 local——优化1）
@@ -439,9 +445,11 @@ local function MPT_Timer_OnTurnEndSmart()
 
 	if MPT_FirstTurnInit then
 		MPT_FirstTurnInit = false;
-		-- 多人局强制标准计时并以最小时间起步（计时器已是 NONE 即房主有意关闭，不强制）
+		-- 多人局强制标准计时并以最小时间起步——1.67 原语义（条目20修复）：进入游戏后
+		-- 首次回合结束时把计时器类型替换为标准（原版默认无限计时 TURNTIMER_NONE），
+		-- 已是标准则跳过；想彻底无计时应选模式「关闭所有计时器」
 		local totalHumans = MPT_Timer_CountHumans();
-		if totalHumans > 1 and GameConfiguration.GetTurnTimerType() ~= MPT_TurnTimerNoneHash then
+		if totalHumans > 1 and GameConfiguration.GetTurnTimerType() ~= MPT_TurnTimerStandardHash then
 			GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");
 			balancedTime = MPT_MinTime;
 		end
