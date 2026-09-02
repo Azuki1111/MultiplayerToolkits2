@@ -1595,6 +1595,9 @@ local MPT_ImpactHandlers:table = {};	-- [MPT 条目21用户裁决] 实际产量�
 local MPT_DynamicHandlers:table = {};	-- 动态计算类（数值随局势变化）：结果不进 MPT_LineCache 缓存
 local MPT_LineCache:table = {};
 local MPT_ExtractCache:table = {};	-- [ePlayerID] = { [ResourceType]=提取中地块数 }（IsResourceExtractableAt 引擎判定，含被区域/奇观覆盖）
+local MPT_CSTradeCache:table = {};	-- [MPT 条目21效率] [ePlayerID] = 对城邦出站商路条数（原每次调用全城遍历）
+local MPT_FavorCache:table = {};	-- [MPT 条目21效率] [ePlayerID][BuildingType] = 拥有该建筑的城市数（同上）
+local MPT_ZeroImpact:table = nil;	-- [MPT 条目21效率] hook② 零产量共享表（懒初始化；下游 YieldTableAdd 只读，共享安全）
 local MPT_ModIndexCache:table = {};
 
 -- 取 GameInfo 行的本地化名，缺失/无文本返回 nil
@@ -1670,6 +1673,51 @@ local function MPT_GetExtractionCount(ePlayerID:number, sResourceType:string)
 		MPT_ExtractCache[ePlayerID] = tCache;
 	end
 	return tCache[sResourceType] or 0;
+end
+
+-- [MPT 条目21效率] 玩家对城邦出站商路条数（原 handler 每次调用全城遍历；结果按 ePlayerID
+-- 缓存、RefreshBaseData 时失效重建，同 MPT_GetExtractionCount 机制）
+local function MPT_GetCSTradeCount(ePlayerID:number)
+	if ePlayerID == nil then return 0; end
+	local iCached:number = MPT_CSTradeCache[ePlayerID];
+	if iCached ~= nil then return iCached; end
+	local iCount:number = 0;
+	local pPlayer:table = Players[ePlayerID];
+	if pPlayer ~= nil then
+		for _,pCity in pPlayer:GetCities():Members() do
+			local pTrade = pCity:GetTrade();	-- 接口对象不可 :table 标注（userdata 风险）
+			if pTrade ~= nil then
+				for _,route in ipairs(pTrade:GetOutgoingRoutes()) do
+					local pDest:table = Players[route.DestinationCityPlayer];
+					if pDest ~= nil and pDest:IsMinor() then iCount = iCount + 1; end
+				end
+			end
+		end
+	end
+	MPT_CSTradeCache[ePlayerID] = iCount;
+	return iCount;
+end
+
+-- [MPT 条目21效率] 玩家拥有指定建筑的城市数（同上，按 [ePlayerID][BuildingType] 二级缓存）
+local function MPT_GetBuildingCityCount(ePlayerID:number, sBuildingType:string)
+	if ePlayerID == nil or sBuildingType == nil then return 0; end
+	local tCache:table = MPT_FavorCache[ePlayerID];
+	if tCache == nil then
+		tCache = {};
+		MPT_FavorCache[ePlayerID] = tCache;
+	end
+	local iCached:number = tCache[sBuildingType];
+	if iCached ~= nil then return iCached; end
+	local iCount:number = 0;
+	local buildingDef = GameInfo.Buildings[sBuildingType];	-- 动态键访问返回 userdata，不可 :table 标注
+	local pPlayer:table = Players[ePlayerID];
+	if buildingDef ~= nil and pPlayer ~= nil then
+		for _,pCity in pPlayer:GetCities():Members() do
+			if pCity:GetBuildings():HasBuilding(buildingDef.Index) then iCount = iCount + 1; end
+		end
+	end
+	tCache[sBuildingType] = iCount;
+	return iCount;
 end
 
 -- ----------------------------------------------------------------------------
@@ -1836,21 +1884,12 @@ MPT_LineHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = functi
 	return "[ICON_"..sRes.."]"..MPT_Sign(n), { sIcon = "[ICON_"..sRes.."]", sLayout = "first", nAmount = n };
 end;
 MPT_DynamicHandlers["EFFECT_ADJUST_PLAYER_RESOURCE_ACCUMULATION_MODIFIER"] = true;
--- 对城邦商路平产（动态计算：实际数量 = Amount × 当前对城邦商路条数，无商路时不显示）
+-- 对城邦商路平产（动态计算：实际数量 = Amount × 当前对城邦商路条数——条数走
+-- MPT_GetCSTradeCount 缓存，无商路时不显示）
 MPT_LineHandlers["EFFECT_ADJUST_CITY_STATE_TRADE_ROUTE_FLAT_YIELD"] = function(tMod, ePlayerID)
-	local pPlayer:table = Players[ePlayerID];
 	local n:number = tonumber(tMod.Arguments.Amount or 0);
-	if pPlayer == nil or n == 0 then return ""; end
-	local iCount:number = 0;
-	for _,pCity in pPlayer:GetCities():Members() do
-		local pTrade = pCity:GetTrade();	-- [MPT 条目21修复] 接口对象去 :table 标注（userdata 风险）
-		if pTrade ~= nil then
-			for _,route in ipairs(pTrade:GetOutgoingRoutes()) do
-				local pDest:table = Players[route.DestinationCityPlayer];
-				if pDest ~= nil and pDest:IsMinor() then iCount = iCount + 1; end
-			end
-		end
-	end
+	if n == 0 then return ""; end
+	local iCount:number = MPT_GetCSTradeCount(ePlayerID);
 	if iCount == 0 then return ""; end
 	return MPT_Sign(n * iCount)..MPT_YieldIcon(tMod.Arguments.YieldType).." ("..MPT_Phrase("LOC_MPT_EPC_CS_TRADE")..")";
 end;
@@ -1862,14 +1901,9 @@ MPT_LineHandlers["EFFECT_ADJUST_PLAYER_EXTRA_FAVOR_PER_TURN"] = function(tMod, e
 	return MPT_Sign(n).." [ICON_FAVOR]", { sIcon = "[ICON_FAVOR]", sLayout = "last", nAmount = n };
 end;
 MPT_LineHandlers["EFFECT_ADJUST_PLAYER_BUILDING_FAVOR"] = function(tMod, ePlayerID)
-	local pPlayer:table = Players[ePlayerID];
-	local buildingDef:table = GameInfo.Buildings[tMod.Arguments.BuildingType];
 	local n:number = tonumber(tMod.Arguments.Favor or 0);
-	if pPlayer == nil or buildingDef == nil or n == 0 then return ""; end
-	local iCount:number = 0;
-	for _,pCity in pPlayer:GetCities():Members() do
-		if pCity:GetBuildings():HasBuilding(buildingDef.Index) then iCount = iCount + 1; end
-	end
+	if n == 0 then return ""; end
+	local iCount:number = MPT_GetBuildingCityCount(ePlayerID, tMod.Arguments.BuildingType);
 	if iCount == 0 then return ""; end
 	return MPT_Sign(n * iCount).." [ICON_FAVOR] ("..MPT_Phrase("LOC_MPT_EPC_PER_BUILDING")..(MPT_GetGameInfoName("Buildings", tMod.Arguments.BuildingType) or "")..")";
 end;
@@ -2117,7 +2151,10 @@ function DecodeModifier(sModifierId:string, ePlayerID:number, iCityID:number, tM
 		-- local tSubjectImpact:table = ApplyEffectAndCalculateImpact(tMod, subject, sSubjectType); -- it will return nil if effect unknown
 		local tSubjectImpact:table = nil;
 		if MPT_LineHandlers[tMod.EffectType] ~= nil or MPT_KnownEffects[tMod.EffectType] then
-			tSubjectImpact = YieldTableNew();
+			-- [MPT 条目21效率] 共享零表替代每主体 YieldTableNew 分配（静默类型+大城市集合时
+			-- 每卡渲染数十个即弃空表）；下游 YieldTableAdd 只读加算，共享零表安全
+			if MPT_ZeroImpact == nil then MPT_ZeroImpact = YieldTableNew(); end
+			tSubjectImpact = MPT_ZeroImpact;
 		else
 			tSubjectImpact = ApplyEffectAndCalculateImpact(tMod, subject, sSubjectType);
 		end
@@ -3396,6 +3433,8 @@ function RefreshBaseData(ePlayerID:number)
 	-- 数值随城市/地块变化，须跨回合重算）
 	MPT_LineCache = {};
 	MPT_ExtractCache = {};
+	MPT_CSTradeCache = {};	-- [MPT 条目21效率]
+	MPT_FavorCache = {};	-- [MPT 条目21效率]
 	
 	for _,pCity in pCities:Members() do	
 		local cityName:string = pCity:GetName();
