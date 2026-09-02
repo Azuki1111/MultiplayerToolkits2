@@ -3,11 +3,16 @@
 --   BER/UnitFlagManager_GreatGeneralEraReminder.lua，工坊 3693899014）
 -- 大将军/海军统帅单位旗帜下沿显示所属时代名横幅。
 -- 实现与 1.67 的差异（用户裁决「新建控件」方案）：1.67 复用晋升徽标控件（Promotion_Flag
---   换纹理 + UnitNumPromotions 改文字 + 还原分支），本移植改官方蛮族氏族 DLC 同款
---   「实例模板新建控件」：EraBanner.xml 声明 MPTEraBanner 模板（注册机制见其文件头——
---   AddUserInterfaces 指向 UnitFlagManager 子上下文，官方无先例的扩展用法，失败则静默
---   关闭）、EraBanner.lua 持实例池，本文件在旗标上下文内取还（照抄原版官方动态实例
---   模式：构建后挂 FlagRoot，UnitFlag.destroy 时 ReleaseInstanceByParent 归还）。
+--   换纹理 + UnitNumPromotions 改文字 + 还原分支），本移植改「新建控件」：横幅池由
+--   EraBanner.xml 预声明 40 面唯一 ID 横幅（EraBanner_1..40，注册机制见其文件头——
+--   AddUserInterfaces 注册进 InGame 成为迷你上下文，寻址路径
+--   /InGame/AdditionalUserInterfaces/EraBanner/MPT_ERA_Pool）。
+--   取挂协议（条目25修复定稿）：本文件（旗标上下文）按路径 ContextPtr:LookUpControl
+--   取横幅代理 → ChangeParent 挂旗标 FlagRoot，此后代理常驻本状态直读直写零跨状态调用；
+--   归还 = SetHide 后 ChangeParent 回池容器（原版先例 PartialScreenHooks.lua 64 行按名
+--   寻址 AdditionalUserInterfaces 下追加上下文；FEB 证实 ChangeParent 后原状态代理与
+--   显示均持续有效）。原版官方同款参照：AttentionMarkerInstance 构建后挂 FlagRoot、
+--   UnitFlag.destroy 时按父控件归还，旗标实例回收复用零残留零重复构建。
 --   好处：原版晋升徽标零改动（base 无条件调用，大将军无经验槽其徽标自然隐藏）、
 --   无 1.67 的还原分支（1.67 关开关后已改造旗帜永不还原，本方案每次刷新幂等 SetHide）。
 -- 注册：ReplaceUIScript 100000 + ImportFiles 100010 整文件替换 UnitFlagManager 上下文
@@ -22,7 +27,8 @@
 -- ===========================================================================
 
 -- ===========================================================================
--- Import base file：按序尝试 DLC 变体到原版，探测到 Initialize 定义即停；目标文件未注册
+-- Import base file
+-- 沿 1.67 BER：按序尝试 DLC 变体到原版，探测到 Initialize 定义即停；目标文件未注册
 -- 或不存在时 include 静默跳过（BuilderCharges 为未安装 DLC 包预留位）。BC 变体自身
 -- 会 include 原版并叠加其覆写，本文件在其外再包一层，链序：本文件 → BC → 原版。
 -- 原版全局（g_Units* 等）与库 include 均由链内 base 文件自带，此处不重复。
@@ -54,12 +60,76 @@ local MPT_BASE_FlagDestroy = UnitFlag.destroy;
 local MPT_Show_BER = false;
 
 -- ===========================================================================
+-- 条目25 横幅池取还
+-- 池路径候选：EraBanner 迷你上下文在 AdditionalUserInterfaces 下的节点名 = 文件名
+--   （InGame.lua 348 行以 ContextPath 无扩展名末段为 ID，RevealMapCorners 同机制实证）；
+--   第二候选防注册形态变化。懒解析一次并缓存；解析失败静默降级（功能关闭不崩）。
+-- ===========================================================================
+local MPT_ERA_POOL_SIZE = 40;		-- 池容量：20 人房 × 大将军/海军统帅两类同屏上限
+local MPT_ERA_Used = {};			-- [k] = true 占用表（本状态自持，旗标销毁归还）
+local MPT_ERA_PoolPath = false;		-- false = 未解析 / nil = 解析失败 / string = 池路径
+local MPT_ERA_PoolCtrl = nil;		-- 池容器控件（归还时的 ChangeParent 目标）
+
+local MPT_ERA_POOL_CANDIDATES = {
+	"/InGame/AdditionalUserInterfaces/EraBanner/MPT_ERA_Pool",
+	"/InGame/MPT_ERA_Pool",
+};
+
+-- 懒解析池路径与池控件（首次取横幅时探测一次）
+local function MPT_ERA_ResolvePool()
+	if MPT_ERA_PoolPath == false then
+		MPT_ERA_PoolPath = nil;
+		for _, sPath in ipairs(MPT_ERA_POOL_CANDIDATES) do
+			local pCtrl = ContextPtr:LookUpControl(sPath);
+			if pCtrl ~= nil then
+				MPT_ERA_PoolPath = sPath;
+				MPT_ERA_PoolCtrl = pCtrl;
+				break;
+			end
+		end
+		print("MPT_ERA: pool resolve = " .. tostring(MPT_ERA_PoolPath));	-- 条目25修复诊断，实测确认后删
+	end
+	return MPT_ERA_PoolPath;
+end
+
+-- 取一面空闲横幅改挂到 pFlagRoot（旗标实例的 FlagRoot）下。
+--   返回 {k=序号, Banner=横幅, Label=文字} 或 nil（池不可用/耗尽——静默无横幅）。
+--   显隐与文字由调用方在每次刷新时幂等设置，本函数只负责取用与挂载。
+function MPT_ERA_Take(pFlagRoot)
+	local sPath = MPT_ERA_ResolvePool();
+	if sPath == nil then
+		return nil;
+	end
+	for k = 1, MPT_ERA_POOL_SIZE, 1 do
+		if MPT_ERA_Used[k] == nil then
+			local pBanner = ContextPtr:LookUpControl(sPath .. "/EraBanner_" .. k);
+			local pLabel = ContextPtr:LookUpControl(sPath .. "/EraBanner_" .. k .. "/EraLabel_" .. k);
+			if pBanner ~= nil and pLabel ~= nil then
+				MPT_ERA_Used[k] = true;
+				pBanner:ChangeParent(pFlagRoot);
+				return { k = k, Banner = pBanner, Label = pLabel };
+			end
+			return nil;	-- 池在而横幅缺（XML 与本文件约定不一致），不再尝试其余序号
+		end
+	end
+	return nil;	-- 池耗尽
+end
+
+-- 归还横幅回池（旗标销毁时调用；先隐藏再 ChangeParent 回池容器）
+function MPT_ERA_GiveBack(pEra)
+	if MPT_ERA_PoolCtrl ~= nil then
+		pEra.Banner:SetHide(true);
+		pEra.Banner:ChangeParent(MPT_ERA_PoolCtrl);
+	end
+	MPT_ERA_Used[pEra.k] = nil;
+end
+
+-- ===========================================================================
 -- Overrides
 -- ===========================================================================
--- 大将军/海军统帅且有对应个体：取（或复用）横幅实例写时代名并显示；其余情形隐藏横幅。
---   self.m_Instance.MPT_Era 三态：nil = 尚未尝试构建（非将军或构建时机未到）；
---   false = 已尝试但模板不可用（AddUserInterfaces 合并注册失败，静默降级）；
---   table = EraBanner.lua 的实例表。
+-- 大将军/海军统帅且有对应个体：取（或复用）横幅写时代名并显示；其余情形隐藏横幅。
+--   self.m_Instance.MPT_Era 三态：nil = 尚未尝试取用（非将军或取用时机未到）；
+--   false = 已尝试但池不可用/耗尽（静默降级）；table = MPT_ERA_Take 的横幅表。
 --   base 无条件调用：原版晋升徽标逻辑零改动，征调/晋升计数显示不受影响。
 -- ===========================================================================
 function UnitFlag.UpdatePromotions( self )
@@ -72,17 +142,13 @@ function UnitFlag.UpdatePromotions( self )
 				local individual = unit:GetGreatPerson():GetIndividual();
 				if individual >= 0 then
 					if pEra == nil then
-						if MPT_ERA_Acquire ~= nil then
-							pEra = MPT_ERA_Acquire(self.m_Instance.FlagRoot) or false;
-						else
-							pEra = false;
-						end
+						pEra = MPT_ERA_Take(self.m_Instance.FlagRoot) or false;
 						self.m_Instance.MPT_Era = pEra;
 					end
 					if pEra ~= false then
 						local eraType = GameInfo.GreatPersonIndividuals[individual].EraType;
-						pEra.EraLabel:SetText(Locale.Lookup(GameInfo.Eras[eraType].Name));
-						pEra.EraBanner:SetHide(false);
+						pEra.Label:SetText(Locale.Lookup(GameInfo.Eras[eraType].Name));
+						pEra.Banner:SetHide(false);
 						MPT_BASE_UpdatePromotions(self);
 						return;
 					end
@@ -91,22 +157,20 @@ function UnitFlag.UpdatePromotions( self )
 		end
 	end
 	if pEra ~= nil and pEra ~= false then
-		pEra.EraBanner:SetHide(true);
+		pEra.Banner:SetHide(true);
 	end
 	MPT_BASE_UpdatePromotions(self);
 end
 
 -- ===========================================================================
--- 旗标销毁：先归还时代横幅（ReleaseInstanceByParent 按父控件回池），再走原版销毁，
---   防旗标实例回池复用时残留横幅子控件导致重复构建（原版官方同款收尾，见原版
---   UnitFlag.destroy 对 AttentionMarkerInstance 的处理）。
+-- 旗标销毁：先归还时代横幅（隐藏 + ChangeParent 回池），再走原版销毁，防旗标实例
+--   回池复用时残留横幅子控件导致重复取用（原版官方同款收尾，见原版 UnitFlag.destroy
+--   对 AttentionMarkerInstance 的处理）。
 -- ===========================================================================
 function UnitFlag.destroy( self )
 	local pEra = self.m_Instance.MPT_Era;
 	if pEra ~= nil and pEra ~= false then
-		if MPT_ERA_Release ~= nil then
-			MPT_ERA_Release(self.m_Instance.FlagRoot);
-		end
+		MPT_ERA_GiveBack(pEra);
 		self.m_Instance.MPT_Era = nil;
 	end
 	MPT_BASE_FlagDestroy(self);

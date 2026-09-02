@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>78</Version>
+		<Version>79</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -996,14 +996,15 @@
 			大将军/海军统帅单位旗帜下沿显示所属时代名横幅。UnitFlagManager 无通配 include 钩子，
 			整文件替换（条目15/17/21/22/24 模式）：ReplaceUIScript 100000 压过 1.67 BER 的 10001
 			（同装时其 BER 上下文不再加载，其设置面板 BER 开关失联属预期，开关以本 mod 面板为准）。
-			表现层与 1.67 不同（用户裁决）：1.67 复用晋升徽标控件改造，本移植改官方蛮族氏族 DLC
-			同款「实例模板新建控件」——EraBanner.xml 声明 MPTEraBanner 模板 + EraBanner.lua 实例池
-			（MPT_ERA_Acquire/Release，照抄原版 AttentionMarker 动态实例模式：挂 FlagRoot、
-			UnitFlag.destroy 时 ReleaseInstanceByParent 归还），经 AddUserInterfaces 注入
-			UnitFlagManager 子上下文（官方此 action 仅用过 InGame，扩展用法：模板须注册进旗标
-			上下文，控制句柄不可跨上下文传递；若引擎不合并注册则功能静默关闭，lua 有 nil 防御，
-			回退方案为同名覆盖原版 UnitFlagManager.xml）。开关入条目12 MPT_Settings
-			（1.67 原 key GreatGeneralEraReminder_Show，默认开） -->
+			表现层与 1.67 不同（用户裁决）：1.67 复用晋升徽标控件改造，本移植改「新建控件」——
+			EraBanner 对（xml 预声明 40 面唯一 ID 横幅池 + 同名 lua 诊断）注册进 InGame（条目12
+			FEB 同桶同机制），成为 /InGame/AdditionalUserInterfaces/EraBanner 隐藏迷你上下文
+			（InGame.lua 348 行 LoadNewContext 以 ContextPath 无扩展名末段为节点名；原版
+			PartialScreenHooks.lua 64 行按名寻址该容器下追加上下文为先例）。条目25修复：首版
+			注册到 Context=UnitFlagManager 期望模板并入旗标上下文，实测不生效（Context 指向
+			子上下文时 addin 不入 InGame 桶，Lua.log 无加载痕迹），改为旗标上下文按路径
+			LookUpControl 取横幅代理后 ChangeParent 挂 FlagRoot、销毁时 ChangeParent 回池。
+			开关入条目12 MPT_Settings（1.67 原 key GreatGeneralEraReminder_Show，默认开） -->
 		<ReplaceUIScript id="IG_BER_Replace">
 			<Properties>
 				<LoadOrder>100000</LoadOrder>
@@ -1020,7 +1021,7 @@
 		<AddUserInterfaces id="IG_BER_Banner">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
-				<Context>UnitFlagManager</Context>
+				<Context>InGame</Context>
 			</Properties>
 			<File>InGame/GreatGeneralEraReminder/EraBanner.xml</File>
 		</AddUserInterfaces>
