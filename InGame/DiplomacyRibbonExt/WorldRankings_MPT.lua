@@ -952,12 +952,26 @@ function PopulateOverallPlayerIconInstance(instance:table, victoryType:string, t
 	end
 end
 
+-- 条目24修复：TeamTooltip 悬停每帧重建卡顿——SetToolTipCallback 在悬停期间被引擎频繁反复
+-- 触发，原实现每次回调 ResetInstances + 按队内玩家逐个重建 UI 实例（GetInstance/FindIconAtlas/
+-- Locale 查询/等宽遍历），多人联机悬停队伍行即每帧重建整队实例卡顿。修复：按 teamData 表
+-- 身份去重——每次面板刷新 GatherXxxData 都新建 teamData 并重新走 SetTeamTooltip（新表身份
+-- 自动重建一次），悬停期间同表重复回调直接复用已构建的实例栈（teamData 在两次 Gather 之间
+-- 为不可变快照，无陈旧风险；不同队伍切换时身份不同必然重建）。
+local m_TeamTooltipCurrent = nil;		-- 当前 tooltip 实例栈承载的 teamData（表身份比较）
+
 function SetTeamTooltip(control:table, teamData)
 	control:SetToolTipType("TeamTooltip");
 	control:SetToolTipCallback(function() UpdateTeamTooltip(control, teamData); end);
 end
 
 function UpdateTeamTooltip(control, teamData)
+	-- 条目24修复：同一队伍的重复回调直接复用（实例栈仍持有该队内容）
+	if m_TeamTooltipCurrent == teamData then
+		return;
+	end
+	m_TeamTooltipCurrent = teamData;
+
 	if m_TeamTooltip.TooltipIM == nil then
 		m_TeamTooltip.TooltipIM = InstanceManager:new("TeamTooltipInstance", "BG", m_TeamTooltip.CivStack);
 	end
