@@ -3,10 +3,15 @@
 -- 用户裁决语义：隐藏其他玩家的情报数据，但不隐藏胜利进度。
 -- 结构 = 原版 Base/Assets/UI/PartialScreens/WorldRankings.lua 与 Exp2 版
 -- （WorldRankings_Expansion2.lua，外交/科技胜利进度视图）合并为单文件，内容零漂移。
--- 相对原版 Base 版的全部改动（共 3 处情报隐藏，其余为 Exp2 内容并入）：
---   1. g_victoryData.VICTORY_CONQUEST.GetScore：军力评分 → 恒 -1（支配胜利页不显示他玩家军力）
---   2. 概览 details 拼接 SecondTiebreakSummary 移除（次要决胜摘要不显示）
---   3. 排名 desc 拼接 SecondTiebreakSummary 移除（同上）
+-- 相对原版 Base 版的全部改动（其余为 Exp2 内容并入）：
+--   条目24优化（用户裁决）：情报摘要按 DPR 外交能见度设置（SETTINGS_DIPLOMACYRIBBON_TPT）门控——
+--   本地玩家是观察者 → 全可见（原版行为）；标准档 = 军力仅队友、科技/文化/信仰全公开；
+--   默认档（条目24修复第四档）= 军力恒显示 + 科技/文化/信仰全公开 → 全可见；
+--   团队档 = 非队友按聚合最高外交能见度分级（科技/文化/信仰 ≥1、军力 ≥3）；公开档 = 全可见；
+--   分数与队伍排序恒真实值（胜利进度不隐藏）。原 DPR 版为无条件隐藏三处，全部还原后改门控：
+--   1. g_victoryData.VICTORY_CONQUEST.GetScore：恒 -1 → 还原真实军力（显示在摘要串层门控）
+--   2. 概览 details 拼接 SecondTiebreakSummary：移除 → 还原（摘要串空串时不拼行）
+--   3. 排名 desc 拼接 SecondTiebreakSummary：同上
 -- 与 1.67 同装：本文件 ReplaceUIScript 100000 压过其 120；BSM 的 WorldRankings_Spectator_.lua
 -- 因其 modinfo 文件名笔误本就未加载，无冲突。
 -- 注册：ReplaceUIScript(LuaContext=WorldRankings, LoadOrder 100000) + ImportFiles(100010)
@@ -42,7 +47,9 @@ g_CultureInst = nil; -- Also initialized in PopulateTabs.  Used by OpenCulture()
 g_victoryData = {
 	VICTORY_CONQUEST = {
 		GetText = function(p) return "LOC_WORLD_RANKINGS_OVERVIEW_DOMINATION_MILITARY_STRENGTH" end,
-		GetScore = function(p) return -1 end,
+		-- 条目24优化：原 DPR 恒 -1 → 还原原版真实军力（Base 版同款公式）；显示改在摘要串层按能见度门控
+		--（见 MPT_IsIntelVisible），Score 保持真实值使队伍决胜排序=真实军力（胜利进度不隐藏）
+		GetScore = function(p) return p:GetStats():GetMilitaryStrengthWithoutTreasury(); end,
 		AdditionalSummary = function(p) return GetDominationVictoryAdditionalSummary(p) end
 	},
 	VICTORY_CULTURE = {
@@ -100,6 +107,88 @@ local RELOAD_CACHE_ID:string = "WorldRankings"; -- Must be unique (usually the s
 local REQUIREMENT_CONTEXT:string = "VictoryProgress";
 local DATA_FIELD_SELECTION:string = "Selection";
 local DATA_FIELD_HEADER_HEIGHT:string = "HeaderHeight";
+
+-- ===========================================================================
+--	条目24优化：情报显示门控（用户裁决）——他玩家决胜摘要（军力/科技/文化/信仰类）按 DPR 外交
+--	能见度设置（SETTINGS_DIPLOMACYRIBBON_TPT，开局固定）决定显隐；本地玩家是观察者时全可见
+--	（原版行为）。规则映射 DPR DiplomacyRibbon_TPT 规则表（其 L240-272）+ 条目24修复第四档「默认」
+--	（Config_DiploRibbon SETTINGS_DIPLOMACYRIBBON_DEFAULT，= 标准基础上军力恒显示——本类目体系等价全可见）：
+--	  标准(NORM)   = 军力仅队友；科技/文化/信仰全公开
+--	  默认(DEFAULT) = 军力恒显示 + 科技/文化/信仰全公开 → 全可见
+--	  团队(TEAM)   = 非队友按聚合最高能见度分级：科技/文化/信仰 ≥1、军力 ≥3
+--	  公开(PUBLIC) = 全可见
+--	  分数 = 任何档位全可见（胜利进度不隐藏）
+--	注意：本上下文与 DiplomacyRibbon 互为独立 Lua 状态，DPR 的 Model/IsTeamPlayer/g_AccessLevel
+--	体系在此自建（聚合语义 = DPR RefreshAccessLevel L289-312：自身与队友对目标取最高能见度）。
+-- ===========================================================================
+local MPT_INTEL_MODEL:number = 0;
+if GameConfiguration.GetValue("SETTINGS_DIPLOMACYRIBBON_TPT") == "SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM" then
+	MPT_INTEL_MODEL = 1;
+elseif GameConfiguration.GetValue("SETTINGS_DIPLOMACYRIBBON_TPT") == "SETTINGS_DIPLOMACYRIBBON_PUBLIC" then
+	MPT_INTEL_MODEL = 2;
+elseif GameConfiguration.GetValue("SETTINGS_DIPLOMACYRIBBON_TPT") == "SETTINGS_DIPLOMACYRIBBON_DEFAULT" then
+	MPT_INTEL_MODEL = 3;	-- 默认档（条目24修复）：标准基础上军力恒显示
+end
+
+-- 决胜类型 → 情报类目（对应 DPR 规则表条目；缺省=分数，任何档位全可见）
+local MPT_INTEL_CATEGORY:table = {
+	VICTORY_CONQUEST = "military",
+	VICTORY_TECHNOLOGY = "tech",
+	VICTORY_CULTURE = "culture",
+	VICTORY_RELIGIOUS = "faith",
+};
+
+-- 目标玩家相对本地的外交能见度（自身与存活队友对目标取最高；队友/自己恒 4=全知）
+function MPT_GetIntelAccessLevel(targetID:number):number
+	local localID:number = Game.GetLocalPlayer();
+	if localID == nil or localID < 0 or Players[localID] == nil or Players[targetID] == nil then
+		return 4;	-- 无本地玩家等异常局面：不隐藏
+	end
+	local localTeam:number = Players[localID]:GetTeam();
+	if Players[targetID]:GetTeam() == localTeam then
+		return 4;
+	end
+	local accessLevel:number = Players[localID]:GetDiplomacy():GetVisibilityOn(targetID);
+	for _, iMemberID in ipairs(Teams[localTeam]) do
+		if iMemberID ~= localID and Players[iMemberID] ~= nil and Players[iMemberID]:IsAlive() then
+			local teamLevel:number = Players[iMemberID]:GetDiplomacy():GetVisibilityOn(targetID);
+			if teamLevel > accessLevel then
+				accessLevel = teamLevel;
+			end
+		end
+	end
+	return accessLevel;
+end
+
+-- 指定决胜类型的情报对目标玩家是否可见（隐藏 = 摘要串空串，消费端既有 ~= "" 检查自动跳行）
+function MPT_IsIntelVisible(victoryType:string, targetID:number):boolean
+	if MPT_INTEL_MODEL == 2 or MPT_INTEL_MODEL == 3 then
+		return true;	-- 公开/默认档：全可见（默认=标准基础上军力恒显示，其余类目标准档本就全公开）
+	end
+	local localID:number = Game.GetLocalPlayer();
+	if localID == nil or localID < 0 then
+		return true;
+	end
+	if PlayerConfigurations[localID] ~= nil and PlayerConfigurations[localID]:GetLeaderTypeName() == "LEADER_SPECTATOR" then
+		return true;	-- 本地观察者：全可见（原版行为）
+	end
+	local category:string = MPT_INTEL_CATEGORY[victoryType] or "score";
+	if category == "score" then
+		return true;	-- 分数：任何档位全可见
+	end
+	if Players[targetID]:GetTeam() == Players[localID]:GetTeam() then
+		return true;	-- 队友：全可见
+	end
+	if MPT_INTEL_MODEL == 0 then
+		return category ~= "military";	-- 标准：军力仅队友，科技/文化/信仰全公开
+	end
+	-- 团队（模式1）：科技/文化/信仰需能见度 ≥1，军力需 ≥3
+	local accessLevel:number = MPT_GetIntelAccessLevel(targetID);
+	if category == "military" then
+		return accessLevel >= 3;
+	end
+	return accessLevel >= 1;
+end
 local DATA_FIELD_HEADER_RESIZED:string = "HeaderResized";
 local DATA_FIELD_HEADER_EXPANDED:string = "HeaderExpanded";
 local DATA_FIELD_OVERALL_PLAYERS_IM:string = "OverallPlayersIM";
@@ -742,13 +831,16 @@ function PopulateOverallInstance(instance:table, victoryType:string, typeText:st
 						-- Team score is calculated as the highest individual score.
 						teamGenericScore = math.max(teamGenericScore, genericScore);
 
+						-- 条目24优化：摘要串按外交能见度门控（隐藏 = 空串，消费端既有 ~= "" 检查自动跳行）；
+						-- 两个 Score 字段保持真实值——队伍决胜排序仍按真实数据（不隐藏胜利进度）
+						local bIntelVisible:boolean = MPT_IsIntelVisible(victoryType, playerID);
 						playerData[playerID] = {
 							Player = pPlayer,
 							GenericScore = genericScore,
 							FirstTiebreakScore = primaryScore,
 							SecondTiebreakScore = secondaryScore,
-							FirstTiebreakSummary = Locale.Lookup(firstTiebreaker.GetText(pPlayer), Round(primaryScore, 1)),
-							SecondTiebreakSummary = Locale.Lookup(secondTiebreaker.GetText(pPlayer), Round(secondaryScore, 1)),							
+							FirstTiebreakSummary = bIntelVisible and Locale.Lookup(firstTiebreaker.GetText(pPlayer), Round(primaryScore, 1)) or "",
+							SecondTiebreakSummary = bIntelVisible and Locale.Lookup(secondTiebreaker.GetText(pPlayer), Round(secondaryScore, 1)) or "",
 							AdditionalSummary = Locale.Lookup(additionalSummary);
 						};
 
@@ -934,8 +1026,9 @@ function PopulateOverallPlayerIconInstance(instance:table, victoryType:string, t
 	if(playerData ~= nil) then
 		local civIconManager = CivilizationIcon:AttachInstance(instance);
 		local details:string = playerData.FirstTiebreakSummary;
-		if playerData.FirstTiebreakSummary ~= playerData.SecondTiebreakSummary then
-			details = details --.. "[NEWLINE]" .. playerData.SecondTiebreakSummary;
+		-- 条目24优化：还原原版次要决胜摘要拼接（原 DPR 移除；摘要串被门控为空串时下方条件跳过）
+		if playerData.SecondTiebreakSummary ~= nil and playerData.SecondTiebreakSummary ~= "" and playerData.FirstTiebreakSummary ~= playerData.SecondTiebreakSummary then
+			details = details .. "[NEWLINE]" .. playerData.SecondTiebreakSummary;
 		end
 		if playerData.AdditionalSummary and playerData.AdditionalSummary ~= "" then
 			details = details .. "[NEWLINE]" .. playerData.AdditionalSummary;
@@ -1064,7 +1157,8 @@ function UpdateTeamTooltip(control, teamData)
 				end
 				
 				if playerData.SecondTiebreakSummary and playerData.SecondTiebreakSummary ~= "" and playerData.SecondTiebreakSummary ~= playerData.FirstTiebreakSummary then
-					desc = desc-- .. "[NEWLINE]" .. playerData.SecondTiebreakSummary;
+					-- 条目24优化：还原原版拼接（原 DPR 移除；摘要串被门控为空串时上方条件跳过）
+					desc = desc .. "[NEWLINE]" .. playerData.SecondTiebreakSummary;
 				end
 
 				if playerData.AdditionalSummary and playerData.AdditionalSummary ~= "" then
