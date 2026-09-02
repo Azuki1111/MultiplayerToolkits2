@@ -298,6 +298,12 @@ if GameConfiguration.GetValue("SETTINGS_DIPLOMACYRIBBON_TPT") == "SETTINGS_DIPLO
 	print("模式：公开(完全透明)")
 end
 
+-- 条目24修复：默认模式（用户需求）——标准（推荐）的基础上显示所有玩家的军事实力
+if GameConfiguration.GetValue("SETTINGS_DIPLOMACYRIBBON_TPT") == "SETTINGS_DIPLOMACYRIBBON_DEFAULT" then
+	Model = 3
+	print("模式：默认(标准+军力)")
+end
+
 --Model = 2		--debug
 
 --[[		规则说明
@@ -1254,6 +1260,7 @@ function UpdateStatValues( playerID, uiLeader )
 	-- 保留原「隐藏行不计算」的性能语义）
 	local bStockVis = uiLeader.Group_Stock:IsVisible();
 	local bRateVis = uiLeader.Group_Rate:IsVisible();
+	local bGodView = (bspec_loc == true);		-- 条目24修复：观察者全知视角——跳过全部外交能见度披露门槛（BSM 语义：观察者局一切可见，无外交渠道拿能见度等级）
 	local pPlayer = Players[playerID];
 	
 	if uiLeader.Score:IsVisible() then 		-- 分数
@@ -1264,12 +1271,13 @@ function UpdateStatValues( playerID, uiLeader )
 	--组合1
 	if bStockVis and uiLeader.Military:IsVisible() then	-- 军事实力
 		local Canshow = true
-		if Model == 0 then
+		-- 条目24：Model 3（默认）不走此门槛——默认=标准基础上军事实力恒显示；观察者局走 bGodView 跳过
+		if Model == 0 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				Canshow = false
 			end
 		end	
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 3 then
 					Canshow = false
@@ -1285,7 +1293,7 @@ function UpdateStatValues( playerID, uiLeader )
 	end
 	if bStockVis and uiLeader.Science:IsVisible() then 		-- 科技
 		local Canshow = true
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 2 then
 					Canshow = false
@@ -1301,7 +1309,7 @@ function UpdateStatValues( playerID, uiLeader )
 	end
 	if bStockVis and uiLeader.Culture:IsVisible() then 		-- 文化
 		local Canshow = true
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 2 then
 					Canshow = false
@@ -1317,7 +1325,7 @@ function UpdateStatValues( playerID, uiLeader )
 	end
 	if bStockVis and uiLeader.Gold:IsVisible() then		-- 金币储备
 		local Canshow = true
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 1 then
 					Canshow = false
@@ -1334,7 +1342,7 @@ function UpdateStatValues( playerID, uiLeader )
 	end
 	if bStockVis and uiLeader.Faith:IsVisible() then		-- 信仰储备
 		local Canshow = true
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 1 then
 					Canshow = false
@@ -1350,7 +1358,7 @@ function UpdateStatValues( playerID, uiLeader )
 	end
 	if bStockVis and uiLeader.Favor:IsVisible() then 		-- 外交支持储备
 		local Canshow = true
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 1 then
 					Canshow = false
@@ -1368,12 +1376,12 @@ function UpdateStatValues( playerID, uiLeader )
 	--组合2
 	if bRateVis and uiLeader.Cities:IsVisible() then			-- 人口总量
 		local Canshow = true
-		if Model == 0 then
+		if (Model == 0 or Model == 3) and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				Canshow = false
 			end
 		end
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 2 then
 					Canshow = false
@@ -1389,12 +1397,12 @@ function UpdateStatValues( playerID, uiLeader )
 	end	
 	if bRateVis and uiLeader.Food_Total:IsVisible() then 		-- 食物产出总量
 		local Canshow = true
-		if Model == 0 then
+		if (Model == 0 or Model == 3) and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				Canshow = false
 			end
 		end
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 2 then
 					Canshow = false
@@ -1410,12 +1418,12 @@ function UpdateStatValues( playerID, uiLeader )
 	end		
 	if bRateVis and uiLeader.Production_Total:IsVisible() then 		-- 生产力总量
 		local Canshow = true
-		if Model == 0 then
+		if (Model == 0 or Model == 3) and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				Canshow = false
 			end
 		end
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 3 then
 					Canshow = false
@@ -1431,7 +1439,7 @@ function UpdateStatValues( playerID, uiLeader )
 	end	
 	if bRateVis and uiLeader.GoldPerTurn:IsVisible() then 				-- 回合金币产出
 		local Canshow = true
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 1 then
 					Canshow = false
@@ -1448,7 +1456,7 @@ function UpdateStatValues( playerID, uiLeader )
 	end	
 	if bRateVis and uiLeader.FaithperTurn:IsVisible() then		-- 回合信仰产出
 		local Canshow = true
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 1 then
 					Canshow = false
@@ -1464,7 +1472,7 @@ function UpdateStatValues( playerID, uiLeader )
 	end			
 	if bRateVis and uiLeader.FavorperTurn:IsVisible() then		-- 回合外交支持增量
 		local Canshow = true
-		if Model == 1 then
+		if Model == 1 and not bGodView then
 			if not IsTeamPlayer[playerID] then
 				if g_AccessLevel[playerID] < 1 then
 					Canshow = false
@@ -1522,7 +1530,9 @@ function UpdateStatValues( playerID, uiLeader )
 			ERD_Total_Population = ERD_Total_Population + city:GetPopulation();
 			numCities = numCities + 1;
 		end
-		uiLeader.Spec_Cities:SetText(numCities .. "[ICON_Housing] ".. ERD_Total_Population .. " [ICON_Citizen]");
+		-- 城市数 + 人口（原 BSM Cities 行，因与 DPR 人口行 ID 冲突改名 Spec_Cities）。
+		-- 条目24修复： Housing/Citizen 内联图标较大，去空格紧凑防 61px 截断（行距在 XML StackPadding 加大）
+		uiLeader.Spec_Cities:SetText(numCities.."[ICON_Housing]"..ERD_Total_Population.."[ICON_Citizen]");
 		-- 当前时代（原 BSM 顺手修复：sEras 全局泄漏 → local）
 		local pGameEras = Game.GetEras();
 		local sEras = "";
@@ -1575,14 +1585,15 @@ function UpdateStatValues( playerID, uiLeader )
 		uiLeader.LandUnit:SetText(SpecStr_Land.. tostring(unit_land))
 		uiLeader.NavyUnit:SetText(SpecStr_Navy.. tostring(unit_sea))
 		uiLeader.AirUnit:SetText(SpecStr_Air.. tostring(unit_air))
-		-- 核弹（原 BSM 同名行）
+		-- 核弹（原 BSM 同名行）。条目24修复：两类武器同行在 63px 列宽被 61px 截断遮挡（用户实测截图）——
+		-- 拆两行 [NEWLINE]，每行「数量+图标」约 30px 富余
 		local playerWMDs  = Players[playerID]:GetWMDs()
 		local strNuke = ""
 		for entry in GameInfo.WMDs() do
 			if (entry.WeaponType == "WMD_NUCLEAR_DEVICE") then
 				strNuke = playerWMDs:GetWeaponCount(entry.Index).." [ICON_Nuclear]"
 			elseif (entry.WeaponType == "WMD_THERMONUCLEAR_DEVICE") then
-				strNuke = strNuke.." "..playerWMDs:GetWeaponCount(entry.Index).." [ICON_ThermoNuclear]"
+				strNuke = strNuke.."[NEWLINE]"..playerWMDs:GetWeaponCount(entry.Index).." [ICON_ThermoNuclear]"
 			end
 		end
 		uiLeader.Nukes:SetText(strNuke)
@@ -1609,15 +1620,12 @@ function UpdateStatValues( playerID, uiLeader )
 	end
 
 	if uiLeader.Group_Observer:IsVisible() and uiLeader.Group_SpecYield:IsVisible() then
-		-- 毛产出（原 BSM Cities_Prod/Cities_Food 行；顺手修复 YieldTypes.Food 大小写笔误 → FOOD）
+		-- 毛粮（原 BSM Cities_Food 行；毛产 Cities_Prod 与生产力总量恒等已移出产出视图，见 MPT_RealizeObserverView）
 		local cities = Players[playerID]:GetCities();
-		local ERD_Total_Prod = 0;
 		local ERD_Total_Food = 0;
 		for i,city in cities:Members() do
-			ERD_Total_Prod = ERD_Total_Prod + math.floor( city:GetYield( YieldTypes.PRODUCTION )) ;
 			ERD_Total_Food = ERD_Total_Food + math.floor( city:GetYield( YieldTypes.FOOD )) ;
 		end
-		uiLeader.Cities_Prod:SetText("[ICON_Production]"..ERD_Total_Prod);
 		uiLeader.Cities_Food:SetText("[ICON_Food]"..ERD_Total_Food);
 	end
 
@@ -2704,9 +2712,13 @@ function MPT_RealizeObserverView(playerID, uiLeader, isMasked, bIsSpec, bmasters
 		uiLeader.Favor:SetHide(true);
 		uiLeader.Group_SpecArmy:SetHide(isMasked);
 	elseif b_yield == true then
-		-- Yield 视图：DPR 组合2 产出行 + 毛产补充行（样式以 DPR 为准；原 BSM 的 Science/Culture 行由 Score 视图承担）
+		-- Yield 视图：DPR 组合2 产出行 + 毛粮补充行（样式以 DPR 为准；原 BSM 的 Science/Culture 行由 Score 视图承担）
+		-- 条目24修复：毛产 Cities_Prod 与 DPR 生产力总量（GetProduction 同 API 同求和）恒等值，产出视图重复两行
+		--（用户截图「错误的显示」），移出视图只留毛粮（余粮为净剩余、毛粮为城市毛产出和，两者不同）
 		uiLeader.Group_Rate:SetHide(isMasked);
-		uiLeader.Group_SpecYield:SetHide(isMasked);
+		uiLeader.Group_SpecYield:SetHide(false);
+		uiLeader.Cities_Prod:SetHide(true);
+		uiLeader.Cities_Food:SetHide(isMasked);
 	elseif b_accu == true then
 		-- Total 视图：累计产出（REPLAYDATASET）
 		uiLeader.Group_SpecTotal:SetHide(isMasked);
