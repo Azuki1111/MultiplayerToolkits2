@@ -2,7 +2,7 @@
 
 ## 项目概览
 
-《文明6》（Sid Meier's Civilization VI）**前端（FrontEnd）模组**，作者 号码菌Synora。融合「联机工具箱 1.67」与 MPH（Multiplayer Helper）的前端功能并加以优化，主要面向多人联机准备房间体验。模组校验 / BP 功能改编自 MPH（MIT 协议 © 2024 BetterBalancedGame），部分功能参考联机工具箱 1.67 与乔尔定制mod。
+《文明6》（Sid Meier's Civilization VI）**前端（FrontEnd）模组**，作者 号码菌Synora。融合「联机工具箱 1.65」与 MPH（Multiplayer Helper）的前端功能并加以优化，主要面向多人联机准备房间体验。模组校验 / BP 功能改编自 MPH（MIT 协议 © 2024 BetterBalancedGame），部分功能参考联机工具箱 1.65 与乔尔定制mod。
 
 - **不是常规软件工程**：没有构建配置、测试框架、CI/CD。
 - 技术栈：Firaxis 模组体系 = `.modinfo` 清单 + 前端 Configuration 数据库 SQL/XML + UI 替换 Lua/XML + DDS 贴图。
@@ -58,7 +58,7 @@
 | `InGame/BetterTradeScreen/` | 条目22 商路界面增强（1.67 BTS）：商路总览/目的地选择/商人传送三面板 + `TradeSupport.lua` 共享库（**文件名必须原名**，被两面板按名 include）；核心修复「收益不及时刷新」= Open() 即清缓存 + 回合内变更事件失效（政策/建筑/宣战议和等，事件名均经原版 UI 验证存在）；文本仅 IG 注册（消费侧注册先例） |
 | `InGame/BetterCityStates/` | 条目23 城邦界面增强（1.67 BCS 四处魔改 + BSM 观察者补丁并入）：`CityStates_MPT.lua` = 原版 Base+XP1+XP2 压平合并体 ReplaceUIScript（压过 1.67 两套注册与 BSM 9999）；MPT_IsSpectator 读 BSM SPEC_NUM/SPEC_ID_k 属性单文件兼容（**BSM 观察者生态协议已沉淀技能库 patterns/workshop-cross-domain-patterns.md**；diff 核实不采纳 BSM 无效/回归改动） |
 | `InGame/DiplomacyRibbonExt/` | 条目24 外交丝带扩展（1.67 DPR fork + BSM 观察者逻辑并入 + 条目14 精确科文仪表）：DiplomacyRibbon/WorldRankings 两上下文各 ReplaceUIScript+ImportFiles；**XML 组级显隐规约：分组容器必须用 Stack 嵌套 Stack（ForgeUI Container 不参与 Stack 布局），子控件一律不带 Hidden="1"**（父组隐藏即整组不可见，子控件自带标记会致组显示后仍不可见）；**动态 tooltip 性能规约 = 构建按数据身份去重复用实例栈 + CalculateSize/ReprocessAnchoring 收缩外框**（InstanceManager 回收仅隐藏不销毁）；观察者局五连修复（隐形热区遮挡点击/UTF-8 字节截断乱码等，已沉淀技能库案例 61/62；BSM GAP 延迟协议依赖 1.67 MPH 已剔除）；WorldRankings 隐藏他玩家情报、保留胜利进度；参数/热键沿用 1.67 原 key |
-| `InGame/GreatGeneralEraReminder/` | 条目25 大将军时代提示（1.67 BER）+ 工人劳动力显示（1.67 BCT）：`UnitFlagManager_MPT.lua` 整文件替换（复用晋升徽标控件写时代名，防御 include 链 BuilderCharges→BarbarianClansMode→原版，压过 1.67 BER/BCT）+ `UnitFlagManager_BuilderCharges.lua`（工人劳动力徽标，原名 ImportFiles 供链首环探测，与 1.67 同装同名幂等）。**规约（引擎墙，已沉淀技能库 ui/references/popup-panel-detail.md）：跨上下文注入旗标控件两路实验（AddUserInterfaces 迷你上下文 / LookUpControl 代理 + ChangeParent）均实测不生效已废止，唯一可行 = 整文件替换复用上下文内既有控件**；开关收编条目12（GreatGeneralEraReminder_Show） |
+| `InGame/BER/` + `InGame/BCT/` | 条目25 大将军时代提示（1.67 BER）+ 工人劳动力显示（1.67 BCT），目录/命名对齐 1.67 源结构（条目25规范）：`BER/UnitFlagManager_MPT.lua` 整文件替换（复用晋升徽标控件写时代名，防御 include 链 BuilderCharges_MPT→BarbarianClansMode→原版，压过 1.67 BER/BCT）+ `BCT/UnitFlagManager_BuilderCharges_MPT.lua`（工人劳动力徽标，MPT 名 ImportFiles 供链首环探测，与 1.67 同名文件不同名同装不双叠）。**规约（引擎墙，已沉淀技能库 ui/references/popup-panel-detail.md）：跨上下文注入旗标控件两路实验（AddUserInterfaces 迷你上下文 / LookUpControl 代理 + ChangeParent）均实测不生效已废止，唯一可行 = 整文件替换复用上下文内既有控件**；开关收编条目12（GreatGeneralEraReminder_Show，单通道 MPT_Settings_Toggle） |
 | `InGame/`（其余） | 后续 InGame 功能每功能一个自包含子目录（条目12+ 随 1.67 对应缩写目录逐一移植，进度见 计划.md） |
 
 ## 加载机制（.modinfo）

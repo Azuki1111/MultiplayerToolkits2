@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>80</Version>
+		<Version>81</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -995,32 +995,33 @@
 		<!-- 条目25：大将军时代提示（BER = Great General Era Reminder，移植 1.67 BER/ 目录单文件）
 			大将军/海军统帅单位旗帜下沿显示所属时代名横幅。UnitFlagManager 无通配 include 钩子，
 			整文件替换（条目15/17/21/22/24 模式）：ReplaceUIScript 100000 压过 1.67 BER 的 10001
-			与 BCT 4000（同装时其两上下文不再加载；1.67 面板 BER 开关经 TPT_Settings_Toggle
-			双通道监听继续生效，BCT 功能由本 mod 自带同名文件经 include 链供给）。
+			与 BCT 4000（同装时其两上下文不再加载，其面板 BER 开关不再联动，开关以本 mod
+			条目12 面板为准；其 BCT 文件因链只探 MPT 名不参与，功能由本 mod 同名 MPT 文件供给）。
 			方案留痕（用户裁决）：回归 1.67 原版「复用晋升徽标控件改造」方案原样（Promotion_Flag
 			换 ActionPanel_TurnTimerFrame 纹理 + UnitNumPromotions 写时代名 + 非将军按锚点判定
 			还原）；此前两轮「新建控件绑定父控件」实验（AddUserInterfaces 注入旗标上下文 /
 			InGame 迷你上下文 + LookUpControl 路径取用 ChangeParent 挂载）均实测不生效——引擎
 			addin 机制 = InGame.lua 348 行 LoadNewContext 硬编码挂 InGame 的 AdditionalUserInterfaces
 			成为独立 Lua 状态迷你上下文，模板/控件无法为旗标上下文所用（git 条目25 两次提交
-			留痕），实验文件 EraBanner.xml/.lua 已删除。
-			同批移植 1.67 BCT/UnitFlagManager_BuilderCharges.lua（工人劳动力显示，ImportFiles
-			原名登记供 include 链首环探测；与 1.67 同装同名文件幂等，本 mod 100010 压过其注册）。
-			开关入条目12 MPT_Settings（1.67 原 key GreatGeneralEraReminder_Show，默认开），
-			MPT_Settings_Toggle + TPT_Settings_Toggle 双通道监听（条目24 DPR 先例） -->
+			留痕），实验文件已删除。
+			同批移植 1.67 BCT/UnitFlagManager_BuilderCharges.lua（工人劳动力显示）。
+			条目25规范（用户裁决）：拆回 1.67 源结构两目录——入口 InGame/BER/UnitFlagManager_MPT.lua +
+			链文件 InGame/BCT/UnitFlagManager_BuilderCharges_MPT.lua（ImportFiles 登记供链首环
+			探测；_MPT 后缀与 1.67 同名文件不同名，同装无双重叠加）；开关单通道
+			MPT_Settings_Toggle（条目12 面板，1.67 原 key GreatGeneralEraReminder_Show，默认开） -->
 		<ReplaceUIScript id="IG_BER_Replace">
 			<Properties>
 				<LoadOrder>100000</LoadOrder>
 				<LuaContext>UnitFlagManager</LuaContext>
-				<LuaReplace>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</LuaReplace>
+				<LuaReplace>InGame/BER/UnitFlagManager_MPT.lua</LuaReplace>
 			</Properties>
 		</ReplaceUIScript>
 		<ImportFiles id="IG_BER_Import">
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</File>
-			<File>InGame/GreatGeneralEraReminder/UnitFlagManager_BuilderCharges.lua</File>
+			<File>InGame/BER/UnitFlagManager_MPT.lua</File>
+			<File>InGame/BCT/UnitFlagManager_BuilderCharges_MPT.lua</File>
 		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
@@ -1152,7 +1153,7 @@
 		<File>InGame/DiplomacyRibbonExt/InputActions_DiploRibbon.xml</File>
 		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_zh_Hans_CN.sql</File>
 		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_en_US.sql</File>
-		<File>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</File>
-		<File>InGame/GreatGeneralEraReminder/UnitFlagManager_BuilderCharges.lua</File>
+		<File>InGame/BER/UnitFlagManager_MPT.lua</File>
+		<File>InGame/BCT/UnitFlagManager_BuilderCharges_MPT.lua</File>
 	</Files>
 </Mod>
