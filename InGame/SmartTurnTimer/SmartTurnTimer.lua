@@ -67,6 +67,14 @@
 --   房主意图，联机门控已保证多人局）；「已是标准则不动」守卫保留——其真实用途是
 --   读档/重进保护（重载后类型已是标准，不把平衡时间打回起点），非 OFF 模式中途
 --   切换经未消费标志在下一回合开始自动接管。
+-- 条目20扩展3（用户需求：监测房主是否手动修改了回合时间，智能计时器下手动更改后
+--   下个回合开始时时间不变）：回合末平衡前比对 TURN_TIMER_TIME 与基线
+--   MPT_PreTimeBase——不一致即回合内发生了本脚本未同步基线的修改 → 跳过本次 PID
+--   平衡，下回合保持手动值，重新锚定基线后再下一回合恢复正常平衡（1.67 原为以手动
+--   值为基准立即重新平衡）。判定通道：脚本自动调节均同步基线不触发保持（宣战 +20/
+--   掉线 +30/投票 120/p-- 走平衡修正）；手动类触发保持一回合——聊天 p+ 不再回写
+--   基线（1.67「p+ 仅当前回合生效」语义随本扩展取消）、热键直改、暂停菜单/控制台
+--   等外部改动；回合开始初始化写入后同步基线，防止误判自身为手动修改。
 --   3. 真人统计合并：1.67 在 GetHumanNum / 半数采样 / 回合开始重置 / 投票判定 四处
 --      重复全遍历真人，合并为单一 MPT_Timer_CountHumans()（一次遍历同时返回总数与
 --      已结束数）；首回合初始化人数判定也复用（1.67 该处未排除观察者，此处修正）。
@@ -337,8 +345,10 @@ local function MPT_Timer_OnMultiplayerChat(fromPlayer, toPlayer, text, eTargetTy
 				addTime = 24;	-- 尾秒加时改 +24（1.67 原语义，其注释所写 30 为笔误）
 			end
 			GameConfiguration.SetValue("TURN_TIMER_TIME", MPT_Timer_GetConfigTime() + addTime);
-			MPT_PreTimeBase = MPT_PreTimeBase + addTime;
 			Network.BroadcastGameConfig();
+			-- 条目20扩展3：不回写 MPT_PreTimeBase——聊天指令加时与热键直改/暂停菜单同样
+			-- 视为房主手动修改，下回合开始时间保持（1.67 回写基线使 p+ 仅当前回合生效的
+			-- 语义随本扩展取消）
 			MPT_ActionAdd = true;
 		end
 		return;
@@ -400,8 +410,22 @@ local function MPT_Timer_OnTurnEndSmart()
 	end
 
 	local configTime :number = MPT_Timer_GetConfigTime();
-	-- 最终应用的时间：未被外部手段（其他 mod/控制台）修改过则沿用上次计算值，否则以当前配置为准
-	local balancedTime :number = (MPT_PreTimeBase == configTime) and MPT_PreTime or configTime;
+	if configTime ~= MPT_PreTimeBase then
+		-- 条目20扩展3：回合内检测到房主手动/外部修改（热键直改、暂停菜单改时间、聊天
+		-- 指令、控制台等本脚本未同步基线的改动）→ 本回合末跳过 PID 平衡，下回合开始
+		-- 时间保持手动值；重新锚定基线，再下一回合恢复正常平衡（1.67 原为以手动值为
+		-- 基准立即重新平衡，用户要求手动修改保持一回合不变）
+		if MPT_ActionNone then
+			GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");	-- p+++ 的恢复不受跳过影响
+		end
+		MPT_PreTime = configTime;
+		MPT_PreTimeBase = configTime;
+		MPT_ActionAdd = false;
+		MPT_ActionReduce = false;
+		MPT_ActionNone = false;
+		return;
+	end
+	local balancedTime :number = MPT_PreTime;	-- 基线一致（回合内无手动改动）→ 沿用上次平衡值
 
 	-- 过时代倒计时（前馈控制：过渡回合加时，下一回合减时）
 	local nextEraCountdown :number = -1;
@@ -667,6 +691,7 @@ local function MPT_Timer_OnTurnBeginInit()
 		GameConfiguration.SetValue("TURN_TIMER_TIME", MPT_MinTime);
 	end
 	Network.BroadcastGameConfig();
+	MPT_Timer_ResetVariables();	-- 同步基线，避免首回合末把初始化写入误判为手动修改（条目20扩展3）
 end
 
 -- ============================================================================
