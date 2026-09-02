@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameInfo>
+<!-- ============================================================================
+	条目24：DPR 快捷键（移植 1.67 DPR/Config_Hotkeys_DPR.xml，原样沿用 1.67 原 key）——
+	HotKey_DPR_TechCivisProgress（;）= 切换科文仪表显示；HotKey_DPR_Totalyield（'）= 切换
+	组合1 储量类 / 组合2 产出类。与 1.67 同装时同 ActionId 幂等共享。
+	前后端各注册一次（条目20 规约：FE 按键绑定界面显示 / IG 运行时取用）。
+============================================================================ -->
+    <InputActions>
+        <InsertOrIgnore ActionId="HotKey_DPR_TechCivisProgress" Name="LOC_DPR_TECHCIVIS_NAME" Description="LOC_DPR_TECHCIVIS_DESC" CategoryId="UI" ContextId="World"/>
+        <InsertOrIgnore ActionId="HotKey_DPR_Totalyield" Name="LOC_DPR_TOTALYIELD_NAME" Description="LOC_DPR_TOTALYIELD_DESC" CategoryId="UI" ContextId="World"/>
+    </InputActions>
+    <InputActionDefaultGestures>
+        <InsertOrIgnore ActionId="HotKey_DPR_TechCivisProgress" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SEMICOLON"/>
+        <InsertOrIgnore ActionId="HotKey_DPR_Totalyield" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_QUOTE"/>
+    </InputActionDefaultGestures>
+</GameInfo>

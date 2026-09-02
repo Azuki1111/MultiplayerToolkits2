@@ -17,7 +17,11 @@ VALUES
 	('LOC_MPT_SETTINGS_BTS_LPATH_NAME',	'en_US',	'BTS Trade: Show all route paths'),
 	('LOC_MPT_SETTINGS_BTS_LPATH_TT',	'en_US',	'Show all candidate route paths in the route chooser panel, not just the selected one (item 22 BTS). Disabling speeds up panel opening'),
 	('LOC_MPT_SETTINGS_BTS_TPATH_NAME',	'en_US',	'BTS Trade: Show trader path on selection'),
-	('LOC_MPT_SETTINGS_BTS_TPATH_TT',	'en_US',	'Automatically show the running route path and its origin/destination cities when selecting your trader (item 22 BTS)');
+	('LOC_MPT_SETTINGS_BTS_TPATH_TT',	'en_US',	'Automatically show the running route path and its origin/destination cities when selecting your trader (item 22 BTS)'),
+	('LOC_MPT_SETTINGS_DPR_PNAME_NAME',	'en_US',	'Diplomacy Ribbon: Show player name'),
+	('LOC_MPT_SETTINGS_DPR_PNAME_TT',	'en_US',	'Show the player name at the top of each ribbon card (item 24 DPR)'),
+	('LOC_MPT_SETTINGS_DPR_CNAME_NAME',	'en_US',	'Diplomacy Ribbon: Show civilization name'),
+	('LOC_MPT_SETTINGS_DPR_CNAME_TT',	'en_US',	'Show the civilization short name at the top of each ribbon card (item 24 DPR)');
 -- The initial item-20 smart timer switch texts (LOC_MPT_SETTINGS_TIMER_ENABLE_*) were
 -- replaced by the 4-mode Game config parameter in the item-20 extension; texts moved to
 -- InGame/SmartTurnTimer/ localized SQL files.

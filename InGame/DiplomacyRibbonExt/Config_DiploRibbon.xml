@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameInfo>
+<!-- ============================================================================
+	条目24：外交能见度模式参数（移植 1.67 DPR/Config_DPR.xml，原样沿用 1.67 原 key）——
+	ParameterId/Domain 沿用 SETTINGS_DIPLOMACYRIBBON_TPT / DPRsettings，与 1.67 同装时
+	同 key 共享（InsertOrIgnore 幂等，双方 UI 以本 mod ReplaceUIScript 100000 压制为准）。
+	仅前端注册（Configuration 参数须前端注册开局建库继承，IG 重复注册主键冲突——条目20 规约）；
+	Lua 侧运行时读 GameConfiguration.GetValue，nil 兜底 0（标准模式）。
+	ChangeableAfterGameStart=0（信息披露规则开局后不可改，防中途开挂）。
+============================================================================ -->
+	<Parameters>
+		<InsertOrIgnore ParameterId="SETTINGS_DIPLOMACYRIBBON_TPT" Name="LOC_SETTINGS_DIPLOMACYRIBBON_NAME" Description="LOC_SETTINGS_DIPLOMACYRIBBON_DESC" Domain="DPRsettings" DefaultValue="SETTINGS_DIPLOMACYRIBBON_NORM" ConfigurationGroup="Game" ConfigurationId="SETTINGS_DIPLOMACYRIBBON_TPT" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2950" />
+	</Parameters>
+	<DomainValues>
+		<InsertOrIgnore Domain="DPRsettings" Value="SETTINGS_DIPLOMACYRIBBON_NORM" Name="LOC_SETTINGS_DIPLOMACYRIBBON_NORM_NAME" Description="LOC_SETTINGS_DIPLOMACYRIBBON_NORM_DESC" SortIndex="1"/>
+		<InsertOrIgnore Domain="DPRsettings" Value="SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM" Name="LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_NAME" Description="LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_DESC" SortIndex="2"/>
+		<InsertOrIgnore Domain="DPRsettings" Value="SETTINGS_DIPLOMACYRIBBON_PUBLIC" Name="LOC_SETTINGS_DIPLOMACYRIBBON_PUBLIC_NAME" Description="LOC_SETTINGS_DIPLOMACYRIBBON_PUBLIC_DESC" SortIndex="3"/>
+	</DomainValues>
+</GameInfo>

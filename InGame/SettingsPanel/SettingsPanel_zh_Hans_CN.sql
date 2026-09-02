@@ -17,7 +17,11 @@ VALUES
 	('LOC_MPT_SETTINGS_BTS_LPATH_NAME',	'zh_Hans_CN',	'BTS 商路：显示全部商路路径'),
 	('LOC_MPT_SETTINGS_BTS_LPATH_TT',	'zh_Hans_CN',	'目的地选择面板中显示全部候选商路的路径而非仅选中项（条目22 BTS）。关闭可加快面板打开'),
 	('LOC_MPT_SETTINGS_BTS_TPATH_NAME',	'zh_Hans_CN',	'BTS 商路：选中商人显示路径'),
-	('LOC_MPT_SETTINGS_BTS_TPATH_TT',	'zh_Hans_CN',	'选中己方商人时自动显示其在途商路路径与两端城市（条目22 BTS）');
+	('LOC_MPT_SETTINGS_BTS_TPATH_TT',	'zh_Hans_CN',	'选中己方商人时自动显示其在途商路路径与两端城市（条目22 BTS）'),
+	('LOC_MPT_SETTINGS_DPR_PNAME_NAME',	'zh_Hans_CN',	'外交丝带：显示玩家名'),
+	('LOC_MPT_SETTINGS_DPR_PNAME_TT',	'zh_Hans_CN',	'在外交丝带头像卡片顶部显示玩家名（条目24 DPR）'),
+	('LOC_MPT_SETTINGS_DPR_CNAME_NAME',	'zh_Hans_CN',	'外交丝带：显示文明名'),
+	('LOC_MPT_SETTINGS_DPR_CNAME_TT',	'zh_Hans_CN',	'在外交丝带头像卡片顶部显示文明简称（条目24 DPR）');
 -- 条目20初版曾在此加智能计时器开关文本（LOC_MPT_SETTINGS_TIMER_ENABLE_*），条目20扩展
 -- 改用四模式 Game 配置参数（文本移至 InGame/SmartTurnTimer/ 双语 SQL），已删除。
 -- 条目22：BTS 4 选项文本移植自 1.67 BTS/Text/BTS_Text_EN.xml 的 LOC_BTS_SETTING_*，

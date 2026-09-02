@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>75</Version>
+		<Version>76</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -886,6 +886,31 @@
 			<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_zh_Hans_CN.sql</File>
 			<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目23：城邦界面增强（BCS = Better City States，移植 1.67 BCS/UI/ 两文件）
+			城邦面板任务行 + 单城邦视图默认「影响力」页 + 加成弹出区永久隐藏 + 宣战红条
+			（1.67 四处魔改原样），并并入观察者 mod Better Spectator Mod（BSM）的城邦面板补丁
+			（MPT_IsSpectator 判定 / isHasMet 放宽 / CPL_ANONYMOUS 匿名 / OnLocalPlayerTurnBegin
+			隐藏刷新 / 去 CAPABILITY_CITY_STATES_VIEW 门控）——单文件直接兼容，替代 1.67 的
+			ModInUse_BSM criteria 双版本切换机制。原版 CityStates.lua 为 Base 单版本无 DLC 变体、
+			Base+XP1+XP2 三文件压平合并体 → ReplaceUIScript 100000 + ImportFiles 100010（同
+			条目15/17/21/22 模式）；与 1.67 同装压制其 1000/1010 与 11000/11100 两套注册，与
+			BSM 同装时其裸 ImportFiles(9999) 的同名遮蔽被 ReplaceUIScript 换上下文入口无效化
+			（观察者功能已并入本文件，BSM 遮蔽文件成为死文件）。BCS 无自定义 LOC tag，无文本
+			文件 -->
+		<ReplaceUIScript id="IG_BCS_CityStates">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>CityStates</LuaContext>
+				<LuaReplace>InGame/BetterCityStates/CityStates_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_BCS_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/BetterCityStates/CityStates_MPT.lua</File>
+			<File>InGame/BetterCityStates/CityStates.xml</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -1006,5 +1031,7 @@
 		<File>InGame/BetterTradeScreen/TradeSupport.lua</File>
 		<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_zh_Hans_CN.sql</File>
 		<File>InGame/BetterTradeScreen/Text/BetterTradeScreen_en_US.sql</File>
+		<File>InGame/BetterCityStates/CityStates_MPT.lua</File>
+		<File>InGame/BetterCityStates/CityStates.xml</File>
 	</Files>
 </Mod>
