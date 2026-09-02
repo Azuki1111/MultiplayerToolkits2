@@ -985,15 +985,31 @@ function EqualizeTeamTooltipWidths()
 	end
 end
 
+-- 条目24修复三段：栈重算——InstanceManager 的 ResetInstances 是回收复用（旧实例仅 SetHide、
+-- ChangeParent 回 CivStack，仍是其子控件），栈高只增不减：上一队多卡→本队少卡时栈残留旧高，
+-- 外层 AutoSize 网格（ToolTips.xml TeamTooltip BG）跟随失真（截图实证：2 张未相遇卡下方大片
+-- 空白）。显式重算使栈高回归可见实例（hide/show 后 CalculateSize + ReprocessAnchoring 为原版
+-- 惯用法，WorldViewIconsManager L611-612；CalculateSize 只计可见子控件——DPR 丝带
+-- StatStack:CalculateSize 后按其值定卡高、游戏内隐藏行确实收缩，行为实证）；原版同类去重场景
+-- SettlerRecommendationTooltip 用 DestroyAllChildren 天然收缩，本处 InstanceManager 回收语义
+-- 需显式补。缓存命中与重建后各调一次，均只做布局计算零实例创建。
+function MPT_RelayoutTeamTooltipStack()
+	if m_TeamTooltip.CivStack ~= nil then
+		m_TeamTooltip.CivStack:CalculateSize();
+		m_TeamTooltip.CivStack:ReprocessAnchoring();
+	end
+end
+
 function SetTeamTooltip(control:table, teamData)
 	control:SetToolTipType("TeamTooltip");
 	control:SetToolTipCallback(function() UpdateTeamTooltip(control, teamData); end);
 end
 
 function UpdateTeamTooltip(control, teamData)
-	-- 条目24修复：同一队伍的重复回调直接复用（实例栈仍持有该队内容），仅做轻量等宽校正
+	-- 条目24修复：同一队伍的重复回调直接复用（实例栈仍持有该队内容），仅做轻量校正
 	if m_TeamTooltipCurrent == teamData then
 		EqualizeTeamTooltipWidths();
+		MPT_RelayoutTeamTooltipStack();
 		return;
 	end
 	m_TeamTooltipCurrent = teamData;
@@ -1098,6 +1114,9 @@ function UpdateTeamTooltip(control, teamData)
 			instance.BG:SetSizeX(maxWidth);
 		end
 	end
+
+	-- 条目24修复三段：重建后栈重算（ResetInstances 隐藏回收的旧实例不令栈收缩，见函数上方说明）
+	MPT_RelayoutTeamTooltipStack();
 end
 
 -- ===========================================================================
