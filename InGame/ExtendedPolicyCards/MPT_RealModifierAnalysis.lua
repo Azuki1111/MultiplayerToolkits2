@@ -1927,6 +1927,10 @@ MPT_LineHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = function(tMod, ePlayerID
 	return MPT_Sign(iGain).." "..sIcon, { sIcon = sIcon, sLayout = "last", nAmount = iGain };
 end;
 MPT_DynamicHandlers["EFFECT_ADJUST_GREAT_PERSON_POINTS"] = true;
+-- [MPT 条目21用户裁决] 忠诚度加成不显示——原版引擎 LOYALTY 伪产量通道（ApplyEffectAndCalculateImpact
+-- 的 EFFECT_ADJUST_CITY_IDENTITY_PER_TURN → tImpact.LOYALTY → 卡面 [ICON_PressureUp]+N），
+-- 登记静默后 hook② 跳过原链不产出、行通道返回 nil 不红字
+MPT_KnownEffects["EFFECT_ADJUST_CITY_IDENTITY_PER_TURN"] = true;
 -- [MPT 条目21用户裁决] 影响力点/联盟点/建造者次数不显示（静默化不红字）
 MPT_KnownEffects["EFFECT_ADJUST_INFLUENCE_POINTS_PER_TURN"] = true;
 MPT_KnownEffects["EFFECT_ADJUST_ALLIANCE_POINTS_FOR_MODIFIER"] = true;
