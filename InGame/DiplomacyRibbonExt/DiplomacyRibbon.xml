@@ -9,6 +9,11 @@
 	  Group_TechCivis 科文仪表（ScienceButton/CultureButton 四件套）
 	  Group_Observer BSM 观察者组（内含六视图子组），非观战局整组一次 SetHide，
 	                 替代 BSM 原 HideSpecInfo 的 40 余行逐控件隐藏
+	组必须是嵌套 <Stack> 而非 <Container>（条目24修复，实测卡面属性列全空）：
+	  ForgeUI Container 不参与 Stack 布局、不随内容自适应尺寸——StatStack:CalculateSize()
+	  算不到组高，组内 Label 也不被逐行排列；嵌套 Stack 是官方惯用法（DiplomacyActionView/
+	  Options/GameSummaries 均在用），StackGrowth=Bottom+StackPadding=3 复刻原扁平行距，
+	  隐藏行/隐藏组自动跳过布局，组级 SetHide 语义不变。
 	BSM（Better Spectator Mod，工坊 1916397407）控件原 ID 保留（SpecControl_1..6/Governement/
 	CurrentAge/EraScore/LandUnit../Total_*），冲突与死控件处理：
 	  - Data0..Data7：BSM 中被无条件 SetHide(true)（死控件），剔除
@@ -90,29 +95,30 @@
 						
 						<Label		ID="Score"			Style="FontNormal14" FontStyle="shadow" Color0="255,200,0,255" Color2="180,130,200,255"		EffectColor="0,0,0,255" String="[ICON_Capital]-"	ToolTip="LOC_HUD_RIBBON_SCORE" ReduceWidth="61"/>
 							
-						<!-- 条目24：组合1 储量类（原 DPR 平铺逐个 SetHide → 组级一次 SetHide；组内个别隐藏仍用于信息披露门槛） -->
-						<Container	ID="Group_Stock" >
+						<!-- 条目24：组合1 储量类（原 DPR 平铺逐个 SetHide → 组级一次 SetHide；组内个别隐藏仍用于信息披露门槛）
+							组 = 嵌套 Stack（Container 不参与 Stack 布局，见头部横幅） -->
+						<Stack		ID="Group_Stock"		StackGrowth="Bottom" StackPadding="3">
 							<Label		ID="Military"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResMilitaryLabelCS"	EffectColor="0,0,0,255" String="[ICON_Strength]-"	ToolTip="LOC_HUD_RIBBON_STRENGTH" 		ReduceWidth="61"/>
 							<Label		ID="Science"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResScienceLabelCS"	EffectColor="0,0,0,255" String="[ICON_Science]-"	ToolTip="LOC_HUD_RIBBON_SCIENCE" 		ReduceWidth="61"/>
 							<Label		ID="Culture"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResCultureLabelCS"	EffectColor="0,0,0,255" String="[ICON_Culture]-"	ToolTip="LOC_HUD_RIBBON_CULTURE" 		ReduceWidth="61"/>
 							<Label		ID="Gold"			Style="FontNormal14" FontStyle="shadow" ColorSet="ResGoldLabelCS"		EffectColor="0,0,0,255" String="[ICON_Gold]-"		ToolTip="LOC_HUD_RIBBON_GOLD" 			ReduceWidth="61"/>
 							<Label		ID="Faith"			Style="FontNormal14" FontStyle="shadow" ColorSet="ResFaithLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Faith]-"		ToolTip="LOC_HUD_RIBBON_FAITH" 			ReduceWidth="61"/>
 							<Label		ID="Favor"			Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Favor]-"  	ToolTip="LOC_HUD_RIBBON_FAVOR" 			ReduceWidth="61"/>
-						</Container>
-						
+						</Stack>
+
 						<!-- 条目24：组合2 产出类（收纳进组；子控件不带 Hidden——父组隐藏即整组不可见，
 							子控件自身的 Hidden 标记会让组显示后仍不可见，显隐一律走组级） -->
-						<Container	ID="Group_Rate" Hidden="1">
+						<Stack		ID="Group_Rate"			StackGrowth="Bottom" StackPadding="3" Hidden="1">
 							<Label		ID="Cities"			Style="FontNormal14" FontStyle="shadow" ColorSet="ResFaithLabelCS"		EffectColor="0,0,0,255" String="[ICON_Citizen]-"	ToolTip="LOC_DPR_TOTAL_POPULATION" 		ReduceWidth="61"/>
 							<Label		ID="Food_Total"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFoodLabelCS"		EffectColor="0,0,0,255" String="[ICON_Food]--"		ToolTip="LOC_DPR_FOOD_SURPLUS_YIELD" 	ReduceWidth="61"/>
 							<Label		ID="Production_Total"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResProductionLabelCS"	EffectColor="0,0,0,255" String="[ICON_Production]-"	ToolTip="LOC_DPR_PRODUCTION_YIELD" ReduceWidth="61"/>
 							<Label		ID="GoldPerTurn"	Style="FontNormal14" FontStyle="shadow" ColorSet="ResGoldLabelCS"	    EffectColor="0,0,0,255" String="[ICON_Gold]--"		ToolTip="LOC_DPR_GOLD_PERTURN" 			ReduceWidth="61"/>
 							<Label		ID="FaithperTurn"	Style="FontNormal14" FontStyle="shadow" ColorSet="ResFaithLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Faith]-"		ToolTip="LOC_DPR_FAITH_PERTURN" 		ReduceWidth="61"/>
-							<Label		ID="FavorperTurn"	Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Favor]-"  	ToolTip="LOC_DPR_FAVOR_PERTURN" 		ReduceWidth="61"/>		
-						</Container>
-						
+							<Label		ID="FavorperTurn"	Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Favor]-"  	ToolTip="LOC_DPR_FAVOR_PERTURN" 		ReduceWidth="61"/>
+						</Stack>
+
 						<!-- 条目24：科文仪表组（原 6 控件逐个 CanHide → 组级） -->
-						<Container	ID="Group_TechCivis" Hidden="1">
+						<Stack		ID="Group_TechCivis"	StackGrowth="Bottom" StackPadding="3" Hidden="1">
 							<Button ID="ScienceButton" Anchor="L" Offset="5,6" Size="51,51" Texture="LaunchBar_Hook_ScienceButton" Style="ButtonNormalText" TextureOffset="4,9" StateOffsetIncrement="0,60">
 	        					<Image ID="ResearchIcon" Anchor="C,T" Offset="0,4" Size="38,38" Texture="LaunchBar_Hook_TechTree"/>  	
 	        					<Meter 	ID="ScienceBoostMeter"			Anchor="C,C"	Size="55,55" Offset="-0.5,-4.5"	Texture="ResearchPanel_BoostMeter"  Percent=".4"	 	Speed="1.0" Follow="1"/>
@@ -127,43 +133,43 @@
 								<Meter	ID="CultureProgressMeter"	Anchor="C,C"	Size="55,55" Offset="-0.5,-4.5"	Texture="CivicPanel_Meter"			Percent="0"	Speed="1.0" Follow="1"/>        					
 	     					</Button>
 							<Label		ID="CultureText" 		Anchor="L" 	Offset="3,-2"		Style="FontNormal12" FontStyle="shadow" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="LOC_WORLD_TRACKER_CHOOSE_CIVIC"/>
-							<Label		ID="CultureTurnsLeft"	Anchor="L"	Offset="0,0"		Style="FontNormal12" String="[ICON_Turn]   "/>		
-						</Container>
-						
+							<Label		ID="CultureTurnsLeft"	Anchor="L"	Offset="0,0"		Style="FontNormal12" String="[ICON_Turn]   "/>
+						</Stack>
+
 						<!-- 条目24：BSM 观察者组（非观战局整组隐藏 = 原 BSM HideSpecInfo 40 余行逐控件隐藏的组级替代；
-							子控件一律不带 Hidden，显隐全走组/子组级） -->
-						<Container	ID="Group_Observer" Hidden="1">
+							子控件一律不带 Hidden，显隐全走组/子组级；子组同为嵌套 Stack） -->
+						<Stack		ID="Group_Observer"		StackGrowth="Bottom" StackPadding="3" Hidden="1">
 							<Label		ID="SpecTag"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="  Observer " ReduceWidth="61"/>	<!-- 原 BSM Data8 -->
 							<Label		ID="SpecData"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="" ReduceWidth="61"/>	<!-- 原 BSM Data（Host/Ping） -->
 							<!-- Eras 视图（原 BSM Governement/Cities/CurrentAge/EraScore；Cities 与 DPR 人口行冲突改名 Spec_Cities） -->
-							<Container	ID="Group_SpecEras" Hidden="1">
+							<Stack		ID="Group_SpecEras"		StackGrowth="Bottom" StackPadding="3" Hidden="1">
 								<Label	ID="Governement"		Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Offset="0,10" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Governe."	ReduceWidth="61"/>
 								<Label	ID="Spec_Cities"		Style="FontNormal12" FontStyle="shadow" Offset="1,0" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="[ICON_City]-"	ReduceWidth="61"/>
 								<Label	ID="CurrentAge0"		Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Offset="0,10" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Current:"	ReduceWidth="61"/>
 								<Label	ID="CurrentAge"			Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Normal Age"	ReduceWidth="61"/>
 								<Label	ID="EraScore0"			Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Offset="0,10" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Next:"	ReduceWidth="61"/>
 								<Label	ID="EraScore"			Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="DD 140/170"	ReduceWidth="61"/>
-							</Container>
+							</Stack>
 							<!-- Army 视图 -->
-							<Container	ID="Group_SpecArmy" Hidden="1">
+							<Stack		ID="Group_SpecArmy"		StackGrowth="Bottom" StackPadding="3" Hidden="1">
 								<Label	ID="LandUnit"			Style="FontNormal12" FontStyle="shadow"  Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Land: 000"	ReduceWidth="61"/>
 								<Label	ID="NavyUnit"			Style="FontNormal12" FontStyle="shadow"  Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Navy: 000"	ReduceWidth="61"/>
 								<Label	ID="AirUnit"			Style="FontNormal12" FontStyle="shadow" Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Air: 000"	ReduceWidth="61"/>
 								<Label	ID="Strategic1"			Style="FontNormal12" FontStyle="shadow"  Offset="1,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="XX: 00 XX: 00"	ReduceWidth="61"/>
 								<Label	ID="Nukes"				Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="XX: 00 XX: 00"	ReduceWidth="61"/>
-							</Container>
+							</Stack>
 							<!-- Yield 视图补充行（原 BSM Cities_Prod/Cities_Food） -->
-							<Container	ID="Group_SpecYield" Hidden="1">
+							<Stack		ID="Group_SpecYield"	StackGrowth="Bottom" StackPadding="3" Hidden="1">
 								<Label	ID="Cities_Prod"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Production]-"	   ReduceWidth="61"/>
 								<Label	ID="Cities_Food"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFavorLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Food]-"	   ReduceWidth="61"/>
-							</Container>
+							</Stack>
 							<!-- Total 视图（累计产出，REPLAYDATASET） -->
-							<Container	ID="Group_SpecTotal" Hidden="1">
+							<Stack		ID="Group_SpecTotal"	StackGrowth="Bottom" StackPadding="3" Hidden="1">
 								<Label	ID="Total_Science"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResScienceLabelCS"	EffectColor="0,0,0,255" String="[ICON_Science]-"	ToolTip="LOC_HUD_RIBBON_SCIENCE"  ReduceWidth="61"/>
 								<Label	ID="Total_Culture"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResCultureLabelCS"	EffectColor="0,0,0,255" String="[ICON_Culture]-"	ToolTip="LOC_HUD_RIBBON_CULTURE"  ReduceWidth="61"/>
 								<Label	ID="Total_Gold"			Style="FontNormal14" FontStyle="shadow" ColorSet="ResGoldLabelCS"			EffectColor="0,0,0,255" String="[ICON_Gold]-"			ToolTip="LOC_HUD_RIBBON_GOLD"     ReduceWidth="61"/>
 								<Label	ID="Total_Faith"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFaithLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Faith]-"	   ReduceWidth="61"/>
-							</Container>
+							</Stack>
 							<!-- 六视图切换按钮（仅本地观察者的主观察者条目显示，文字由 Lua 动态设置） -->
 							<Button 	ID="SpecControl_1"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="Score" >
 							</Button>
@@ -177,7 +183,7 @@
 							</Button>
 							<Button 	ID="SpecControl_4"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="Army" >
 							</Button>
-						</Container>
+						</Stack>
 					</Stack>
 					<Button ID="TPT_Control_1" Size="60,115" Anchor="L,T" Offset="0,60"/>	<!--  隐形的按钮 -->		
 				</SlideAnim>
