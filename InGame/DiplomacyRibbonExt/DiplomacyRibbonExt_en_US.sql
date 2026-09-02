@@ -20,4 +20,18 @@ VALUES
 	('LOC_DPR_PRODUCTION_YIELD',	'en_US',	'Production per Turn'),
 	('LOC_DPR_GOLD_PERTURN',	'en_US',	'Gold per Turn'),
 	('LOC_DPR_FAITH_PERTURN',	'en_US',	'Faith per Turn'),
-	('LOC_DPR_FAVOR_PERTURN',	'en_US',	'Favor per Turn');
+	('LOC_DPR_FAVOR_PERTURN',	'en_US',	'Favor per Turn'),
+	-- Entry 24 fix: observer UI (BSM port) text localization (BSM hardcoded English)
+	('LOC_MPT_DPR_SPEC_OBSERVER',	'en_US',	'Observer'),
+	('LOC_MPT_DPR_SPEC_HOST',	'en_US',	'Host'),
+	('LOC_MPT_DPR_SPEC_CURRENT',	'en_US',	'Current:'),
+	('LOC_MPT_DPR_SPEC_NEXT',	'en_US',	'Next:'),
+	('LOC_MPT_DPR_SPEC_SCORE',	'en_US',	'Score'),
+	('LOC_MPT_DPR_SPEC_YIELD',	'en_US',	'Yield'),
+	('LOC_MPT_DPR_SPEC_TOTAL',	'en_US',	'Total'),
+	('LOC_MPT_DPR_SPEC_TECHS',	'en_US',	'Techs'),
+	('LOC_MPT_DPR_SPEC_ERAS',	'en_US',	'Eras'),
+	('LOC_MPT_DPR_SPEC_ARMY',	'en_US',	'Army'),
+	('LOC_MPT_DPR_SPEC_LAND',	'en_US',	'Land: '),
+	('LOC_MPT_DPR_SPEC_NAVY',	'en_US',	'Navy: '),
+	('LOC_MPT_DPR_SPEC_AIR',	'en_US',	'Air: ');

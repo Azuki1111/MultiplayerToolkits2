@@ -27,4 +27,18 @@ VALUES
 	('LOC_DPR_PRODUCTION_YIELD',	'zh_Hans_CN',	'每回合生产力'),
 	('LOC_DPR_GOLD_PERTURN',	'zh_Hans_CN',	'每回合金币产出'),
 	('LOC_DPR_FAITH_PERTURN',	'zh_Hans_CN',	'每回合信仰产出'),
-	('LOC_DPR_FAVOR_PERTURN',	'zh_Hans_CN',	'每回合外交支持');
+	('LOC_DPR_FAVOR_PERTURN',	'zh_Hans_CN',	'每回合外交支持'),
+	-- 条目24修复：观察者界面（BSM 移植部分）文本本地化（原 BSM 英文硬编码）
+	('LOC_MPT_DPR_SPEC_OBSERVER',	'zh_Hans_CN',	'观察者'),
+	('LOC_MPT_DPR_SPEC_HOST',	'zh_Hans_CN',	'主机'),
+	('LOC_MPT_DPR_SPEC_CURRENT',	'zh_Hans_CN',	'当前:'),
+	('LOC_MPT_DPR_SPEC_NEXT',	'zh_Hans_CN',	'下一:'),
+	('LOC_MPT_DPR_SPEC_SCORE',	'zh_Hans_CN',	'分数'),
+	('LOC_MPT_DPR_SPEC_YIELD',	'zh_Hans_CN',	'产出'),
+	('LOC_MPT_DPR_SPEC_TOTAL',	'zh_Hans_CN',	'累计'),
+	('LOC_MPT_DPR_SPEC_TECHS',	'zh_Hans_CN',	'科技'),
+	('LOC_MPT_DPR_SPEC_ERAS',	'zh_Hans_CN',	'时代'),
+	('LOC_MPT_DPR_SPEC_ARMY',	'zh_Hans_CN',	'军事'),
+	('LOC_MPT_DPR_SPEC_LAND',	'zh_Hans_CN',	'陆军: '),
+	('LOC_MPT_DPR_SPEC_NAVY',	'zh_Hans_CN',	'海军: '),
+	('LOC_MPT_DPR_SPEC_AIR',	'zh_Hans_CN',	'空军: ');

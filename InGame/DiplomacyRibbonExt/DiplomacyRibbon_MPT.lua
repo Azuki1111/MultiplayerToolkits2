@@ -51,6 +51,18 @@ local b_yield		= false;		-- 六视图：Yield
 local b_accu		= false;		-- 六视图：Total（累计）
 local g_lasttime	= 0;			-- 轮播计时
 
+-- 条目24修复：观察者界面文本本地化（原 BSM 英文硬编码；按本 mod 规约预加载为 local，拼接走 ..）
+local SpecStr_Score		= Locale.Lookup("LOC_MPT_DPR_SPEC_SCORE");
+local SpecStr_Yield		= Locale.Lookup("LOC_MPT_DPR_SPEC_YIELD");
+local SpecStr_Total		= Locale.Lookup("LOC_MPT_DPR_SPEC_TOTAL");
+local SpecStr_Techs		= Locale.Lookup("LOC_MPT_DPR_SPEC_TECHS");
+local SpecStr_Eras		= Locale.Lookup("LOC_MPT_DPR_SPEC_ERAS");
+local SpecStr_Army		= Locale.Lookup("LOC_MPT_DPR_SPEC_ARMY");
+local SpecStr_Host		= Locale.Lookup("LOC_MPT_DPR_SPEC_HOST");
+local SpecStr_Land		= Locale.Lookup("LOC_MPT_DPR_SPEC_LAND");
+local SpecStr_Navy		= Locale.Lookup("LOC_MPT_DPR_SPEC_NAVY");
+local SpecStr_Air		= Locale.Lookup("LOC_MPT_DPR_SPEC_AIR");
+
 
 -- ===========================================================================
 --	CONSTANTS
@@ -847,6 +859,10 @@ function FinishAddingLeader( playerID, uiLeader, kProps)
 	-- CanHide，共约 40 行（原文见 git 历史），收敛为组级调用；组内个别 SetHide 不再使用。
 	if bspec_loc == true then
 		-- 本地观察者：BSM 六视图/轮播经组架构接管全部行显隐（原 BSM FinishAddingLeader L527-938 逐控件版）
+		-- 条目24修复：DPR 隐形热区 TPT_Control_1（60x115、Offset 0,60）覆盖实例 y60-175，压住观察者列
+		-- Score/Yield 两按钮吃掉点击（用户实测两键无反应，其余四键位置更低正常）——观察者局整局隐藏；
+		-- 观察者模式下 DPR 逐 Label 显隐本就不再生效（MPT_RealizeObserverView 接管），热键 ; ' 走 Input 事件不受影响
+		uiLeader.TPT_Control_1:SetHide(true);
 		MPT_RealizeObserverView(playerID, uiLeader, isMasked, bIsSpec, bmasterspec);
 	else
 		if Model ~= 2 then
@@ -1464,26 +1480,26 @@ function UpdateStatValues( playerID, uiLeader )
 	end	
 	
 	-- ==== 条目24：BSM 观察者数据行（原 BSM UpdateStatValues 补充段；组不可见即不计算，性能语义与上行门槛一致）====
-	if uiLeader.Group_Observer:IsVisible() and uiLeader.SpecData:IsVisible() then
-		-- Host/Ping（原 BSM Data 行受 1.67 MPH_ON 门控，本版观察者组可见即显示）
-		local data = GameConfiguration.GetValue("GAP_"..playerID)
-		if data ~= nil then
-			data = tostring(data)
-			data = " L: "..string.sub(data,1,3)
-		else
-			data = " L: na  "
-		end
-		if Network.GetGameHostPlayerID() ~= nil then
-			if Network.GetGameHostPlayerID() == playerID then
-				data = " Host"
-			end
+	if uiLeader.Group_Observer:IsVisible() then
+		-- Host/Ping。原 BSM Data 行受 1.67 MPH_ON 门控且走 "GAP_<playerID>" 平均延迟协议（依赖 1.67 MPH
+		-- 写入配置，本 mod 未移植必 nil → 残留「L: na」乱数行，用户实测截图）——条目24修复：剔除 GAP 协议，
+		-- 仅主机标识/真实延迟存在时显示，否则整行隐藏（嵌套 Stack 隐藏行自动跳过布局）
+		local data = "";
+		if Network.GetGameHostPlayerID() ~= nil and Network.GetGameHostPlayerID() == playerID then
+			data = SpecStr_Host;
 		end
 		if playerID ~= Game.GetLocalPlayer() then
-			if Network.GetPingTime( playerID ) ~= nil and Network.GetPingTime( playerID ) ~= -1 then
-				data = data.." P:"..Network.GetPingTime( playerID )
+			local ping = Network.GetPingTime( playerID );
+			if ping ~= nil and ping ~= -1 then
+				data = data.." P:"..ping;
 			end
 		end
-		uiLeader.SpecData:SetText(tostring(data));
+		if data == "" then
+			uiLeader.SpecData:SetHide(true);
+		else
+			uiLeader.SpecData:SetText(data);
+			uiLeader.SpecData:SetHide(false);
+		end
 	end
 
 	if uiLeader.Group_Observer:IsVisible() and uiLeader.Group_SpecEras:IsVisible() then
@@ -1495,9 +1511,8 @@ function UpdateStatValues( playerID, uiLeader )
 		else
 			govType = Locale.Lookup("LOC_GOVERNMENT_ANARCHY_NAME" );
 		end
-		if string.len(govType) > 8 then
-			govType = string.sub(govType,1,7).."."
-		end
+		-- 条目24修复：原 string.len/string.sub 按字节截断，UTF-8 中文切在字节中间产生乱码
+		--（用户实测「古典共和国」→「古典噎」）——删 Lua 截断，超宽交引擎 ReduceWidth=61 干净省略号
 		uiLeader.Governement:SetText(tostring(govType));
 		-- 城市数 + 人口（原 BSM Cities 行，因与 DPR 人口行 ID 冲突改名 Spec_Cities）
 		local cities = Players[playerID]:GetCities();
@@ -1520,9 +1535,7 @@ function UpdateStatValues( playerID, uiLeader )
 		else
 			sEras = Locale.Lookup("LOC_ERA_PROGRESS_NORMAL_AGE");
 		end
-		if string.len(sEras) > 9 then
-			sEras = string.sub(sEras,1,4)..". age"
-		end
+		-- 条目24修复：同上删字节截断（「普通时代」→「普鮠age」乱码），超宽交引擎省略号
 		uiLeader.CurrentAge:SetText(sEras);
 		-- 时代分（原 BSM 同名行）
 		local gameEras = Game.GetEras();
@@ -1559,9 +1572,9 @@ function UpdateStatValues( playerID, uiLeader )
 				unit_land = unit_land + 1
 			end
 		end
-		uiLeader.LandUnit:SetText("Land: ".. tostring(unit_land))
-		uiLeader.NavyUnit:SetText("Navy: ".. tostring(unit_sea))
-		uiLeader.AirUnit:SetText("Air: ".. tostring(unit_air))
+		uiLeader.LandUnit:SetText(SpecStr_Land.. tostring(unit_land))
+		uiLeader.NavyUnit:SetText(SpecStr_Navy.. tostring(unit_sea))
+		uiLeader.AirUnit:SetText(SpecStr_Air.. tostring(unit_air))
 		-- 核弹（原 BSM 同名行）
 		local playerWMDs  = Players[playerID]:GetWMDs()
 		local strNuke = ""
@@ -1573,10 +1586,11 @@ function UpdateStatValues( playerID, uiLeader )
 			end
 		end
 		uiLeader.Nukes:SetText(strNuke)
-		-- 战略资源库存（原 BSM 同名行；顺手修复 resourceText 全局泄漏、剔除未使用的累计/消耗读取）
+		-- 战略资源库存（原 BSM 同名行；顺手修复 resourceText 全局泄漏、剔除未使用的累计/消耗读取）。
+		-- 条目24修复：原 2 资源/行 + [NEWLINE] 折行，每行都被 ReduceWidth=61 截断成图标乱码（用户实测
+		-- 截图「25 0/0 0」挤压）——改 1 资源/行，且无库存上限且无存量（未解锁科技/不在局）的资源不占行
 		local pPlayerResources = Players[playerID]:GetResources();
-		local count = 0
-		local strRes = ""
+		local tRes = {}
 		for resource in GameInfo.Resources() do
 			if (resource.ResourceClassType ~= nil and resource.ResourceClassType ~= "RESOURCECLASS_BONUS" and resource.ResourceClassType ~="RESOURCECLASS_LUXURY" and resource.ResourceClassType ~="RESOURCECLASS_ARTIFACT") then
 				local stockpileAmount = pPlayerResources:GetResourceAmount(resource.ResourceType);
@@ -1586,16 +1600,12 @@ function UpdateStatValues( playerID, uiLeader )
 				if (totalAmount > stockpileCap) then
 					totalAmount = stockpileCap;
 				end
-				local resourceText = "[ICON_"..resource.ResourceType.."] " .. stockpileAmount;
-				count = count + 1
-				if count % 2 == 0 then
-					strRes = strRes..resourceText.."[NEWLINE]"
-				else
-					strRes = strRes..resourceText.." "
+				if stockpileCap > 0 or totalAmount > 0 then
+					table.insert(tRes, "[ICON_"..resource.ResourceType.."] ".. stockpileAmount);
 				end
 			end
 		end
-		uiLeader.Strategic1:SetText(strRes)
+		uiLeader.Strategic1:SetText(table.concat(tRes, "[NEWLINE]"))
 	end
 
 	if uiLeader.Group_Observer:IsVisible() and uiLeader.Group_SpecYield:IsVisible() then
@@ -2634,34 +2644,34 @@ function MPT_RealizeObserverView(playerID, uiLeader, isMasked, bIsSpec, bmasters
 
 	-- 观察者条目与其余条目：观察者组常亮（承载 SpecTag/SpecData/SpecControl 与视图子组）
 	uiLeader.Group_Observer:SetHide(false);
-	uiLeader.SpecData:SetHide(false);		-- Host/Ping 行观察者局常显（原 BSM 受 MPH_ON 门控，见横幅）
+	uiLeader.SpecData:SetHide(false);		-- Host/Ping 行内容有无由 UpdateStatValues 决定（无数据整行隐藏）
 
-	-- SpecControl 六视图按钮：仅主观察者条目可点（原 BSM L588-641）
+	-- SpecControl 六视图按钮：仅主观察者条目可点（原 BSM L588-641）；按钮文案走本地化（条目24修复）
 	local bCtrlVis = bmasterspec and (not isMasked);
 	if uiLeader.SpecControl_1 ~= nil then
 		uiLeader.SpecControl_1:SetHide(not bCtrlVis);
 		uiLeader.SpecControl_1:RegisterCallback( Mouse.eLClick, MPT_OnScoreMouseClick);
-		if b_score == true then uiLeader.SpecControl_1:SetText("[COLOR_Green]Score[ENDCOLOR]"); else uiLeader.SpecControl_1:SetText("Score"); end
+		if b_score == true then uiLeader.SpecControl_1:SetText("[COLOR_Green]"..SpecStr_Score.."[ENDCOLOR]"); else uiLeader.SpecControl_1:SetText(SpecStr_Score); end
 
 		uiLeader.SpecControl_2:SetHide(not bCtrlVis);
 		uiLeader.SpecControl_2:RegisterCallback( Mouse.eLClick, MPT_OnTreesMouseClick);
-		if b_trees == true then uiLeader.SpecControl_2:SetText("[COLOR_Green]Techs[ENDCOLOR]"); else uiLeader.SpecControl_2:SetText("Techs"); end
+		if b_trees == true then uiLeader.SpecControl_2:SetText("[COLOR_Green]"..SpecStr_Techs.."[ENDCOLOR]"); else uiLeader.SpecControl_2:SetText(SpecStr_Techs); end
 
 		uiLeader.SpecControl_3:SetHide(not bCtrlVis);
 		uiLeader.SpecControl_3:RegisterCallback( Mouse.eLClick, MPT_OnErasMouseClick);
-		if b_eras == true then uiLeader.SpecControl_3:SetText("[COLOR_Green]Eras[ENDCOLOR]"); else uiLeader.SpecControl_3:SetText("Eras"); end
+		if b_eras == true then uiLeader.SpecControl_3:SetText("[COLOR_Green]"..SpecStr_Eras.."[ENDCOLOR]"); else uiLeader.SpecControl_3:SetText(SpecStr_Eras); end
 
 		uiLeader.SpecControl_4:SetHide(not bCtrlVis);
 		uiLeader.SpecControl_4:RegisterCallback( Mouse.eLClick, MPT_OnArmyMouseClick);
-		if b_army == true then uiLeader.SpecControl_4:SetText("[COLOR_Green]Army[ENDCOLOR]"); else uiLeader.SpecControl_4:SetText("Army"); end
+		if b_army == true then uiLeader.SpecControl_4:SetText("[COLOR_Green]"..SpecStr_Army.."[ENDCOLOR]"); else uiLeader.SpecControl_4:SetText(SpecStr_Army); end
 
 		uiLeader.SpecControl_5:SetHide(not bCtrlVis);
 		uiLeader.SpecControl_5:RegisterCallback( Mouse.eLClick, MPT_OnYieldMouseClick);
-		if b_yield == true then uiLeader.SpecControl_5:SetText("[COLOR_Green]Yield[ENDCOLOR]"); else uiLeader.SpecControl_5:SetText("Yield"); end
+		if b_yield == true then uiLeader.SpecControl_5:SetText("[COLOR_Green]"..SpecStr_Yield.."[ENDCOLOR]"); else uiLeader.SpecControl_5:SetText(SpecStr_Yield); end
 
 		uiLeader.SpecControl_6:SetHide(not bCtrlVis);
 		uiLeader.SpecControl_6:RegisterCallback( Mouse.eLClick, MPT_OnTotalMouseClick);
-		if b_accu == true then uiLeader.SpecControl_6:SetText("[COLOR_Green]Total[ENDCOLOR]"); else uiLeader.SpecControl_6:SetText("Total"); end
+		if b_accu == true then uiLeader.SpecControl_6:SetText("[COLOR_Green]"..SpecStr_Total.."[ENDCOLOR]"); else uiLeader.SpecControl_6:SetText(SpecStr_Total); end
 	end
 
 	-- 观察者条目（SPECTATOR 槽位）：显示 Observer 标识后早退，统计行保持基线全隐。

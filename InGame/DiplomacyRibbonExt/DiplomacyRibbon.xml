@@ -139,24 +139,26 @@
 						<!-- 条目24：BSM 观察者组（非观战局整组隐藏 = 原 BSM HideSpecInfo 40 余行逐控件隐藏的组级替代；
 							子控件一律不带 Hidden，显隐全走组/子组级；子组同为嵌套 Stack） -->
 						<Stack		ID="Group_Observer"		StackGrowth="Bottom" StackPadding="3" Hidden="1">
-							<Label		ID="SpecTag"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="  Observer " ReduceWidth="61"/>	<!-- 原 BSM Data8 -->
+							<Label		ID="SpecTag"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="LOC_MPT_DPR_SPEC_OBSERVER" ReduceWidth="61"/>	<!-- 原 BSM Data8 -->
 							<Label		ID="SpecData"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="" ReduceWidth="61"/>	<!-- 原 BSM Data（Host/Ping） -->
-							<!-- Eras 视图（原 BSM Governement/Cities/CurrentAge/EraScore；Cities 与 DPR 人口行冲突改名 Spec_Cities） -->
+							<!-- Eras 视图（原 BSM Governement/Cities/CurrentAge/EraScore；Cities 与 DPR 人口行冲突改名 Spec_Cities）。
+								条目24修复：原 BSM 三处 Offset="0,10" 在嵌套 Stack 行距内把行压进下一行造成遮挡（用户实测截图），全部移除；
+								Current:/Next: 前缀文案本地化 -->
 							<Stack		ID="Group_SpecEras"		StackGrowth="Bottom" StackPadding="3" Hidden="1">
-								<Label	ID="Governement"		Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Offset="0,10" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Governe."	ReduceWidth="61"/>
+								<Label	ID="Governement"		Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Governe."	ReduceWidth="61"/>
 								<Label	ID="Spec_Cities"		Style="FontNormal12" FontStyle="shadow" Offset="1,0" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="[ICON_City]-"	ReduceWidth="61"/>
-								<Label	ID="CurrentAge0"		Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Offset="0,10" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Current:"	ReduceWidth="61"/>
+								<Label	ID="CurrentAge0"		Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="LOC_MPT_DPR_SPEC_CURRENT"	ReduceWidth="61"/>
 								<Label	ID="CurrentAge"			Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Normal Age"	ReduceWidth="61"/>
-								<Label	ID="EraScore0"			Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Offset="0,10" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Next:"	ReduceWidth="61"/>
+								<Label	ID="EraScore0"			Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="LOC_MPT_DPR_SPEC_NEXT"	ReduceWidth="61"/>
 								<Label	ID="EraScore"			Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="DD 140/170"	ReduceWidth="61"/>
 							</Stack>
-							<!-- Army 视图 -->
+							<!-- Army 视图（Land/Navy/Air 默认占位由 Lua 首刷覆盖；Strategic1 改 1 资源/行见 Lua） -->
 							<Stack		ID="Group_SpecArmy"		StackGrowth="Bottom" StackPadding="3" Hidden="1">
-								<Label	ID="LandUnit"			Style="FontNormal12" FontStyle="shadow"  Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Land: 000"	ReduceWidth="61"/>
-								<Label	ID="NavyUnit"			Style="FontNormal12" FontStyle="shadow"  Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Navy: 000"	ReduceWidth="61"/>
-								<Label	ID="AirUnit"			Style="FontNormal12" FontStyle="shadow" Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="Air: 000"	ReduceWidth="61"/>
-								<Label	ID="Strategic1"			Style="FontNormal12" FontStyle="shadow"  Offset="1,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="XX: 00 XX: 00"	ReduceWidth="61"/>
-								<Label	ID="Nukes"				Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="XX: 00 XX: 00"	ReduceWidth="61"/>
+								<Label	ID="LandUnit"			Style="FontNormal12" FontStyle="shadow"  Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="0"	ReduceWidth="61"/>
+								<Label	ID="NavyUnit"			Style="FontNormal12" FontStyle="shadow"  Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="0"	ReduceWidth="61"/>
+								<Label	ID="AirUnit"			Style="FontNormal12" FontStyle="shadow" Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="0"	ReduceWidth="61"/>
+								<Label	ID="Strategic1"			Style="FontNormal12" FontStyle="shadow"  Offset="1,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String=""	ReduceWidth="61"/>
+								<Label	ID="Nukes"				Style="FontNormal12" FontStyle="shadow" Anchor="C,C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String=""	ReduceWidth="61"/>
 							</Stack>
 							<!-- Yield 视图补充行（原 BSM Cities_Prod/Cities_Food） -->
 							<Stack		ID="Group_SpecYield"	StackGrowth="Bottom" StackPadding="3" Hidden="1">
@@ -170,18 +172,18 @@
 								<Label	ID="Total_Gold"			Style="FontNormal14" FontStyle="shadow" ColorSet="ResGoldLabelCS"			EffectColor="0,0,0,255" String="[ICON_Gold]-"			ToolTip="LOC_HUD_RIBBON_GOLD"     ReduceWidth="61"/>
 								<Label	ID="Total_Faith"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFaithLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Faith]-"	   ReduceWidth="61"/>
 							</Stack>
-							<!-- 六视图切换按钮（仅本地观察者的主观察者条目显示，文字由 Lua 动态设置） -->
-							<Button 	ID="SpecControl_1"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="Score" >
+							<!-- 六视图切换按钮（仅本地观察者的主观察者条目显示，文字由 Lua 动态设置；默认文案本地化） -->
+							<Button 	ID="SpecControl_1"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_SCORE" >
 							</Button>
-							<Button 	ID="SpecControl_5"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="Yield" >
+							<Button 	ID="SpecControl_5"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_YIELD" >
 							</Button>
-							<Button 	ID="SpecControl_6"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="Total" >
+							<Button 	ID="SpecControl_6"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TOTAL" >
 							</Button>
-							<Button 	ID="SpecControl_2"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="Techs" >
+							<Button 	ID="SpecControl_2"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TECHS" >
 							</Button>
-							<Button 	ID="SpecControl_3"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="Eras" >
+							<Button 	ID="SpecControl_3"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ERAS" >
 							</Button>
-							<Button 	ID="SpecControl_4"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="Army" >
+							<Button 	ID="SpecControl_4"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ARMY" >
 							</Button>
 						</Stack>
 					</Stack>
