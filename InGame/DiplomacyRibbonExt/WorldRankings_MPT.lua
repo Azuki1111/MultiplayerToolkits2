@@ -960,14 +960,40 @@ end
 -- 为不可变快照，无陈旧风险；不同队伍切换时身份不同必然重建）。
 local m_TeamTooltipCurrent = nil;		-- 当前 tooltip 实例栈承载的 teamData（表身份比较）
 
+-- 条目24修复二段：等宽校正——引擎 InstanceManager 的 ResetInstances 是回收复用（控件属性
+-- 保留），原版每次回调重建时控件早已完成过文本布局，宽度测量收敛正确；缓存化后首次构建用
+-- 全新控件，当帧 GetSizeX 返回布局完成前的默认宽度（测量失真→卡片过窄文字溢出）且被缓存
+-- 冻结。本函数只做 GetSizeX/SetSizeX（无实例创建），缓存命中时对已布局完成的实测尺寸收敛
+-- 卡片宽度，保留去重性能收益的同时恢复原版的宽度自愈行为。
+function EqualizeTeamTooltipWidths()
+	local im = m_TeamTooltip.TooltipIM;
+	if im == nil then
+		return;
+	end
+	local maxWidth:number = 0;
+	for i=1, im.m_iCount, 1 do
+		local instance = im:GetAllocatedInstance(i);
+		if instance and instance.Content:GetSizeX() > maxWidth then
+			maxWidth = instance.Content:GetSizeX();
+		end
+	end
+	for i=1, im.m_iCount, 1 do
+		local instance = im:GetAllocatedInstance(i);
+		if instance and instance.BG:GetSizeX() ~= maxWidth then
+			instance.BG:SetSizeX(maxWidth);
+		end
+	end
+end
+
 function SetTeamTooltip(control:table, teamData)
 	control:SetToolTipType("TeamTooltip");
 	control:SetToolTipCallback(function() UpdateTeamTooltip(control, teamData); end);
 end
 
 function UpdateTeamTooltip(control, teamData)
-	-- 条目24修复：同一队伍的重复回调直接复用（实例栈仍持有该队内容）
+	-- 条目24修复：同一队伍的重复回调直接复用（实例栈仍持有该队内容），仅做轻量等宽校正
 	if m_TeamTooltipCurrent == teamData then
+		EqualizeTeamTooltipWidths();
 		return;
 	end
 	m_TeamTooltipCurrent = teamData;
