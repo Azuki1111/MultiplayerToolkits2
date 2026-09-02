@@ -55,6 +55,18 @@
 --   回合时间（而不是无限回合时间）」整个失效（智能模式从第 2 回合起才有计时且起始
 --   时间不归 30）。修正为 ~= TURNTIMER_STANDARD 哈希（已是标准则跳过）——即使哈希
 --   算法有出入，最坏退化为「首次回合结束必定强制标准」，行为仍符合 1.67 观察语义。
+-- 条目20修复2（用户实测：修正后仍未自动切换，明确期望时机=首次进入游戏后的下一个
+--   回合开始时）：三处叠加问题——①时机不可靠：SMART 沿用 1.67 在首次回合「结束」
+--   时切换（整个第 1 回合无计时），TIERED 在 LoadScreenClose 写配置可能被引擎后续
+--   初始化覆盖且标志已消费不再重试 ②1.67 的 count>1 人数门槛误伤：单人测试多人局
+--   （仅房主 1 真人）直接跳过 ③标志消费时机与写配置耦合，写失败即永不重试。重构为
+--   回合开始事件驱动：初始化订阅提前到文件加载（LoadScreenClose 才订阅会漏接第 1
+--   回合开始），首次回合开始时 SMART/TIERED 把非标准计时（原版默认无限）替换为标准
+--   并设起始时间（SMART=30 秒起步/TIERED=曲线回合 1 值）；删除 SMART 首回合末与
+--   TIERED 开局的两个转换块（统一收口到回合开始）；删除人数门槛（模式开关本身即
+--   房主意图，联机门控已保证多人局）；「已是标准则不动」守卫保留——其真实用途是
+--   读档/重进保护（重载后类型已是标准，不把平衡时间打回起点），非 OFF 模式中途
+--   切换经未消费标志在下一回合开始自动接管。
 --   3. 真人统计合并：1.67 在 GetHumanNum / 半数采样 / 回合开始重置 / 投票判定 四处
 --      重复全遍历真人，合并为单一 MPT_Timer_CountHumans()（一次遍历同时返回总数与
 --      已结束数）；首回合初始化人数判定也复用（1.67 该处未排除观察者，此处修正）。
@@ -78,7 +90,9 @@
 --   目标等待中位数 18 秒、一阶滤波 0.5、衰减 0.98、后期修正 0.05、最小回合时间 30 秒、
 --   p+ 加 20 秒（剩余<8 秒时改 +24）、p+++ 本回合无回合时间（下回合恢复 STANDARD）、
 --   p-- 下回合 -15 秒、大文明宣战 +20 秒（3 秒冷却）、剩余<10 秒对城邦宣战 +8 秒、
---   掉线 +30 秒、投票阶段 120 秒、首回合多人强制 STANDARD 并以 30 秒起步、房主监听
+--   掉线 +30 秒、投票阶段 120 秒、首回合开始时把非标准计时（原版默认无限）替换为
+--   标准（SMART 起步 30 秒/TIERED 取曲线回合 1 值，读档已标准则不动，条目20修复2）、
+--   房主监听
 --   仅公共频道（toPlayer == -1）、p+ 每回合一次。
 -- 与 1.67 同装注意：双方计时器都会在回合结束改写 TURN_TIMER_TIME 并广播，互相拉扯
 --   导致时间振荡（用户确认不管控），勿同时开启两边的智能计时器。
@@ -355,10 +369,6 @@ local function MPT_Timer_OnTurnEndTiered(currentTurn)
 		return;
 	end
 
-	if MPT_FirstTurnInit then
-		MPT_FirstTurnInit = false;
-		GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");
-	end
 	if MPT_ActionNone then
 		GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");	-- p+++ 仅本回合无计时，下回合恢复
 	end
@@ -443,17 +453,6 @@ local function MPT_Timer_OnTurnEndSmart()
 		balancedTime = balancedTime - 15;	-- 过时代后下一回合：减时
 	end
 
-	if MPT_FirstTurnInit then
-		MPT_FirstTurnInit = false;
-		-- 多人局强制标准计时并以最小时间起步——1.67 原语义（条目20修复）：进入游戏后
-		-- 首次回合结束时把计时器类型替换为标准（原版默认无限计时 TURNTIMER_NONE），
-		-- 已是标准则跳过；想彻底无计时应选模式「关闭所有计时器」
-		local totalHumans = MPT_Timer_CountHumans();
-		if totalHumans > 1 and GameConfiguration.GetTurnTimerType() ~= MPT_TurnTimerStandardHash then
-			GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");
-			balancedTime = MPT_MinTime;
-		end
-	end
 	if MPT_ActionNone then
 		GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");	-- p+++ 仅本回合无计时，下回合恢复
 	end
@@ -644,6 +643,33 @@ local function MPT_Timer_OnInputActionTriggered(actionId)
 end
 
 -- ============================================================================
+-- MPT_Timer_OnTurnBeginInit()：首回合开始初始化（条目20修复2）——SMART/TIERED 模式下
+--   首次进入游戏后的下一个回合开始时，把非标准计时（原版默认无限计时）替换为标准：
+--   SMART 起步 30 秒（1.67 原值）；TIERED 取曲线在回合 1 的值。仅房主写配置。
+--   「已是标准则不动」守卫保留（MPT_TurnTimerStandardHash）：读档/重进时类型已是
+--   标准，不把平衡时间打回起点——该守卫同时是重进保护，不可删。
+--   订阅于文件加载（MPT_Timer_Initialize 内，早于 LoadScreenClose——否则会漏接第 1
+--   回合开始）；OFF 模式不消费标志，中途切到 SMART/TIERED 后下一回合开始自动接管。
+-- ============================================================================
+local function MPT_Timer_OnTurnBeginInit()
+	if not MPT_IsMultiplayer or not MPT_FirstTurnInit then return; end
+	local mode = MPT_Timer_GetMode();
+	if mode ~= MPT_MODE_SMART and mode ~= MPT_MODE_TIERED then return; end
+	MPT_FirstTurnInit = false;	-- 消费标志（无论是否房主，防重复触发）
+	if Network.GetLocalPlayerID() ~= Network.GetGameHostPlayerID() then return; end
+	if GameConfiguration.GetTurnTimerType() == MPT_TurnTimerStandardHash then
+		return;	-- 已是标准计时（读档/重进）：不动，防平衡时间被打回起点
+	end
+	GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");
+	if mode == MPT_MODE_TIERED then
+		GameConfiguration.SetValue("TURN_TIMER_TIME", MPT_Timer_TieredTimeForTurn(1));
+	else
+		GameConfiguration.SetValue("TURN_TIMER_TIME", MPT_MinTime);
+	end
+	Network.BroadcastGameConfig();
+end
+
+-- ============================================================================
 -- MPT_Timer_UpdateButtonsVisibility()：刷新聊天框旁加时/减时按钮显隐。
 --   联机且 MPT_Timer_ChatEnabled() 时显示（优化9：XML 默认 Hidden 防闪现，
 --   LateInitialize 刷一次 + GameConfigChanged 随房主配置广播刷新）。
@@ -670,9 +696,9 @@ end
 -- MPT_Timer_LateInitialize()：LoadScreenClose 后初始化（1.67 同款时序——确保
 --   WorldTracker 上下文已加载，ChangeParent 才有挂载点）。
 --   ①按钮挂到聊天框容器并注册点击（所有玩家点击都发聊天指令，房主由自己的聊天
---     监听代执行）②阶段计时器开局初始化（房主：强制标准计时 + 首回合取曲线在
---     回合 1 的值，使平滑曲线从第 1 回合生效；SMART 不动——沿用 1.67 首回合末
---     初始化时序）③刷显隐 ④订阅全部游戏事件。
+--     监听代执行）②刷显隐 ③订阅全部游戏事件。
+--   （首回合类型/起始时间初始化不在本函数——已统一收口到 MPT_Timer_OnTurnBeginInit，
+--   条目20修复2：回合开始事件驱动，此处写配置可能被引擎后续初始化覆盖）
 -- ============================================================================
 local function MPT_Timer_LateInitialize()
 	local chatContainer = ContextPtr:LookUpControl("/InGame/WorldTracker/ChatPanelContainer");
@@ -698,16 +724,8 @@ local function MPT_Timer_LateInitialize()
 		end);
 	end
 
-	-- 阶段计时器开局初始化（条目20扩展2）：只处理尚未消费首回合标志的场景
-	if MPT_IsMultiplayer and MPT_FirstTurnInit
-		and MPT_Timer_GetMode() == MPT_MODE_TIERED
-		and Network.GetLocalPlayerID() == Network.GetGameHostPlayerID() then
-		MPT_FirstTurnInit = false;
-		GameConfiguration.SetTurnTimerType("TURNTIMER_STANDARD");
-		GameConfiguration.SetValue("TURN_TIMER_TIME", MPT_Timer_TieredTimeForTurn(1));
-		Network.BroadcastGameConfig();
-	end
-
+	-- 首回合类型/起始时间的初始化已统一收口到 MPT_Timer_OnTurnBeginInit（条目20修复2：
+	--   回合开始事件驱动，此处不再写配置——LoadScreenClose 时写可能被引擎后续初始化覆盖）
 	MPT_Timer_UpdateButtonsVisibility();
 
 	Events.TurnTimerUpdated.Add(MPT_Timer_OnTurnTimerUpdated);
@@ -730,6 +748,7 @@ end
 local function MPT_Timer_Initialize()
 	MPT_AddTimeActionId = Input.GetActionId("HotKey_MPT_TurnTimeAdd");
 	MPT_ReduceTimeActionId = Input.GetActionId("HotKey_MPT_TurnTimeReduce");
+	Events.LocalPlayerTurnBegin.Add(MPT_Timer_OnTurnBeginInit);	-- 条目20修复2：早于 LoadScreenClose 订阅，确保捕获第 1 回合开始
 	MPT_Timer_ResetVariables();
 	Events.LoadScreenClose.Add(MPT_Timer_LateInitialize);
 end
