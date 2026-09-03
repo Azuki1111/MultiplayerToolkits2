@@ -1052,6 +1052,10 @@ end
 --	Complete adding a leader.
 --	Two steps for allowing easier MOD overrides/explansion.
 -- ===========================================================================
+-- 条目24优化：观察者局高亮高度缓存（键 = 视图签名，见 FinishAddingLeader 内说明）与收敛计数
+local MPT_ObserverHeightCache = {};
+local MPT_ObserverShrinkCount = {};
+
 function FinishAddingLeader( playerID, uiLeader, kProps)
 	
 	-- ==== 条目24：观察者判定（BSM 移植）====
@@ -1122,9 +1126,39 @@ function FinishAddingLeader( playerID, uiLeader, kProps)
 	uiLeader.StatStack:CalculateSize();
 	local pSize_StatStack = uiLeader.StatStack:GetSize();
 	local pSize_LeaderContainer = uiLeader.LeaderContainer:GetSize();
-	-- 条目24优化：同值幂等守卫——全量重建高频运行时（联机事件簇）阻断冗余 SetSizeVal 引发的再布局
+	-- 条目24优化：同值幂等守卫——全量重建高频运行时（联机事件簇）阻断冗余 SetSizeVal 引发的再布局。
+	-- 观察者局（bspec_loc）再进一步：高亮高度按「视图签名」缓存——观察者条目行高全部定值（区头/按钮），
+	-- 但 StatStack 测高随文本布局时序波动数像素（用户实测抖动仍存），签名未变（未切视图/未翻轮播/
+	-- 未改设置）则沿用已应用高度彻底稳定；签名变化重新测高；连续两次测得缩小 ≥4px 才采纳（收敛
+	-- 首测/瞬态偏大，单次抖动被 4px 死区吸收）
 	local nTargetW = pSize_LeaderContainer.x + LEADER_ART_OFFSET_X;
-	local nTargetH = pSize_StatStack.y + LEADER_ART_OFFSET_Y + 65;
+	local nTargetH;
+	if bspec_loc == true then
+		local sSig = table.concat({tostring(bIsSpec), tostring(bmasterspec), tostring(isMasked),
+			tostring(b_score), tostring(b_trees), tostring(b_eras), tostring(b_army), tostring(b_yield),
+			tostring(b_accu), tostring(b_hide), tostring(b_hide_2), tostring(HidePlayerInfo_PlayerName),
+			tostring(HidePlayerInfo_CiviName)}, "|");
+		local nMeasured = pSize_StatStack.y + LEADER_ART_OFFSET_Y + 65;
+		local nCached = MPT_ObserverHeightCache[sSig];
+		if nCached == nil then
+			nTargetH = nMeasured;
+		elseif nMeasured < nCached - 4 then
+			local nCnt = (MPT_ObserverShrinkCount[sSig] or 0) + 1;
+			if nCnt >= 2 then
+				nTargetH = nMeasured;			-- 连续两次一致缩小：真内容变化，收敛
+				MPT_ObserverShrinkCount[sSig] = 0;
+			else
+				nTargetH = nCached;				-- 单次缩小：视为测量抖动，沿用
+				MPT_ObserverShrinkCount[sSig] = nCnt;
+			end
+		else
+			MPT_ObserverShrinkCount[sSig] = 0;	-- ≥缓存-4（含抖动性增大）：全部沿用
+			nTargetH = nCached;
+		end
+		MPT_ObserverHeightCache[sSig] = nTargetH;
+	else
+		nTargetH = pSize_StatStack.y + LEADER_ART_OFFSET_Y + 65;
+	end
 	local nCurW, nCurH = uiLeader.ActiveLeaderAndStats:GetSizeVal();
 	if nCurW ~= nTargetW or nCurH ~= nTargetH then
 		uiLeader.ActiveLeaderAndStats:SetSizeVal(nTargetW, nTargetH);
@@ -1465,16 +1499,22 @@ end
 function UpdateStatValues( playerID, uiLeader )	
 
 	if uiLeader.PlayerName:IsVisible() then
-		if uiLeader.PlayerName:GetText() == "PlayerName" or uiLeader.PlayerName:GetText() ~= Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() )then
+		if PlayerConfigurations[playerID] ~= nil and PlayerConfigurations[playerID]:GetLeaderTypeName() == "LEADER_SPECTATOR" then
+			-- 条目24修复：观察者名字行改 SetOffsetX2Center 定位（用户裁决）——原 PlayerNameLen 测宽
+			-- 回写偏移随文本布局时序左右游移（ScrollTextField 长名测宽不稳定，用户实测两帧名字位置不同）
+			SetOffsetX2Center( uiLeader.PlayerName , 60 )
+		elseif uiLeader.PlayerName:GetText() == "PlayerName" or uiLeader.PlayerName:GetText() ~= Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() )then
 			uiLeader.PlayerName:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() ) )
 			uiLeader.PlayerNameLen:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() ) )
 		end
-		
-		local pSize_PlayerNameLen = uiLeader.PlayerNameLen:GetSizeX();
-		if pSize_PlayerNameLen < 60 then
-			uiLeader.PlayerName:SetOffsetX(	(60 - pSize_PlayerNameLen)/2 )
-		else
-			uiLeader.PlayerName:SetOffsetX( 0 )
+
+		if PlayerConfigurations[playerID] == nil or PlayerConfigurations[playerID]:GetLeaderTypeName() ~= "LEADER_SPECTATOR" then
+			local pSize_PlayerNameLen = uiLeader.PlayerNameLen:GetSizeX();
+			if pSize_PlayerNameLen < 60 then
+				uiLeader.PlayerName:SetOffsetX(	(60 - pSize_PlayerNameLen)/2 )
+			else
+				uiLeader.PlayerName:SetOffsetX( 0 )
+			end
 		end
 	end
 	
