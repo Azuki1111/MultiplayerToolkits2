@@ -5455,6 +5455,10 @@ local PlayerMarkTagNameStrs			: table = {	-- 下标即 Tag：标签下拉项/按
 	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_FRIEND"),
 	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_NORMAL"),
 	Locale.Lookup("LOC_MPT_PLAYERMARK_FILTER_BLACK") };
+-- 条目4.9前端：房间玩家页文本（tag 当年随条目4.9/11 预留，Shared/PlayerMark 文本 SQL 已注册前端）
+local PlayerMarkConnOnlineStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONN_ONLINE");
+local PlayerMarkConnOfflineStr		: string = Locale.Lookup("LOC_MPT_PLAYERMARK_CONN_OFFLINE");
+local PlayerMarkIdUnavailableStr	: string = Locale.Lookup("LOC_MPT_PLAYERMARK_HINT_ID_UNAVAILABLE");
 
 -- ============================================================================
 -- 常量与全局状态（全局而非 local：KeyUpHandler 等本文件前部代码要调用本分区函数；
@@ -5469,6 +5473,8 @@ local PLAYERMARK_TAG_ICON_NAMES : table = { "OnlineGreenPingPip", "OnlineYellowP
 g_MPT_MarkHidden = true;		-- 条目4.8续：隐身设置内存态（默认开启=隐藏自身 SQL 公共标记；4.8 分区兜底读取）
 g_PlayerMarkList        = {};		-- 玩家记录数组（磁盘内容的工作副本）
 g_PlayerMarkSelectedId  = nil;		-- 当前选中玩家 Id（nil=未选中）
+g_PlayerMarkRightHidden = false;	-- 条目4.9前端：房间页选中非法网络ID玩家时右侧详情整体隐藏（第三态，游内条目11 同款）
+g_RoomSelectedId        = nil;		-- 条目4.9前端：房间玩家行选中 playerID（nil=未选中；选中显示 SelectedFrame 金框）
 g_PlayerMarkSortAsc     = false;	-- 排序方向：false=最新修改在前（默认）
 g_PlayerMarkFilterTag   = { true, true, true };	-- 三个过滤复选框勾选态（下标即 Tag）
 g_PlayerMarkSearchStr   = "";		-- 搜索框当前内容（已转小写）
@@ -5480,6 +5486,7 @@ g_PlayerMarkLoading     = false;	-- 右侧编辑区装载中（屏蔽 SetText �
 
 local m_playerMarkEntryIM  = InstanceManager:new("PlayerMarkEntryInstance", "EntryRoot", Controls.PlayerMarkListStack);
 local m_playerMarkDetailIM = InstanceManager:new("PlayerMarkDetailEntryInstance", "DetailRoot", Controls.PlayerMarkDetailStack);
+local m_playerMarkRoomIM   = InstanceManager:new("MarkRoomEntryInstance", "RootContainer", Controls.PlayerMarkRoomListStack);	-- 条目4.9前端：房间玩家行实例
 local m_kPlayerMarkDialog  = PopupDialog:new("MPT_PlayerMark");	-- 本功能专用确认/提示弹窗（与房间 m_kPopupDialog 互不干扰）
 local g_playerMarkEntryIds : table = {};	-- 左列实例序号 -> 玩家 Id（点击行时反查，列表过滤/排序后下标不稳定）
 
@@ -5756,10 +5763,143 @@ function MPT_PlayerMark_RebuildList()
 end
 
 -- ============================================================================
+-- 条目4.9前端：MPT_PlayerMark_SelectTab(tab)：Tab 台切换——"saved"=存储标签 / "room"=房间玩家。
+--   文字颜色随选中态变化（对齐 CreateTabs/TabSupport.lua 逻辑）：未选中用默认浅白
+--   0xFFefe7e1，选中用深色 0xFF331D05（同 GreatPeoplePopup 配色）；背景覆盖控件显隐。
+--   （自游戏内条目11 MPT_PlayerMark.lua 原样移植回前端）
+-- ============================================================================
+local m_tabDefaultFontColor	: number = UI.GetColorValueFromHexLiteral(0xFFefe7e1);
+local m_tabSelectedFontColor	: number = UI.GetColorValueFromHexLiteral(0xFF331D05);
+
+function MPT_PlayerMark_SelectTab(tab : string)
+	local isSaved = (tab == "saved");
+	Controls.PlayerMarkSavedContent:SetHide(not isSaved);
+	Controls.PlayerMarkRoomContent:SetHide(isSaved);
+	-- 存储标签按钮
+	local savedText = Controls.MarkSavedTabButton:GetTextControl();
+	if savedText ~= nil then savedText:SetColor(isSaved and m_tabSelectedFontColor or m_tabDefaultFontColor); end
+	Controls.MarkSavedTabSelected:SetHide(not isSaved);
+	Controls.MarkSavedTabButton:SetSelected(isSaved);
+	-- 房间玩家按钮
+	local roomText = Controls.MarkRoomTabButton:GetTextControl();
+	if roomText ~= nil then roomText:SetColor((not isSaved) and m_tabSelectedFontColor or m_tabDefaultFontColor); end
+	Controls.MarkRoomTabSelected:SetHide(isSaved);
+	Controls.MarkRoomTabButton:SetSelected(not isSaved);
+
+	-- 切换页时清空右侧详情到默认（取消选中存储记录/非法ID隐藏态，显示空态提示；未保存改动直接丢弃）
+	if g_PlayerMarkSelectedId ~= nil or g_PlayerMarkRightHidden then
+		g_PlayerMarkSelectedId = nil;
+		g_PlayerMarkRightHidden = false;
+		MPT_PlayerMark_RefreshEditor();
+	end
+end
+
+-- ============================================================================
+-- 条目4.9前端：MPT_PlayerMark_RebuildRoomList()：重建「房间玩家」列表。
+--   与游内条目4.9 快照版（ExposedMembers.MPT_RoomPlayers，掉线不删=保留历史玩家）的唯一差异
+--   在数据源：前端无 Gameplay 侧快照，改为实时枚举准备房间槽位——GetMultiplayerPlayerIDs
+--   过滤 占用/观察 + 真人 + 非本机，只显示当前在房玩家（零存储零历史：掉线/退房即从列表消失，
+--   用户裁决「StagingRoom 不需要存储历史玩家，显示当前玩家即可」）。AI/开放/关闭槽位无网络ID
+--   不可标记，不入列。显示：领袖头像+昵称+在线状态；未标记显示添加按钮；点击行选中并联动右侧编辑区。
+-- ============================================================================
+function MPT_PlayerMark_RebuildRoomList()
+	if m_playerMarkRoomIM == nil then return; end
+	m_playerMarkRoomIM:ResetInstances();
+	if Controls.PlayerMarkRoomListStack == nil then return; end
+
+	local localPlayer = Network.GetLocalPlayerID();
+	local count : number = 0;
+	local player_ids = GameConfiguration.GetMultiplayerPlayerIDs();
+	for _, playerID in ipairs(player_ids) do
+		local cfg = PlayerConfigurations[playerID];
+		-- 只列当前在房真人（占用/观察者槽位）；hotseat 本地玩家同口径（无网络ID时行内显示警告图标）
+		if cfg ~= nil and playerID ~= localPlayer and cfg:IsHuman()
+			and (cfg:GetSlotStatus() == SlotStatus.SS_TAKEN or cfg:GetSlotStatus() == SlotStatus.SS_OBSERVER) then
+			local inst = m_playerMarkRoomIM:GetInstance();
+			if inst ~= nil then
+				local nid = cfg:GetNetworkIdentifer() or "";
+				local name = Locale.Lookup(cfg:GetPlayerName() or "");
+				inst.RoomPlayerName:SetText(name);
+				local leader = cfg:GetLeaderTypeName() or "";
+				local iconName : string = (leader ~= "" and ("ICON_" .. leader)) or "ICON_LEADER_DEFAULT";
+				inst.RoomLeaderIcon:SetTexture(IconManager:FindIconAtlas(iconName, 45));
+				-- 在线状态：占用槽位也可能已断线（掉线未退房）
+				local online : boolean = true;
+				if Network.IsPlayerConnected ~= nil then
+					online = Network.IsPlayerConnected(playerID);
+				end
+				inst.RoomConnLabel:SetText(online and PlayerMarkConnOnlineStr or PlayerMarkConnOfflineStr);
+				-- 选中态金框：按 g_RoomSelectedId 显隐；点击行（RowBg）选中并重刷
+				inst.SelectedFrame:SetHide(playerID ~= g_RoomSelectedId);
+				inst.RowBg:SetVoid1(playerID);
+				inst.RowBg:RegisterCallback(Mouse.eLClick, function()
+					g_RoomSelectedId = playerID;
+					if not MPT_PlayerMark_IsValidId(nid) then
+						-- 非法网络ID：右侧详情页整体隐藏（不载入详情/空态）
+						g_PlayerMarkSelectedId = nil;
+						g_PlayerMarkRightHidden = true;
+					else
+						g_PlayerMarkRightHidden = false;
+						local rec = nil;
+						for _, r in ipairs(g_PlayerMarkList) do if r.Id == nid then rec = r; break; end end
+						if rec ~= nil then
+							g_PlayerMarkSelectedId = rec.Id;	-- 已标记：右侧载入该记录信息
+						else
+							g_PlayerMarkSelectedId = nil;	-- 未标记：右侧清空到默认
+						end
+					end
+					MPT_PlayerMark_RefreshEditor();
+					MPT_PlayerMark_RebuildRoomList();
+				end);
+				-- 添加按钮：未标记显示点击打开弹窗，已标记隐藏（查询该玩家网络ID是否已有本地档案）
+				local markRec : table = nil;
+				for _, r in ipairs(g_PlayerMarkList) do
+					if r.Id == nid then markRec = r; break; end
+				end
+				local markTag : number = 2;
+				local isMarked : boolean;
+				isMarked = (markRec ~= nil);
+				if markRec ~= nil then markTag = markRec.Tag or 2; end
+				if isMarked then
+					inst.RoomAddMarkButton:SetHide(true);
+					inst.RoomTagIcon:SetHide(false);
+					if MPT_PlayerMark_IsValidId(nid) then
+						inst.RoomTagIcon:SetIcon(PLAYERMARK_TAG_ICON_NAMES[markTag] or PLAYERMARK_TAG_ICON_NAMES[2], 24);
+						inst.RoomTagIcon:SetToolTipString("");	-- 合法网络ID：ToolTip 为空
+					else
+						inst.RoomTagIcon:SetIcon("Exclamation", 24);	-- ICON_EXCLAMATION：FontIcons 裸名 Exclamation（SetIcon 自动拼 ICON_ 前缀）
+						inst.RoomTagIcon:SetToolTipString(PlayerMarkIdUnavailableStr);	-- 非法：提示无法获取ID
+					end
+				else
+					inst.RoomAddMarkButton:SetHide(false);
+					inst.RoomTagIcon:SetHide(true);
+					inst.RoomAddMarkButton:SetVoid1(playerID);
+					inst.RoomAddMarkButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_OpenAddPopup(nid, name); end);
+				end
+				count = count + 1;
+			end
+		end
+	end
+	Controls.PlayerMarkRoomEmptyLabel:SetHide(count > 0);
+	Controls.PlayerMarkRoomListStack:CalculateSize();
+	if Controls.PlayerMarkRoomListScrollPanel ~= nil then
+		Controls.PlayerMarkRoomListScrollPanel:CalculateSize();
+	end
+end
+
+-- ============================================================================
 -- MPT_PlayerMark_RefreshEditor()：把选中记录载入右侧编辑区；无选中则显示空态提示。
 --   装载期间置 g_PlayerMarkLoading 屏蔽文本改动回调（防 SetText 误标 dirty）。
 -- ============================================================================
 function MPT_PlayerMark_RefreshEditor()
+	-- 条目4.9前端：房间页选中非法网络ID玩家时右侧详情整体隐藏（第三态，游内条目11 同款）
+	if g_PlayerMarkRightHidden then
+		Controls.PlayerMarkEmptyHint:SetHide(true);
+		Controls.PlayerMarkEditor:SetHide(true);
+		g_PlayerMarkDirty = false;
+		PlayerMarkUpdateSaveButton();
+		return;
+	end
 	local rec = MPT_PlayerMark_GetSelected();
 	Controls.PlayerMarkEmptyHint:SetHide(rec ~= nil);
 	Controls.PlayerMarkEditor:SetHide(rec == nil);
@@ -5871,6 +6011,7 @@ function MPT_PlayerMark_ApplySave()
 		end
 		MPT_PlayerMark_RebuildList();
 		MPT_PlayerMark_RefreshEditor();
+		MPT_PlayerMark_RebuildRoomList();	-- 条目4.9前端：标记改动后房间页行状态即时翻转
 	end);
 end
 
@@ -5903,6 +6044,7 @@ function MPT_PlayerMark_DeleteSelected()
 			end
 			MPT_PlayerMark_RebuildList();
 			MPT_PlayerMark_RefreshEditor();
+			MPT_PlayerMark_RebuildRoomList();	-- 条目4.9前端：删除标记后房间页行状态即时翻转（回显添加按钮）
 		end);
 	end);
 end
@@ -5986,6 +6128,7 @@ function MPT_PlayerMark_CreateFromPopup()
 		if ok then
 			MPT_PlayerMark_RebuildList();
 			MPT_PlayerMark_Select(id);
+			MPT_PlayerMark_RebuildRoomList();	-- 条目4.9前端：新建标记后房间页行状态即时翻转
 		else
 			print("MPT_PlayerMark: 创建落盘失败（存储管线回调 false）");
 		end
@@ -6003,6 +6146,7 @@ function MPT_PlayerMark_Open()
 	UI.PlaySound("UI_Screen_Open");
 	MPT_PlayerMark_LoadFromDisk(function()
 		MPT_PlayerMark_LoadSettings();	-- 条目4.8续：读隐身设置存档并应用 UI+广播（异步回调，不阻塞）
+		MPT_PlayerMark_RebuildRoomList();	-- 条目4.9前端：房间玩家列表（实时枚举当前在房真人）
 		MPT_PlayerMark_RebuildList();
 		MPT_PlayerMark_RefreshEditor();
 	end);
@@ -6054,6 +6198,11 @@ function MPT_PlayerMark_ResetOnExit()
 	Controls.PlayerMarkFilterNormal:SetCheck(true);
 	Controls.PlayerMarkFilterBlack:SetCheck(true);
 	Controls.PlayerMarkSortButton:SetText(PlayerMarkSortDescStr);
+	-- 条目4.9前端：房间页状态归位（行选中/非法ID第三态清零；页签回「存储标签」默认页——先清态再切页，
+	-- SelectTab 的清选中分支即不会触发，仅复位页签视觉，与上面「不必重建列表/编辑区」语义一致）
+	g_RoomSelectedId = nil;
+	g_PlayerMarkRightHidden = false;
+	MPT_PlayerMark_SelectTab("saved");
 end
 
 -- ============================================================================
@@ -6066,6 +6215,10 @@ Controls.PlayerMarkCloseButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Cl
 Controls.PlayerMarkModalBlocker:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Close);
 Controls.PlayerMarkHiddenMarkCheck:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnHiddenMarkCheck);
 MPT_PlayerMark_ApplyHiddenMarkUI();	-- 初始勾选态（默认隐身；LoadSettings 读盘后会再刷）
+
+-- 条目4.9前端：左列双页签按钮（存储标签/房间玩家）——游内条目11 挂在 LoadSettings 回调内注册（无谓的延迟），前端直接进注册区
+Controls.MarkSavedTabButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_SelectTab("saved"); end);
+Controls.MarkRoomTabButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_SelectTab("room"); end);
 
 -- 左列：过滤复选框 / 排序切换 / 搜索框
 local function PlayerMarkOnFilterChanged()
@@ -6154,6 +6307,20 @@ Controls.PlayerMarkSteamButton:RegisterCallback(Mouse.eLClick, function()
 		Steam.ActivateGameOverlayToUrl("https://steamcommunity.com/profiles/" .. rec.Id);
 	end
 end);
+
+-- ============================================================================
+-- 条目4.9前端：房间玩家列表刷新——玩家加入/离开/连接变化时重建（仅面板开着才刷，游内条目11 同款）。
+--   只订阅存在的引擎事件（不存在的键索引 nil 会崩 main chunk），每个事件独立 nil 守卫；
+--   数据源为实时枚举（RebuildRoomList 自身幂等全量重建），无需增量维护。
+-- ============================================================================
+local function MPT_RoomRefreshIfOpen()
+	if Controls.PlayerMarkPanel ~= nil and not Controls.PlayerMarkPanel:IsHidden() then
+		MPT_PlayerMark_RebuildRoomList();
+	end
+end;
+if Events.PlayerInfoChanged ~= nil then Events.PlayerInfoChanged.Add(MPT_RoomRefreshIfOpen); end
+if Events.MultiplayerPostPlayerDisconnected ~= nil then Events.MultiplayerPostPlayerDisconnected.Add(MPT_RoomRefreshIfOpen); end
+if Events.GameInfoUpdated ~= nil then Events.GameInfoUpdated.Add(MPT_RoomRefreshIfOpen); end
 end	-- 条目4.4 do 块结束（寄存器上限适配）
 
 

@@ -434,31 +434,60 @@
 		<Container Size="parent-30,parent-74" Anchor="C,T" Offset="0,64">
 
 			<!-- 左列：搜索框 + 排序(左)/三过滤复选框(右,垂直堆叠)同区块 + 玩家列表 + 添加按钮（结构照 Mods.xml 左列） -->
+			<!-- 条目4.9前端：左列改双页签（左「存储标签」右「房间玩家」）——自游戏内条目11/4.9 MPT_PlayerMark.xml 原样移植回前端：
+			     Tab 台 = 仿 GreatPeoplePopup 的 Controls_TabLedge2_Fill(平铺底)+Controls_TabLedge2(九宫格边) 双层组合；
+			     原左列内容（搜索/排序/过滤/列表/空态/添加）整体包入 PlayerMarkSavedContent（页签切换显隐）；
+			     新增 PlayerMarkRoomContent 房间玩家页（实时枚举当前在房真人玩家，不存历史——与游内快照版的唯一差异）。 -->
 			<Grid Style="SubContainer" Size="402,parent-6" Anchor="L,T" Offset="0,0">
-				<Stack Padding="5">
-					<Grid Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Offset="0,10" Size="parent,26">
-						<EditBox ID="PlayerMarkSearchEditBox" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-10,16" MaxLength="40" String="" ToolTip="LOC_MPT_PLAYERMARK_SEARCH_TT" CallOnChar="1"/>
-						<!-- 占位文本（Label 不吃鼠标事件；Lua 按焦点/内容控制显隐，替代 Mods.lua 的 Search 框架） -->
-						<Label ID="PlayerMarkSearchPlaceholder" Anchor="L,C" Offset="24,0" Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_SEARCH_NAME"/>
-					</Grid>
-					<!-- 排序切换（左侧垂直居中）+ 三个过滤复选框（右侧垂直堆叠）同一区块 -->
-					<Container Size="parent,80">
-						<GridButton ID="PlayerMarkSortButton" Style="ButtonControl" Anchor="L,C" Size="280,80" Offset="12,0" FontStyle="Stroke" ColorSet="ButtonCS" ToolTip="LOC_MPT_PLAYERMARK_SORT_TT"/>
-						<Stack ID="PlayerMarkFilterStack" Anchor="R,C" StackGrowth="Down" Padding="2" Offset="10,0">
-							<CheckBox ID="PlayerMarkFilterFriend" Style="CheckBoxModsControl" Anchor="R,T" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_FRIEND" ToolTip="LOC_MPT_PLAYERMARK_FILTER_FRIEND_TT"/>
-							<CheckBox ID="PlayerMarkFilterNormal" Style="CheckBoxModsControl" Anchor="R,T" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_NORMAL" ToolTip="LOC_MPT_PLAYERMARK_FILTER_NORMAL_TT"/>
-							<CheckBox ID="PlayerMarkFilterBlack" Style="CheckBoxModsControl" Anchor="R,T" Size="96,24" String="LOC_MPT_PLAYERMARK_FILTER_BLACK" ToolTip="LOC_MPT_PLAYERMARK_FILTER_BLACK_TT"/>
-						</Stack>
-					</Container>
-					<Box Color="10,60,78,255" Anchor="L,B" Size="parent,3" Offset="0,2"/>
-					<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-216" AutoScrollBar="1">
-						<Stack ID="PlayerMarkListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
+				<Container Anchor="C,T" Offset="0,8" Size="402,61">
+					<Image Anchor="C,T" Size="300,27" Texture="Controls_TabLedge2_Fill" StretchMode="Tile">
+						<Grid Anchor="C,T" Offset="0,-17" Size="402,61" Texture="Controls_TabLedge2" SliceCorner="194,18" SliceSize="52,26" SliceTextureSize="438,61">
+							<Stack ID="PlayerMarkTabStack" Anchor="C,C" StackGrowth="Right" Padding="0" Size="340,34">
+								<GridButton ID="MarkSavedTabButton" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2" String="LOC_MPT_PLAYERMARK_TAB_SAVED">
+									<GridButton ID="MarkSavedTabSelected" Size="parent,parent" Style="TabButtonSelected"/>
+								</GridButton>
+								<GridButton ID="MarkRoomTabButton" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2" String="LOC_MPT_PLAYERMARK_TAB_ROOM">
+									<GridButton ID="MarkRoomTabSelected" Size="parent,parent" Style="TabButtonSelected" Hidden="1"/>
+								</GridButton>
+							</Stack>
+						</Grid>
+					</Image>
+				</Container>
+				<!-- 存储页：现有存储标签列表（搜索/排序/过滤/添加） -->
+				<Container ID="PlayerMarkSavedContent" Size="parent,parent-36" Anchor="L,T" Offset="0,36">
+					<Stack Padding="5">
+						<Grid Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Offset="0,10" Size="parent,26">
+							<EditBox ID="PlayerMarkSearchEditBox" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-10,16" MaxLength="40" String="" ToolTip="LOC_MPT_PLAYERMARK_SEARCH_TT" CallOnChar="1"/>
+							<!-- 占位文本（Label 不吃鼠标事件；Lua 按焦点/内容控制显隐，替代 Mods.lua 的 Search 框架） -->
+							<Label ID="PlayerMarkSearchPlaceholder" Anchor="L,C" Offset="24,0" Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_SEARCH_NAME"/>
+						</Grid>
+						<!-- 排序切换（左侧垂直居中）+ 三个过滤复选框（右侧垂直堆叠）同一区块 -->
+						<Container Size="parent,80">
+							<GridButton ID="PlayerMarkSortButton" Style="ButtonControl" Anchor="L,C" Size="280,80" Offset="12,0" FontStyle="Stroke" ColorSet="ButtonCS" ToolTip="LOC_MPT_PLAYERMARK_SORT_TT"/>
+							<Stack ID="PlayerMarkFilterStack" Anchor="R,C" StackGrowth="Down" Padding="2" Offset="10,0">
+								<CheckBox ID="PlayerMarkFilterFriend" Style="CheckBoxModsControl" Anchor="R,T" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_FRIEND" ToolTip="LOC_MPT_PLAYERMARK_FILTER_FRIEND_TT"/>
+								<CheckBox ID="PlayerMarkFilterNormal" Style="CheckBoxModsControl" Anchor="R,T" Size="86,24" String="LOC_MPT_PLAYERMARK_FILTER_NORMAL" ToolTip="LOC_MPT_PLAYERMARK_FILTER_NORMAL_TT"/>
+								<CheckBox ID="PlayerMarkFilterBlack" Style="CheckBoxModsControl" Anchor="R,T" Size="96,24" String="LOC_MPT_PLAYERMARK_FILTER_BLACK" ToolTip="LOC_MPT_PLAYERMARK_FILTER_BLACK_TT"/>
+							</Stack>
+						</Container>
+						<Box Color="10,60,78,255" Anchor="L,B" Size="parent,3" Offset="0,2"/>
+						<ScrollPanel ID="PlayerMarkListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-216" AutoScrollBar="1">
+							<Stack ID="PlayerMarkListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
+							<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
+						</ScrollPanel>
+						<Box Color="10,60,78,255" Anchor="C,T" Size="parent+4,3" Offset="-4,0"/>
+					</Stack>
+					<Label ID="PlayerMarkListEmptyLabel" Anchor="C,C" Offset="0,60" Style="FontNormal16" Align="Center" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_LIST" Hidden="1"/>
+					<GridButton ID="PlayerMarkAddButton" Style="MainButtonSmall" Anchor="C,B" Offset="0,8" Size="parent-10,52" String="LOC_MPT_PLAYERMARK_ADD"/>
+				</Container>
+				<!-- 房间页：房间玩家列表（实时枚举当前在房真人；含观察者，排除自己） -->
+				<Container ID="PlayerMarkRoomContent" Size="parent,parent-50" Anchor="L,T" Offset="0,50" Hidden="1">
+					<ScrollPanel ID="PlayerMarkRoomListScrollPanel" Anchor="L,T" Vertical="1" Offset="6,0" Size="parent-4,parent-14" AutoScrollBar="1">
+						<Stack ID="PlayerMarkRoomListStack" Anchor="L,T" StackGrowth="Down" Padding="2"/>
 						<ScrollBar Style="Slider_Blue" Offset="4,0" Anchor="R,T" AnchorSide="O,I"/>
 					</ScrollPanel>
-					<Box Color="10,60,78,255" Anchor="C,T" Size="parent+4,3" Offset="-4,0"/>
-				</Stack>
-				<Label ID="PlayerMarkListEmptyLabel" Anchor="C,C" Offset="0,60" Style="FontNormal16" Align="Center" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_LIST" Hidden="1"/>
-				<GridButton ID="PlayerMarkAddButton" Style="MainButtonSmall" Anchor="C,B" Offset="0,8" Size="parent-10,52" String="LOC_MPT_PLAYERMARK_ADD"/>
+					<Label ID="PlayerMarkRoomEmptyLabel" Anchor="C,C" Offset="0,60" Style="FontNormal16" Align="Center" Color="GreatPeopleRow" String="LOC_MPT_PLAYERMARK_EMPTY_ROOM" Hidden="1"/>
+				</Container>
 			</Grid>
 
 			<!-- 右列：玩家信息（DecoGrid + 水印，照 Mods.xml 右列；未选中显示空态提示；改动暂存，保存才落盘） -->
@@ -908,6 +937,27 @@
 				<ScrollTextField ID="NameLabel" Size="300,24" Anchor="C,C" Style="FontNormal20" FontStyle="stroke" String="Name"/>
 				<!-- ============================================================================ -->
 			</GridButton>
+			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
+		</Container>
+	</Instance>
+
+	<!-- 条目4.9前端：房间玩家行实例（自游戏内条目11 MarkRoomEntryInstance 原样移植；行高 60。方形底条(仿存储标签行
+	     ButtonControl)上叠 领袖头像(CircleBacking45 底+45 号图集)/昵称/在线状态两行；右侧「添加标记」按钮仅未标记玩家
+	     显示（Lua 按本地档案判断显隐，点击打开添加弹窗并预填该玩家 ID/昵称），已标记显示标记类型图标（绿/黄/红；非法
+	     网络ID显示 Exclamation+无法获取ID tooltip）；SelectedFrame 选中态金框，Lua 按 g_RoomSelectedId 控制显隐） -->
+	<Instance Name="MarkRoomEntryInstance">
+		<Container ID="RootContainer" Size="parent,60" Anchor="L,C">
+			<!-- 方形底条（仿存储标签行 ButtonControl）：整行背景条；头像/名字/状态/添加按钮叠在其上 -->
+			<GridButton ID="RowBg" Style="ButtonControl" Size="parent,parent" Offset="-4,0"/>
+			<Image ID="RoomLeaderIconBacking" Anchor="L,C" Offset="5,0" Size="51,51" Texture="Controls_CircleBacking45"/>
+			<Image ID="RoomLeaderIcon" Anchor="L,C" Offset="8,0" Size="45,45"/>
+			<Label ID="RoomPlayerName" Style="WhiteSemiBold14" Anchor="L,C" Offset="62,-10" TruncateWidth="300"/>
+			<Label ID="RoomConnLabel" Style="WhiteSemiBold12" Anchor="L,C" Offset="62,10"/>
+			<!-- 添加标记按钮：仅未标记玩家显示（Lua 按 g_PlayerMarkList 判断显隐）；点击打开添加弹窗并预填该玩家 ID/昵称 -->
+			<Button ID="RoomAddMarkButton" Anchor="R,C" Offset="16,0" Size="24,24" Style="ArrowButtonRight" ToolTip="LOC_MPT_PLAYERMARK_MARK_THIS_TT"/>
+			<!-- 已标记玩家：在添加按钮位置显示标记类型图标（仿存储行 TagIconLabel，Lua 按标记 Tag 显示绿/黄/红） -->
+			<Image ID="RoomTagIcon" Anchor="R,C" Offset="16,0" Size="24,24" Hidden="1"/>
+			<!-- 选中态金框（仿存储标签行 SelectedFrame：Lua 按 g_RoomSelectedId 控制显隐） -->
 			<Grid ID="SelectedFrame" Style="GoldFrame" Anchor="L,T" Offset="-4,0" Size="parent,parent" Hidden="1"/>
 		</Container>
 	</Instance>
