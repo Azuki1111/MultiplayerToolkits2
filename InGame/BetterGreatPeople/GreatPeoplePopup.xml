@@ -225,4 +225,27 @@
       <GridButton	ID="SelectButton"		Size="parent,parent"	Style="TabButtonSelected" ConsumeMouseButton="0" ConsumeMouseOver="1" Hidden="1"/>
     </GridButton>
   </Instance>
+	<!-- ==== 条目31（RGP 学习）：同代伟人名册富 Tooltip——ToolTipType 全局单例模板，悬停由 Lua
+		重新填充；EnhancedToolTip 底板（宽 300 = 行宽 268 + InnerPadding 16×2）+ 行栈，
+		高度由 Lua 按栈实测收口（条目24 MPT_LeaderInfoTooltip 同款三件套：头实例/行实例/撑高块）
+		注：ToolTipType 声明置于 Context 尾部，引擎按 Name 注册与位置无关 ==== -->
+	<ToolTipType Name="MPT_GPEraTooltip" >
+		<Grid			ID="BG"					Size="300,60"	Style="EnhancedToolTip"	InnerPadding="16,12" >
+			<Stack			ID="GPStack"				StackGrowth="Down" StackPadding="4" Anchor="C,T" Offset="0,12"/>
+		</Grid>
+	</ToolTipType>
+	<!-- 区头（DivHeader + FontFlair14 glow，窄版条目24 区头） -->
+	<Instance Name="MPT_GPEraHeaderInstance">
+		<Grid		ID="HeaderRoot"			Style="DivHeader" Anchor="C,T">
+			<Label	ID="HeaderText"		Style="FontFlair14" FontStyle="glow" ColorSet="ShellHeader" SmallCaps="18" SmallCapsType="EveryWord" Anchor="C,C" Align="Center" Offset="0,1" WrapWidth="268"/>
+		</Grid>
+	</Instance>
+	<!-- 名册行（DawnText 亮字于暗底，条目24 行描述同款样式） -->
+	<Instance Name="MPT_GPEraRowInstance">
+		<Label		ID="RowText"				Style="DawnText" WrapWidth="268"/>
+	</Instance>
+	<!-- 栈尾透明撑高块（条目24 同款：固定高无需文本布局，吸收末行跨帧测高缺口） -->
+	<Instance Name="MPT_GPEraSpacerInstance">
+		<Box			ID="SpacerRoot"			Size="268,8" Color="0,0,0,0"/>
+	</Instance>
 </Context>

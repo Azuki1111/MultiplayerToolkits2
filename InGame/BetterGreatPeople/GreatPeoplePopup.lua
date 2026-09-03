@@ -189,6 +189,12 @@ function AddRecruit( kData:table, kPerson:table )
 		portrait = portrait:gsub("_CLASS","_INDIVIDUAL");
 		instance.Portrait:SetIcon(portrait);
 		instance.CircleFlare:SetHide(false);
+		-- ==== 条目31（RGP 学习）：头像悬停富 Tooltip——同类别同时代伟人名册（未招募正常色
+		--	排前、已招募灰字「- 不可用」置后），类型+回调优先于字符串 tooltip；闭包捕获当前
+		--	kPerson，每次刷新随实例重建重新绑定
+		instance.Portrait:SetToolTipType("MPT_GPEraTooltip");
+		instance.Portrait:SetToolTipCallback(function() MPT_FillGPEraTooltip(kPerson); end);
+		-- ---- 条目31
 
 		local classText:string = Locale.Lookup(classData.Name);
 		instance.ClassName:SetText(classText);
@@ -589,6 +595,104 @@ function MPT_PopulateCivLeaderPull()
 	Controls.CivLeaderPull:CalculateInternals();
 end
 -- ---- 条目30
+
+-- =======================================================================================
+--	条目31（RGP 学习）：同代伟人名册 Tooltip——Portrait 悬停显示同类别同时代的全部伟人，
+--	未招募者正常色排前、已招募者灰字「- 不可用」置后。数据口径 = RGP：
+--	GameInfo.GreatPersonIndividuals 按 GreatPersonClassType+EraType 过滤，
+--	已招募 = Game.GetGreatPeople():GetPastTimeline() 出现过该 individual。
+--	富 Tooltip 走条目24 已验证模式：ToolTipType 单例模板（MPT_GPEraTooltip）+ TTManager 取
+--	控件表 + IM 注入行栈 + RegisterSizeChanged 跨帧自愈 + 实测收口（同值幂等守卫）。
+-- =======================================================================================
+local MPT_EraTipControls	:table = {};
+local MPT_EraTipHeaderIM	:table = nil;
+local MPT_EraTipRowIM		:table = nil;
+local MPT_EraTipSpacerIM	:table = nil;
+
+-- 懒初始化（首次悬停时模板必已随本上下文 XML 注册；nil 防御——未生效时静默回退无 tooltip）
+function MPT_EnsureEraTooltip()
+	if MPT_EraTipRowIM == nil then
+		TTManager:GetTypeControlTable("MPT_GPEraTooltip", MPT_EraTipControls);
+		if MPT_EraTipControls.GPStack ~= nil then
+			MPT_EraTipHeaderIM = InstanceManager:new("MPT_GPEraHeaderInstance", "HeaderRoot", MPT_EraTipControls.GPStack);
+			MPT_EraTipRowIM = InstanceManager:new("MPT_GPEraRowInstance", "RowText", MPT_EraTipControls.GPStack);
+			MPT_EraTipSpacerIM = InstanceManager:new("MPT_GPEraSpacerInstance", "SpacerRoot", MPT_EraTipControls.GPStack);
+			-- 文本布局跨帧完成（条目24 同款）：栈尺寸实际变化时引擎回调再收口一次；
+			-- Shrink 内有同值幂等守卫不会循环
+			MPT_EraTipControls.GPStack:RegisterSizeChanged(function() MPT_ShrinkEraTooltip(); end);
+		end
+	end
+	return MPT_EraTipRowIM ~= nil;
+end
+
+-- 高度收口：按行栈实测 + 上下 InnerPadding 12×2（宽度恒 300）
+function MPT_ShrinkEraTooltip()
+	MPT_EraTipControls.GPStack:CalculateSize();
+	MPT_EraTipControls.GPStack:ReprocessAnchoring();
+	local _, h = MPT_EraTipControls.GPStack:GetSizeVal();
+	local nTargetH = h + 24;
+	local _, nCurH = MPT_EraTipControls.BG:GetSizeVal();
+	if nCurH ~= nTargetH then
+		MPT_EraTipControls.BG:SetSizeVal(300, nTargetH);
+	end
+end
+
+-- 已招募判定（RGP 同款）：过去时间线出现过该 individual 即被任意文明招募
+function MPT_IsGreatPersonRecruited( eIndividual:number )
+	for _, pastGP in ipairs(Game.GetGreatPeople():GetPastTimeline()) do
+		if pastGP.Individual == eIndividual then
+			return true;
+		end
+	end
+	return false;
+end
+
+-- 悬停填充（AddRecruit 闭包绑定 Portrait；kPerson 为当前卡对应伟人）
+function MPT_FillGPEraTooltip( kPerson:table )
+	if not MPT_EnsureEraTooltip() then
+		return;
+	end
+	if kPerson == nil or kPerson.ClassID == nil or kPerson.EraID == nil then
+		return;
+	end
+	local classData:table = GameInfo.GreatPersonClasses[kPerson.ClassID];
+	local eraData:table = GameInfo.Eras[kPerson.EraID];
+	if classData == nil or eraData == nil then
+		return;
+	end
+	local sGPClass:string = classData.GreatPersonClassType;
+	local sEraType:string = eraData.EraType;
+
+	MPT_EraTipHeaderIM:ResetInstances();
+	MPT_EraTipRowIM:ResetInstances();
+
+	-- 区头：类别 - 时代
+	local kHeader:table = MPT_EraTipHeaderIM:GetInstance();
+	kHeader.HeaderText:SetText( Locale.Lookup(classData.Name) .. " - " .. Locale.Lookup(eraData.Name) );
+
+	-- 同类别同时代全部伟人；未招募排前、已招募灰字置后（组内保持 GameInfo 顺序）
+	local tAvailable:table = {};
+	local tRecruited:table = {};
+	for gp in GameInfo.GreatPersonIndividuals() do
+		if gp.GreatPersonClassType == sGPClass and gp.EraType == sEraType then
+			local sName:string = Locale.Lookup(gp.Name);
+			if MPT_IsGreatPersonRecruited(gp.Index) then
+				table.insert(tRecruited, "[COLOR_Grey]"..sName.." - "..Locale.Lookup("LOC_TECH_KEY_UNAVAILABLE").."[ENDCOLOR]");
+			else
+				table.insert(tAvailable, sName);
+			end
+		end
+	end
+	for _, sName in ipairs(tAvailable) do
+		MPT_EraTipRowIM:GetInstance().RowText:SetText( sName );
+	end
+	for _, sText in ipairs(tRecruited) do
+		MPT_EraTipRowIM:GetInstance().RowText:SetText( sText );
+	end
+	MPT_EraTipSpacerIM:GetInstance();	-- 栈尾透明撑高块（条目24 同款，吸收末行跨帧测高缺口）
+	MPT_ShrinkEraTooltip();
+end
+-- ---- 条目31
 
 -- =======================================================================================
 --	Layout the data for previously recruited great people.
