@@ -701,7 +701,16 @@ function MPT_GetEraTipSections( sIndividualType:string )
 	end
 	if (gp.ActionCharges > 0) and (#tActive > 0 or gp.ActionEffectTextOverride ~= nil) then
 		table.insert(tSections.tLines, "[ICON_BulletGlow]"..Locale.Lookup("LOC_UI_PEDIA_GREATPERSON_ACTION", gp.ActionNameTextOverride or "LOC_GREATPERSON_ACTION_NAME_DEFAULT", gp.ActionCharges));
-		table.insert(tSections.tLines, gp.ActionEffectTextOverride or table.concat(tActive, "[NEWLINE]"));
+		-- ==== 条目31修复三：ActionEffectTextOverride 数据列存的是 LOC tag 原文（官方数据实证：
+		--	GreatPeople_Engineers.xml James of St. George/Watt 等），渲染必须 Locale.Lookup
+		--	（官方百科页 AddHeaderBody→AddParagraph 同款本地化）；无 Override 才用 Modifier 摘要
+		local sBody:string = gp.ActionEffectTextOverride;
+		if sBody ~= nil then
+			sBody = Locale.Lookup(sBody);
+		else
+			sBody = table.concat(tActive, "[NEWLINE]");
+		end
+		table.insert(tSections.tLines, sBody);
 	end
 
 	-- 被动能力：BirthModifiers 摘要
@@ -716,7 +725,14 @@ function MPT_GetEraTipSections( sIndividualType:string )
 	end
 	if (#tPassive > 0 or gp.BirthEffectTextOverride ~= nil) then
 		table.insert(tSections.tLines, "[ICON_Bolt]"..Locale.Lookup(gp.BirthNameTextOverride or "LOC_GREATPERSON_PASSIVE_NAME_DEFAULT"));
-		table.insert(tSections.tLines, gp.BirthEffectTextOverride or table.concat(tPassive, "[NEWLINE]"));
+		-- ==== 条目31修复三：BirthEffectTextOverride 同为 LOC tag 列，同款本地化
+		local sBody:string = gp.BirthEffectTextOverride;
+		if sBody ~= nil then
+			sBody = Locale.Lookup(sBody);
+		else
+			sBody = table.concat(tPassive, "[NEWLINE]");
+		end
+		table.insert(tSections.tLines, sBody);
 	end
 
 	-- 先知特例（原版百科页同款：无 Modifier，固定创立宗教说明）
