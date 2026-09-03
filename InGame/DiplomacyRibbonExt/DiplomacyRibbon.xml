@@ -230,7 +230,9 @@
 				<Image	ID="RowIconCivHighlights"	Size="44,44" Texture="Circle44_Lighter" Color="255,255,255,100"/>
 				<Image	ID="RowIconCiv"		Anchor="C,C" Size="44,44"/>
 			</Image>
-			<Image	ID="RowCircleUnique"	Texture="Controls_CircleCompass" Size="52,53" Offset="0,-2" Color="34,58,80,150" Hidden="1">
+			<!-- x=-8：CircleCompass 画布内左侧自带约 8px 透明留白（用户实测红箭头：可见圆环较
+				CircleBacking45/44 两圈整体右偏），负偏移把圆环拉回与两圈同一中轴 -->
+			<Image	ID="RowCircleUnique"	Texture="Controls_CircleCompass" Size="52,53" Offset="-8,-2" Color="34,58,80,150" Hidden="1">
 				<Image	ID="RowIconUnique"	Anchor="C,C" Size="38,38"/>
 			</Image>
 			<Stack	ID="RowTextStack"	StackGrowth="Bottom" StackPadding="4" Offset="55,0">
