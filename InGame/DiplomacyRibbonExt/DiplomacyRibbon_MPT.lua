@@ -965,9 +965,12 @@ end
 -- ===========================================================================
 --	UI Callback
 -- ===========================================================================
-function OnLeaderSizeChanged( uiLeader )	
---	local pSize = uiLeader.LeaderContainer:GetSize();
---	uiLeader.ActiveLeaderAndStats:SetSizeVal( pSize.x + LEADER_ART_OFFSET_X, pSize.y + LEADER_ART_OFFSET_Y );
+function OnLeaderSizeChanged( uiLeader )
+	-- 条目24优化：文本布局跨帧定稿后容器尺寸变化 → 按定稿文本重新收口高亮（FinishAddingLeader 已存
+	-- 每条目上下文；签名缓存+同值守卫使重复进入在无变化时空转，不会循环）
+	if uiLeader ~= nil and uiLeader.MPT_PlayerID ~= nil then
+		MPT_ApplyLeaderHighlight( uiLeader.MPT_PlayerID, uiLeader, uiLeader.MPT_IsSpec, uiLeader.MPT_MasterSpec, uiLeader.MPT_Masked );
+	end
 end
 
 -- ===========================================================================
@@ -1120,17 +1123,39 @@ function FinishAddingLeader( playerID, uiLeader, kProps)
 	
 	uiLeader.PlayerName:SetHide( HidePlayerInfo_PlayerName or isMasked );
 	uiLeader.CivName:SetHide( HidePlayerInfo_CiviName or isMasked );
-	
-	--------------------------------------------------------------------------------------------------		
 
+	--------------------------------------------------------------------------------------------------
+
+	-- 条目24优化：每条目存上下文（playerID/观察者三态），供 OnLeaderSizeChanged 在文本布局跨帧
+	-- 定稿后的二次收敛使用（见 MPT_ApplyLeaderHighlight）
+	uiLeader.MPT_PlayerID = playerID;
+	uiLeader.MPT_IsSpec = bIsSpec;
+	uiLeader.MPT_MasterSpec = bmasterspec;
+	uiLeader.MPT_Masked = isMasked;
+
+	if uiLeader.TPT_Control_1 ~= nil then		-- 绑定按钮
+		uiLeader.TPT_Control_1:RegisterCallback( Mouse.eLClick, OnMouseClick_TPT_Control_1L)		--左键点击
+		uiLeader.TPT_Control_1:RegisterCallback( Mouse.eRClick, OnMouseClick_TPT_Control_1R)		--右键点击
+	end
+
+	UpdateStatValues( playerID, uiLeader );
+
+	-- 条目24优化：尺寸收口移到 UpdateStatValues 之后（原在 SetText 之前测高——全部行文本定稿前
+	-- 测量，测值偏大且逐次波动 = 高亮超边与抖动的直接来源）
+	MPT_ApplyLeaderHighlight( playerID, uiLeader, bIsSpec, bmasterspec, isMasked );
+end
+
+-- ===========================================================================
+--	条目24优化：高亮尺寸收口（FinishAddingLeader 尾部 + OnLeaderSizeChanged 两处调用）。
+--	同值幂等守卫阻断冗余 SetSizeVal；观察者局（bspec_loc）高亮高度按「视图签名」缓存——观察者
+--	条目行高全部定值（区头/按钮），但 StatStack 测高随文本布局时序波动数像素（用户实测抖动仍存），
+--	签名未变（未切视图/未翻轮播/未改设置）则沿用已应用高度彻底稳定；签名变化重新测高；连续两次
+--	测得缩小 ≥4px 才采纳（收敛首测/瞬态偏大，单次抖动被 4px 死区吸收）
+-- ===========================================================================
+function MPT_ApplyLeaderHighlight( playerID, uiLeader, bIsSpec, bmasterspec, isMasked )
 	uiLeader.StatStack:CalculateSize();
 	local pSize_StatStack = uiLeader.StatStack:GetSize();
 	local pSize_LeaderContainer = uiLeader.LeaderContainer:GetSize();
-	-- 条目24优化：同值幂等守卫——全量重建高频运行时（联机事件簇）阻断冗余 SetSizeVal 引发的再布局。
-	-- 观察者局（bspec_loc）再进一步：高亮高度按「视图签名」缓存——观察者条目行高全部定值（区头/按钮），
-	-- 但 StatStack 测高随文本布局时序波动数像素（用户实测抖动仍存），签名未变（未切视图/未翻轮播/
-	-- 未改设置）则沿用已应用高度彻底稳定；签名变化重新测高；连续两次测得缩小 ≥4px 才采纳（收敛
-	-- 首测/瞬态偏大，单次抖动被 4px 死区吸收）
 	local nTargetW = pSize_LeaderContainer.x + LEADER_ART_OFFSET_X;
 	local nTargetH;
 	if bspec_loc == true then
@@ -1163,13 +1188,6 @@ function FinishAddingLeader( playerID, uiLeader, kProps)
 	if nCurW ~= nTargetW or nCurH ~= nTargetH then
 		uiLeader.ActiveLeaderAndStats:SetSizeVal(nTargetW, nTargetH);
 	end
-
-	if uiLeader.TPT_Control_1 ~= nil then		-- 绑定按钮
-		uiLeader.TPT_Control_1:RegisterCallback( Mouse.eLClick, OnMouseClick_TPT_Control_1L)		--左键点击
-		uiLeader.TPT_Control_1:RegisterCallback( Mouse.eRClick, OnMouseClick_TPT_Control_1R)		--右键点击
-	end
-
-	UpdateStatValues( playerID, uiLeader );
 end
 
 -- ===========================================================================

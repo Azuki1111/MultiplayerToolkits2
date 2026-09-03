@@ -87,6 +87,10 @@
 					</Container>
 					
 					<Stack			ID="StatStack" StackGrowth="Bottom" Offset="1,60" StackPadding="3" EndPadding="6" >
+						<!-- 条目24优化：栈宽锚定——Stack 宽度 = 最宽可见子控件，名字短时栈宽缩到 ~50 使
+							Anchor=C 的行（观察者等）按 50 居中而偏离 63 列中轴（用户实测「观察者」偏左）；
+							透明定宽件把栈宽钉死 61（=ReduceWidth 截断宽），各行居中轴恒定 -->
+						<Box	ID="StackWidthAnchor"	Size="61,1" Color="0,0,0,0"/>
 						<ScrollTextField    ID="PlayerName"  Offset="0,0" Anchor="L" Size="60,12" Style="FontNormal12" FontStyle="shadow" Color="White" String="PlayerName" Hidden="1"/>
 						
 						<Label    	ID="PlayerNameLen"  Anchor="L" Offset="0,0"  Style="FontNormal12" FontStyle="shadow" Color="White" String="PlayerNameLen" Hidden="1"/>	<!-- 辅助，用于计算玩家名字长度 -->
@@ -174,17 +178,17 @@
 								<Label	ID="Total_Faith"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFaithLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Faith]-"	   ReduceWidth="61"/>
 							</Stack>
 							<!-- 六视图切换按钮（仅本地观察者的主观察者条目显示，文字由 Lua 动态设置；默认文案本地化） -->
-							<Button 	ID="SpecControl_1"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_SCORE" >
+							<Button 	ID="SpecControl_1"  Texture="Controls_ButtonSmall" Offset="3,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_SCORE" >
 							</Button>
-							<Button 	ID="SpecControl_5"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_YIELD" >
+							<Button 	ID="SpecControl_5"  Texture="Controls_ButtonSmall" Offset="3,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_YIELD" >
 							</Button>
-							<Button 	ID="SpecControl_6"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TOTAL" >
+							<Button 	ID="SpecControl_6"  Texture="Controls_ButtonSmall" Offset="3,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TOTAL" >
 							</Button>
-							<Button 	ID="SpecControl_2"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TECHS" >
+							<Button 	ID="SpecControl_2"  Texture="Controls_ButtonSmall" Offset="3,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TECHS" >
 							</Button>
-							<Button 	ID="SpecControl_3"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ERAS" >
+							<Button 	ID="SpecControl_3"  Texture="Controls_ButtonSmall" Offset="3,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ERAS" >
 							</Button>
-							<Button 	ID="SpecControl_4"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ARMY" >
+							<Button 	ID="SpecControl_4"  Texture="Controls_ButtonSmall" Offset="3,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ARMY" >
 							</Button>
 						</Stack>
 					</Stack>
