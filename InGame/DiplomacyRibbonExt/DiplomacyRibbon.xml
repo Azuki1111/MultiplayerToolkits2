@@ -201,7 +201,10 @@
 		Controls_CircleRim40 圈图标内容行。模板为全局单例，每次悬停由 Lua 重新填充；
 		可变行经 InstanceManager 注入 TraitStack。底板沿用 TeamTooltip 参数（Controls_Tooltip 九宫格） -->
 	<ToolTipType Name="MPT_LeaderInfoTooltip" >
-		<Grid		ID="BG"					Size="390,75" AutoSize="1" SliceCorner="10,10" SliceTextureSize="33,32" Texture="Controls_Tooltip" InnerPadding="25,25" InnerOffset="10,10" >
+		<Grid		ID="BG"					Size="390,75" AutoSize="1" InnerPadding="25,25" InnerOffset="10,10" >
+			<!-- 背景按面板原样：Controls_BannerWide 竖向平铺（面板 PlayerPanelWindow 同款 Image+TileY，
+				非九宫格；AutoSize 由 InfoStack 撑高，背图 parent,parent 跟随填充） -->
+			<Image	Texture="Controls_BannerWide"	Size="parent,parent" StretchMode="TileY" Anchor="L,T"/>
 			<Stack	ID="InfoStack"			StackGrowth="Down" StackPadding="4">
 				<Label	ID="LeaderName"	Style="DiplomacyCivHeaderLarge" WrapWidth="340"/>
 				<Label	ID="CivName"		Style="DiplomacyCivHeaderLarge" Color0="Dark_Gray" WrapWidth="340"/>

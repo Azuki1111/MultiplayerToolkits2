@@ -412,8 +412,10 @@ function MPT_FillLeaderTooltip(playerID)
 		return;
 	end
 
-	MPT_TipControls.LeaderName:SetText(pPlayerConfig:GetLeaderName());
-	MPT_TipControls.CivName:SetText(pPlayerConfig:GetCivilizationDescription());
+	-- GetLeaderName/GetCivilizationDescription 返回裸 LOC tag（原纯文本链经 Locale.Lookup(标题, 参数)
+	-- 间接本地化，直接 SetText 会漏 lookup 显示原文 tag——用户实测截图），显式包一层 Locale.Lookup
+	MPT_TipControls.LeaderName:SetText(Locale.Lookup(pPlayerConfig:GetLeaderName()));
+	MPT_TipControls.CivName:SetText(Locale.Lookup(pPlayerConfig:GetCivilizationDescription()));
 	MPT_TipControls.CivName:SetHide(false);
 	MPT_TipControls.HeaderLabel:SetHide(false);
 	MPT_TipControls.Divider:SetHide(false);
