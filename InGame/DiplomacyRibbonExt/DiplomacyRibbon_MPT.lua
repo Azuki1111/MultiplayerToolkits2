@@ -295,6 +295,7 @@ end
 local MPT_TipControls = {};			-- ToolTipType 控件表（TTManager 填充）
 local MPT_TipHeaderIM = nil;		-- 居中区头实例管理器（MPT_SectionHeaderInstance → InfoStack）
 local MPT_TipRowIM = nil;			-- 圈图标行实例管理器（MPT_TraitRowInstance → InfoStack）
+local MPT_TipSpacerIM = nil;		-- 底部透明撑高块实例管理器（MPT_SpacerInstance → InfoStack）
 local MPT_TipRowCache = {};			-- 结构化条目缓存（GameInfo 静态数据，按玩家缓存）
 local MPT_TipCurrent = nil;			-- 当前 tooltip 承载的去重键
 
@@ -305,6 +306,7 @@ function MPT_EnsureLeaderTooltip()
 		if MPT_TipControls.InfoStack ~= nil then
 			MPT_TipHeaderIM = InstanceManager:new("MPT_SectionHeaderInstance", "HeaderRoot", MPT_TipControls.InfoStack);
 			MPT_TipRowIM = InstanceManager:new("MPT_TraitRowInstance", "RowRoot", MPT_TipControls.InfoStack);
+			MPT_TipSpacerIM = InstanceManager:new("MPT_SpacerInstance", "SpacerRoot", MPT_TipControls.InfoStack);
 			-- 文本布局跨帧完成（本文件头部原版注释 UPDATE_FRAMES=2 HACK 同源）：栈尺寸实际变化时
 			-- （晚于填充当帧）引擎回调再收口一次，消除首测偏小导致的底边裁切；Shrink 内有同值幂等
 			-- 守卫不会循环
@@ -428,6 +430,7 @@ function MPT_FillLeaderTooltip(playerID)
 		MPT_TipCurrent = sKey;
 		MPT_TipHeaderIM:ResetInstances();
 		MPT_TipRowIM:ResetInstances();
+		MPT_TipSpacerIM:ResetInstances();
 
 		if bNoLocal then
 			-- 无本地玩家：原口径返回空串 → 全空（tooltip 收缩为空底板）
@@ -467,6 +470,9 @@ function MPT_FillLeaderTooltip(playerID)
 					kRow.RowDesc:SetText(t.sDesc);
 				end
 			end
+			-- 栈尾透明撑高块（用户裁决）：固定高 24px 无需文本布局、测高精确，为末行兜底吸收
+			-- 文本行跨帧布局的测量缺口
+			MPT_TipSpacerIM:GetInstance();
 		end
 	end
 	-- 收口在去重之外：每次回调都按当前已布局内容实测（首帧失真由悬停期间后续回调自愈）

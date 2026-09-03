@@ -240,4 +240,10 @@
 		</Container>
 	</Instance>
 
+	<!-- 条目24：底部透明撑高块（用户裁决「在下面添加一个透明的控件来撑高度」）——文本行测高跨帧
+		收敛存在缺口，栈尾固定高度透明 Box（无需文本布局、测高精确）为末行兜底缓冲 -->
+	<Instance Name="MPT_SpacerInstance">
+		<Box		ID="SpacerRoot"		Size="340,24" Color="0,0,0,0"/>
+	</Instance>
+
 </Context>
