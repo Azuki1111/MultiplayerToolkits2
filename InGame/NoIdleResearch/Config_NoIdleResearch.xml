@@ -6,6 +6,6 @@
 	字段结构照抄条目16/28（AdvancedOptions 组，开局后不可改），SortIndex 2905 紧随条目28 的 2904 -->
 <GameInfo>
 	<Parameters>
-		<Row ParameterId="MPT_NO_IDLE_RESEARCH" Name="LOC_MPT_NO_IDLE_RESEARCH_NAME" Description="LOC_MPT_NO_IDLE_RESEARCH_DESC" Domain="bool" DefaultValue="0" ConfigurationGroup="Game" ConfigurationId="MPT_NO_IDLE_RESEARCH" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2905" />
+		<Row ParameterId="MPT_NO_IDLE_RESEARCH" Name="LOC_MPT_NO_IDLE_RESEARCH_NAME" Description="LOC_MPT_NO_IDLE_RESEARCH_DESC" Domain="bool" DefaultValue="1" ConfigurationGroup="Game" ConfigurationId="MPT_NO_IDLE_RESEARCH" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2905" />
 	</Parameters>
 </GameInfo>

@@ -143,8 +143,8 @@
 						<!-- 条目24：BSM 观察者组（非观战局整组隐藏 = 原 BSM HideSpecInfo 40 余行逐控件隐藏的组级替代；
 							子控件一律不带 Hidden，显隐全走组/子组级；子组同为嵌套 Stack） -->
 						<Stack		ID="Group_Observer"		StackGrowth="Bottom" StackPadding="3" Hidden="1">
-							<Label		ID="SpecTag"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="LOC_MPT_DPR_SPEC_OBSERVER" ReduceWidth="61"/>	<!-- 原 BSM Data8 -->
-							<Label		ID="SpecData"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="" ReduceWidth="61"/>	<!-- 原 BSM Data（Host/Ping） -->
+							<Label		ID="SpecTag"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="LOC_MPT_DPR_SPEC_OBSERVER" ReduceWidth="61"/>	<!-- 原 BSM Data8 -->
+							<Label		ID="SpecData"			Style="FontNormal12" FontStyle="shadow" Anchor="C" Align="center" Offset="3,0" Color0="255,255,255,255" Color2="0,0,0,0"		EffectColor="0,0,0,255" String="" ReduceWidth="61"/>	<!-- 原 BSM Data（Host/Ping） -->
 							<!-- Eras 视图（原 BSM Governement/Cities/CurrentAge/EraScore；Cities 与 DPR 人口行冲突改名 Spec_Cities）。
 								条目24修复：原 BSM 三处 Offset="0,10" 在嵌套 Stack 行距内把行压进下一行造成遮挡（用户实测截图），全部移除；
 								Current:/Next: 前缀文案本地化；Housing/Citizen 内联图标大于行高，StackPadding 3→8 加行距防图标互侵（用户实测） -->

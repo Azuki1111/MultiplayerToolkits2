@@ -2,4 +2,4 @@
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
 	('LOC_MPT_NO_IDLE_RESEARCH_NAME',	'zh_Hans_CN',	'[COLOR:ResGoldLabelCS]禁止空过研究[ENDCOLOR]'),
-	('LOC_MPT_NO_IDLE_RESEARCH_DESC',	'zh_Hans_CN',	'回合开始时，为忘记选择科技/市政的玩家自动补选「可研究」中剩余研究量最大的一项（全房生效；创建本局时在高级选项中勾选，开局后不可更改）');
+	('LOC_MPT_NO_IDLE_RESEARCH_DESC',	'zh_Hans_CN',	'回合开始时，为忘记选择科技/市政的玩家自动补选「可研究」中剩余研究量最大的一项');
