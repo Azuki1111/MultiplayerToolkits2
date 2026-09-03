@@ -305,6 +305,10 @@ function MPT_EnsureLeaderTooltip()
 		if MPT_TipControls.InfoStack ~= nil then
 			MPT_TipHeaderIM = InstanceManager:new("MPT_SectionHeaderInstance", "HeaderRoot", MPT_TipControls.InfoStack);
 			MPT_TipRowIM = InstanceManager:new("MPT_TraitRowInstance", "RowRoot", MPT_TipControls.InfoStack);
+			-- 文本布局跨帧完成（本文件头部原版注释 UPDATE_FRAMES=2 HACK 同源）：栈尺寸实际变化时
+			-- （晚于填充当帧）引擎回调再收口一次，消除首测偏小导致的底边裁切；Shrink 内有同值幂等
+			-- 守卫不会循环
+			MPT_TipControls.InfoStack:RegisterSizeChanged(function() MPT_ShrinkLeaderTooltip(); end);
 		end
 	end
 	return MPT_TipRowIM ~= nil;
@@ -393,7 +397,12 @@ function MPT_ShrinkLeaderTooltip()
 	MPT_TipControls.InfoStack:CalculateSize();
 	MPT_TipControls.InfoStack:ReprocessAnchoring();
 	local _, h = MPT_TipControls.InfoStack:GetSizeVal();
-	MPT_TipControls.BG:SetSizeVal(400, h + 52);
+	local nTargetH = h + 52;
+	local _, nCurH = MPT_TipControls.BG:GetSizeVal();
+	if nCurH ~= nTargetH then
+		-- 同值幂等守卫：RegisterSizeChanged 回调里再收口时目标不变则不再 SetSizeVal，防事件循环
+		MPT_TipControls.BG:SetSizeVal(400, nTargetH);
+	end
 end
 
 -- 悬停填充（UpdateIcon 包装绑定回调；无本地玩家/未遇见玩家与原 GetToolTipString 同口径）
