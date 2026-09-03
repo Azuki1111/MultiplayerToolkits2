@@ -655,6 +655,22 @@ function MPT_IsGreatPersonRecruited( eIndividual:number )
 	return false;
 end
 
+-- ==== 条目31修复二：GetModifierText 包装——GameEffects 缓存对部分伟人 modifier（实测
+--	圣乔治·詹姆斯/欧几里得的激活效果）回传未解析的原始 key（如 LOC_GREATPERSON_EUCLID_ACTIVE），
+--	而该 key 本身在原版 en/zh 文本均有定义（已 grep 核实），直接 Locale.Lookup 二次解析即可
+--	得到正确文本；仍无法解析（返回值原样不变）则丢弃该行不显示
+function MPT_GetModifierSummaryText( modifierId:string )
+	local sText:string = GetModifierText(modifierId, "Summary");
+	if sText ~= nil and string.sub(sText, 1, 4) == "LOC_" then
+		local sResolved:string = Locale.Lookup(sText);
+		if sResolved ~= sText then
+			return sResolved;
+		end
+		return nil;
+	end
+	return sText;
+end
+
 -- ==== 条目31扩展：个体效果文本（关键需求「显示伟人效果」）——数据口径 = RGP 百科页：
 --	主动 = GreatPersonIndividualActionModifiers、被动 = GreatPersonIndividualBirthModifiers，
 --	经 GetModifierText(ModifierId, "Summary") 渲染为自然语言（GameEffectsText 原版共享脚本，
@@ -677,7 +693,7 @@ function MPT_GetEraTipSections( sIndividualType:string )
 	local tActive:table = {};
 	for row in GameInfo.GreatPersonIndividualActionModifiers() do
 		if row.GreatPersonIndividualType == sIndividualType then
-			local sText:string = GetModifierText(row.ModifierId, "Summary");
+			local sText:string = MPT_GetModifierSummaryText(row.ModifierId);
 			if sText then
 				table.insert(tActive, sText);
 			end
@@ -692,7 +708,7 @@ function MPT_GetEraTipSections( sIndividualType:string )
 	local tPassive:table = {};
 	for row in GameInfo.GreatPersonIndividualBirthModifiers() do
 		if row.GreatPersonIndividualType == sIndividualType then
-			local sText:string = GetModifierText(row.ModifierId, "Summary");
+			local sText:string = MPT_GetModifierSummaryText(row.ModifierId);
 			if sText then
 				table.insert(tPassive, sText);
 			end
