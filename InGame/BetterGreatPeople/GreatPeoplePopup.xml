@@ -70,7 +70,16 @@
       <Grid						ID="FadedBackground"	Anchor="C,T"	Offset="-1,0"	Size="parent-10,parent-46" Texture="GreatPeople_Overlay" SliceCorner="13,13" SliceSize="1,1" SliceTextureSize="25,25" Hidden="1" />
       <Label					ID="ClassName"					Anchor="C,T"	Offset="0,6"		Color="60,60,30,255" GradientColor="230,230,150,255"	Style="FontFlair18" SmallCaps="24" SmallCapsType="EveryWord" String="$ClassName$"/>
 			<Label					ID="IndividualName"			Anchor="C,C"	Offset="0,-295"	Align="C,C" WrapWidth="210"	Style="GreatPeopleLargeText"	String="$IndividualName$"/>
-			<Line						ID="TitleLine"					Start="10,56"						End="204,56"	Width="2"				Color="199,187,157,90"  />
+			<!-- ==== 条目29修复：TitleLine 由 Line 矢量控件改 Box 平铺矩形（几何完全等价）。
+					用户双截图实测：最左卡（恒为大将军）分隔线只剩右段（右端恒在 End=204，
+					左端切割点随名字文本浮动 137/159 UI 两图不同，缺失段像素=纯背景无淡线），
+					Line 渲染残缺且该 y 位置无任何控件可达（排除遮挡）；同模板 y=214 处既有
+					Box 横线（Size parent-18,2 同色）三卡全好，改用已验证的 Box 路径。
+					旧代码：
+					<Line ID="TitleLine" Start="10,56" End="204,56" Width="2" Color="199,187,157,90" />
+					==== -->
+			<Box						ID="TitleLine"						Anchor="C,T"	Offset="0,56"		Size="194,2"			Color="199,187,157,90" />
+			<!-- ==== 条目29修复 留痕止 ==== -->
 			<Label					ID="EraName"						Anchor="C,T"	Offset="0,66"		Style="GreatPeopleLargeText"	String="$EraName$"/>
       <Image				ID="CircleFlare"				Anchor="C,T"	Offset="0,30"		Texture="GreatPeople_SlotOn">
         <Image			ID="Portrait"  				  Anchor="C,B"	Offset="0,10" Size="105,105"	Texture="GreatPeople105"/>
