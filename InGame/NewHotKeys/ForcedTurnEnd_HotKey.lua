@@ -1,5 +1,5 @@
 -- ===========================================================================
--- 条目27：强制结束回合热键（从 1.65 NHK/UI/TurnTime_HotKey.lua 拆出强制结束回合段；
+-- 条目28：强制结束回合热键（从 1.65 NHK/UI/TurnTime_HotKey.lua 拆出强制结束回合段；
 -- 条目20 已移植其 ]/[ 加减时与 P++/P-- 按钮，本文件只承载 Shift+F 自动强制结束模式）
 --
 -- 功能：Shift+F 切换自动强制结束模式（多人局有效，1.65 原样门控 IsAnyMultiplayer）：
@@ -21,7 +21,8 @@
 --      （条目20 SmartTurnTimer 已按 MPT 规范承载）
 -- 相对 1.65 的让位（criteria 层，modinfo 配置）：1.65 在装时本上下文不加载（其原版
 --   Lua 继续服务，避免 Shift+F 双翻转互相抵消、FEB 右键事件双处理）。
--- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=NHK_MPT
+-- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=Disable_TPT（条目28调整：不受
+-- 「更多快捷键」开关影响，仅 1.65 同装让位）
 -- ===========================================================================
 
 local m_ForcedTurnEndActionId : number = Input.GetActionId("HotKey_TPT_ForcedTurnEnd");

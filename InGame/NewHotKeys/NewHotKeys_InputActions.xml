@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
-条目27：更多快捷键（NHK）键位注册——移植 1.65 NHK 四个 Config_*.xml + SQL/QueriesConfiguration.sql，
+条目28：更多快捷键（NHK）键位注册——移植 1.65 NHK 四个 Config_*.xml + SQL/QueriesConfiguration.sql，
 	并入 CHS-PVP（工坊 3037861572）扩展单位热键，16 个动作合并在单一文件（优化：1.65 分散 5 处）。
 键位以 1.65 为准（用户裁决），两源重合且键位不同的动作（升级/晋升/取消）取 1.65 键位；
 CHS 专属且与 1.65 冲突的改键：编队 Shift+E 改 Ctrl+Shift+E（让位升级）、唤醒 Shift+W 改

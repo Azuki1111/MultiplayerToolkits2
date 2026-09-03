@@ -1,12 +1,12 @@
 -- ============================================================================
--- 条目27：更多快捷键（NHK）文本（en_US 英文，本 mod 补全——1.65 NHK 仅中文）
+-- 条目28：更多快捷键（NHK）文本（en_US 英文，本 mod 补全——1.65 NHK 仅中文）
 -- tag 与 zh 文件一一对应；沿用 1.65/DMT 原 tag 与原版现成 tag 的动作不在此登记，
 -- 仅登记本 mod 自造（LOC_MPT_NHK_*）与 1.65/DMT 原 tag（补 en）。
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
 	('LOC_MPT_NEW_HOTKEYS_NAME',							'en_US',	'[COLOR:ResGoldLabelCS]More Hotkeys[ENDCOLOR]'),
-	('LOC_MPT_NEW_HOTKEYS_DESC',							'en_US',	'Enables extra hotkeys in this mod: 11 unit command hotkeys such as Pillage/Upgrade/Promote/Cancel (incl. CHS-PVP extensions), random promotion, auto recruit great person, forced turn end, 4 map pin hotkeys, and city ranged attack'),
+	('LOC_MPT_NEW_HOTKEYS_DESC',							'en_US',	'Enables the unit hotkeys in this mod: 11 unit command hotkeys such as Pillage/Upgrade/Promote/Cancel (incl. CHS-PVP extensions) and random promotion[newline][newline]Auto recruit great person, forced turn end, map pins and city ranged attack are not affected by this option'),
 	('LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_NAME',			'en_US',	'Pillage'),
 	('LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_DESC',			'en_US',	'Pillage or repair a tile'),
 	('LOC_FAST_PROMOTE_NAME',								'en_US',	'Random Promotion'),

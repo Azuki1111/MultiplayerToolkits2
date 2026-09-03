@@ -1,5 +1,5 @@
 -- ===========================================================================
--- 条目27：伟人自动招募（移植 1.65 NHK/UI/AutoRecruit_GreatPerson_HotKey.lua）
+-- 条目28：伟人自动招募（移植 1.65 NHK/UI/AutoRecruit_GreatPerson_HotKey.lua）
 --
 -- 功能：Shift+K 切换自动招募模式。开启后订阅 GreatPeoplePointsChanged，每次伟人点数
 --   变化即重算时间线，对「可招募 且（仅自己可招募 或 自己是该类别点数最高者）」的
@@ -18,7 +18,8 @@
 --   4) 【不移植】1.65 已注释停用的手动招募键 HotKey_TPT_Recruit（Shift+L 死代码）
 -- 相对 1.65 的让位（criteria 层，modinfo 配置）：1.65 在装时本上下文不加载（其原版
 --   Lua 继续服务，避免双重招募请求）。
--- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=NHK_MPT
+-- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=Disable_TPT（条目28调整：不受
+-- 「更多快捷键」开关影响，仅 1.65 同装让位）
 -- ===========================================================================
 
 include("GameCapabilities");
@@ -110,7 +111,7 @@ end
 
 -- ===========================================================================
 -- 自动招募主体：点数变化即重算，对满足条件的伟人立即招募
--- 条件 = 可招募 且（仅自己可招募 或 自己是该类别点数最高者）；条目27优化③类别表 nil 防御
+-- 条件 = 可招募 且（仅自己可招募 或 自己是该类别点数最高者）；条目28优化③类别表 nil 防御
 -- ===========================================================================
 local function OnGreatPeoplePointsChanged(playerID : number)
 	local kData : table = {

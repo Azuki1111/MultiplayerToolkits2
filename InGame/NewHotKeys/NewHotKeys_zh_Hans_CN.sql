@@ -1,5 +1,5 @@
 -- ============================================================================
--- 条目27：更多快捷键（NHK）文本（zh_Hans_CN 简体中文）
+-- 条目28：更多快捷键（NHK）文本（zh_Hans_CN 简体中文）
 -- 动作名/描述：设置→按键绑定列表显示（前后端各注册，主菜单也要显示）；
 --   开关文案：高级选项「更多快捷键」复选框。
 -- tag 沿用策略（条目16/24 先例）：与 1.65 共享的动作沿用 1.65 原 tag（zh 照抄原文案，
@@ -10,7 +10,7 @@
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
 	('LOC_MPT_NEW_HOTKEYS_NAME',							'zh_Hans_CN',	'[COLOR:ResGoldLabelCS]更多快捷键[ENDCOLOR]'),
-	('LOC_MPT_NEW_HOTKEYS_DESC',							'zh_Hans_CN',	'启用后本条目快捷键可用：掠夺/升级/晋升/取消等 11 个单位命令热键（含 CHS-PVP 扩展）、随机晋升、自动招募伟人、强制结束回合、地图钉四键与城市远程攻击'),
+	('LOC_MPT_NEW_HOTKEYS_DESC',							'zh_Hans_CN',	'启用后本条目的单位快捷键可用：掠夺/升级/晋升/取消等 11 个单位命令热键与随机晋升[newline][newline]自动招募伟人、强制结束回合、地图钉与城市远程攻击不受此开关影响'),
 	('LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_NAME',			'zh_Hans_CN',	'掠夺'),
 	('LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_DESC',			'zh_Hans_CN',	'掠夺或修理单元格'),
 	('LOC_FAST_PROMOTE_NAME',								'zh_Hans_CN',	'随机升级'),

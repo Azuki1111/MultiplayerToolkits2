@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
-条目27：地图钉快捷键上下文壳（移植 1.65 NHK/UI/MapPin_HotKey.xml 原样，1.65 本体即空 Context）。
+条目28：地图钉快捷键上下文壳（移植 1.65 NHK/UI/MapPin_HotKey.xml 原样，1.65 本体即空 Context）。
 脚本为同名 MapPin_HotKey.lua（AddUserInterfaces 迷你上下文 + ImportFiles 同名 Lua 自动执行，
 同条目12/20 机制）；四个热键动作注册在 NewHotKeys_InputActions.xml。
-criteria = NHK_MPT_MAP（MPT_NEW_HOTKEYS 开关 + 1.65 让位 + DMT 让位）
+criteria = Disable_TPT_DMT（条目28调整：不受「更多快捷键」开关影响；仅 1.65 让位 + DMT 让位）
 =========================================================================== -->
 <Context>
 </Context>

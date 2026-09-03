@@ -1,5 +1,5 @@
 -- ============================================================================
--- 条目27：更多快捷键（NHK）引擎绑定层——移植 1.65 NHK/SQL/QueriesGameplay.sql（4 行）
+-- 条目28：更多快捷键（NHK）引擎绑定层——移植 1.65 NHK/SQL/QueriesGameplay.sql（4 行）
 --   + CHS-PVP（工坊 3037861572）Core/Main/QueriesGameplay.sql（12 行），去重合并为 12 行。
 -- 作用：把游戏库 UnitOperations / UnitCommands 表中原本 HotkeyId 为 NULL（无快捷键）的
 --   单位操作/命令指向 InputActions 已注册的动作，引擎 ActionPanel/WorldInput 自动把

@@ -1,5 +1,5 @@
 -- ===========================================================================
--- 条目27：地图钉快捷键（移植 1.65 NHK/UI/MapPin_HotKey.lua）
+-- 条目28：地图钉快捷键（移植 1.65 NHK/UI/MapPin_HotKey.lua）
 --
 -- 功能（四键，动作注册见 NewHotKeys_InputActions.xml）：
 --   Shift+Y 发送聊天坐标：光标地块建钉并发送到聊天，随后删除本地钉，聊天里只留
@@ -19,7 +19,8 @@
 --   3) 保留 1.65 运行时门控：CPL_NO_PINS（条目16「禁用地图钉」开关）勾选时四键失效
 -- 相对 1.65 的让位（criteria 层，modinfo 配置）：1.65 在装时本上下文不加载（其原版
 --   Lua 继续服务，避免双建钉/显隐双翻转互相抵消）；DMT 类地图钉 mod 在装时同样让位。
--- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=NHK_MPT_MAP
+-- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=Disable_TPT_DMT（条目28调整：不受
+-- 「更多快捷键」开关影响，仅 1.65/DMT 同装让位）
 -- ===========================================================================
 
 local m_AddMapMessageId      : number = Input.GetActionId("AddMapMessage");

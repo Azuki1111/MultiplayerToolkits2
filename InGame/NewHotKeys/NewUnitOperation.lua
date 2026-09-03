@@ -1,5 +1,5 @@
 -- ===========================================================================
--- 条目27：单位操作增强（移植 1.65 NHK/UI/NewUnitOperation.lua 热键部分）
+-- 条目28：单位操作增强（移植 1.65 NHK/UI/NewUnitOperation.lua 热键部分）
 --
 -- 功能（动作注册见 NewHotKeys_InputActions.xml）：
 --   Shift+G 晋升预清命令（ExtraHotkeysPromote）：引擎 HotkeyId 绑定执行晋升前，

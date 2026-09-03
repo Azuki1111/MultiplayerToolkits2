@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
-条目27：伟人自动招募上下文（移植 1.65 NHK/UI/AutoRecruit_GreatPerson_HotKey.xml 原样，
+条目28：伟人自动招募上下文（移植 1.65 NHK/UI/AutoRecruit_GreatPerson_HotKey.xml 原样，
 Context Name="AGPHK" 沿用）。GPA_Icon 指示灯 LateInitialize 时 ChangeParent 挂到
 /InGame/LaunchBar/GreatPeopleButton（伟人按钮右上角模式指示灯）。
 脚本为同名 AutoRecruit_GreatPerson_HotKey.lua（AddUserInterfaces 迷你上下文 + ImportFiles
 同名 Lua 自动执行，同条目12/20 机制）；动作注册在 NewHotKeys_InputActions.xml。
-criteria = NHK_MPT（MPT_NEW_HOTKEYS 开关 + 1.65 让位）
+criteria = Disable_TPT（条目28调整：不受「更多快捷键」开关影响，仅 1.65 同装让位）
 =========================================================================== -->
 <Context Name="AGPHK">
 	<Image ID="GPA_Icon"   Size="32,32"  Texture="Units32.dds" TextureOffset="96,0" Anchor="C,C" Offset="-1,-2" Color="255,255,255,255" Hidden="1"/>
