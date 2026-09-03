@@ -27,7 +27,9 @@ VALUES
 	('LOC_MPT_SETTINGS_NDR_NAME',	'en_US',	'Deal Sound Reminder'),
 	('LOC_MPT_SETTINGS_NDR_TT',	'en_US',	'Plays a sound when another player sends you a deal or diplomatic request (item 26 NDR; notification auto-expand is not affected by this switch, same as 1.67)'),
 	('LOC_MPT_SETTINGS_GPR_NAME',	'en_US',	'Great Person Recruited Notification'),
-	('LOC_MPT_SETTINGS_GPR_TT',	'en_US',	'Sends you a notification when another player recruits a Great Person (item 26)');
+	('LOC_MPT_SETTINGS_GPR_TT',	'en_US',	'Sends you a notification when another player recruits a Great Person (item 26)'),
+	('LOC_MPT_SETTINGS_WCABSTAIN_NAME',	'en_US',	'World Congress Abstain Option'),
+	('LOC_MPT_SETTINGS_WCABSTAIN_TT',	'en_US',	'Adds an "Abstain" button to every World Congress resolution and proposal; abstained items are submitted with zero votes (item 27). Turn off to restore the vanilla must-vote behavior');
 -- The initial item-20 smart timer switch texts (LOC_MPT_SETTINGS_TIMER_ENABLE_*) were
 -- replaced by the 4-mode Game config parameter in the item-20 extension; texts moved to
 -- InGame/SmartTurnTimer/ localized SQL files.
@@ -37,3 +39,4 @@ VALUES
 -- twice by mistake; en_US added here per project convention).
 -- Item 26: NDR switch texts follow the 1.67 wording (1.67 shipped zh only; en added
 -- here); GPR switch texts are self-written (source mod 2459772036 has no settings system).
+-- Item 27: WCABSTAIN switch texts are self-written (no such feature in 1.67).

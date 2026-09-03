@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>82</Version>
+		<Version>83</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -1066,6 +1066,39 @@
 			<File>InGame/NotificationDealRemind/GreatPersonRecruited_Text_zh_Hans_CN.sql</File>
 			<File>InGame/NotificationDealRemind/GreatPersonRecruited_Text_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目27：世界议会弃权选项——投票 UI 整文件替换（条目15/17/21/22/23/24/25 模式；
+			原版 DLC/Expansion2/UI/Additions/WorldCongressPopup.lua 无通配 include 钩子）。
+			原版每项投票强制表态（CanMoveToNextPhase），本条目加「弃权」开关：弃权项清零票数
+			并豁免必选校验，0 票提交引擎本就合法（决议 0 票不发操作 / 提案 0 票接受 /
+			SUBMIT_TURN 与票数无关），确认页显示弃权状态。XML 同名覆盖加 AbstainButton
+			（文件名必须保持原名），lua 以 LuaContext=WorldCongressPopup 指向 MPT 副本。
+			1.67 与工坊 247 mod 均无此文件替换先例（全工坊 abstain/弃权 零命中），
+			LoadOrder 100000 同既有条目；纯 UI 改动零 OOS 风险。
+			开关收编条目12（WorldCongressAbstain_Show 自造 key 默认开，单通道
+			MPT_Settings_Toggle，关闭时清空弃权标记恢复原版必投行为） -->
+		<ReplaceUIScript id="IG_WCAbstain_Replace">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>WorldCongressPopup</LuaContext>
+				<LuaReplace>InGame/WorldCongressAbstain/WorldCongressPopup_MPT.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_WCAbstain_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/WorldCongressAbstain/WorldCongressPopup_MPT.lua</File>
+			<File>InGame/WorldCongressAbstain/WorldCongressPopup.xml</File>
+		</ImportFiles>
+		<!-- 条目27：弃权功能文本（仅 IG 注册，条目21/22 消费侧先例；仅 WorldCongressPopup
+			上下文消费，zh/en 双语） -->
+		<UpdateText id="IG_WCAbstain_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/WorldCongressAbstain/WorldCongressAbstain_zh_Hans_CN.sql</File>
+			<File>InGame/WorldCongressAbstain/WorldCongressAbstain_en_US.sql</File>
+		</UpdateText>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -1204,5 +1237,9 @@
 		<File>InGame/NotificationDealRemind/GreatPersonRecruited_Icons.xml</File>
 		<File>InGame/NotificationDealRemind/GreatPersonRecruited_Text_zh_Hans_CN.sql</File>
 		<File>InGame/NotificationDealRemind/GreatPersonRecruited_Text_en_US.sql</File>
+		<File>InGame/WorldCongressAbstain/WorldCongressPopup_MPT.lua</File>
+		<File>InGame/WorldCongressAbstain/WorldCongressPopup.xml</File>
+		<File>InGame/WorldCongressAbstain/WorldCongressAbstain_zh_Hans_CN.sql</File>
+		<File>InGame/WorldCongressAbstain/WorldCongressAbstain_en_US.sql</File>
 	</Files>
 </Mod>

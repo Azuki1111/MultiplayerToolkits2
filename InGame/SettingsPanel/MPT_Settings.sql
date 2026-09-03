@@ -23,6 +23,8 @@
 --   开关语义同 1.67 仅控提示音、自动展开不受控）+ GPR 他人招募伟人通知
 --   （NotificationPanel_GreatPersonRecruited 自造 key——源 mod 2459772036 无设置体系，
 --   命名与 NotificationPanel_DealRemind 对称，默认开）。
+-- 条目27 增一行：世界议会弃权选项（WorldCongressAbstain_Show 自造 key——1.67 无此功能，
+--   默认开；关闭时 WorldCongressPopup 恢复原版「每项必投」行为）。
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS MPT_Settings (
 	ParameterId TEXT NOT NULL,
@@ -45,4 +47,5 @@ VALUES
 		("DiplomacyRibbon_PlayerInfo_CiviName",		"LOC_MPT_SETTINGS_DPR_CNAME_NAME",	"LOC_MPT_SETTINGS_DPR_CNAME_TT",		1),
 		("GreatGeneralEraReminder_Show",			"LOC_MPT_SETTINGS_BER_NAME",		"LOC_MPT_SETTINGS_BER_TT",			1),
 		("NotificationPanel_DealRemind",			"LOC_MPT_SETTINGS_NDR_NAME",		"LOC_MPT_SETTINGS_NDR_TT",			1),
-		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",			1);
+		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",			1),
+		("WorldCongressAbstain_Show",				"LOC_MPT_SETTINGS_WCABSTAIN_NAME",	"LOC_MPT_SETTINGS_WCABSTAIN_TT",		1);
