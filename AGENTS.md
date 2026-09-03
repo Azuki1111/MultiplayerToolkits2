@@ -115,7 +115,7 @@ LoadOrder 分层规约（注释写死在 modinfo 顶部）：**1-99 配置 | 100
 
 ## modinfo 规约
 
-Mod id GUID 前 8 位为 0；`<Name>/<Description>/<Teaser>/<Authors>/<SpecialThanks>` 全部使用本地化文本多语言（Description 多用 `[NEWLINE]` 排版）；每个 action 配注释。通用规范详见 civ6-mod 子技能。
+Mod id GUID 前 8 位为 0；`<Name>/<Description>/<Teaser>/<Authors>/<SpecialThanks>` 全部使用本地化文本多语言（Description 多用 `[NEWLINE]` 排版）；每个 action 配一行简单描述注释（条目号 + 功能一句话；多行说明文废止——modinfo注释精简用户裁决，实现细节/修复史以文件头横幅、AGENTS.md 与 git 提交信息承载；开头艺术文本注释保留）。通用规范详见 civ6-mod 子技能。
 
 ## 参考路径
 
