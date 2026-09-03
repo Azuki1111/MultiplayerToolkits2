@@ -684,7 +684,7 @@ function MPT_GetEraTipSections( sIndividualType:string )
 		end
 	end
 	if (gp.ActionCharges > 0) and (#tActive > 0 or gp.ActionEffectTextOverride ~= nil) then
-		table.insert(tSections.tLines, Locale.Lookup("LOC_UI_PEDIA_GREATPERSON_ACTION", gp.ActionNameTextOverride or "LOC_GREATPERSON_ACTION_NAME_DEFAULT", gp.ActionCharges));
+		table.insert(tSections.tLines, "[ICON_BulletGlow]"..Locale.Lookup("LOC_UI_PEDIA_GREATPERSON_ACTION", gp.ActionNameTextOverride or "LOC_GREATPERSON_ACTION_NAME_DEFAULT", gp.ActionCharges));
 		table.insert(tSections.tLines, gp.ActionEffectTextOverride or table.concat(tActive, "[NEWLINE]"));
 	end
 
@@ -699,7 +699,7 @@ function MPT_GetEraTipSections( sIndividualType:string )
 		end
 	end
 	if (#tPassive > 0 or gp.BirthEffectTextOverride ~= nil) then
-		table.insert(tSections.tLines, Locale.Lookup(gp.BirthNameTextOverride or "LOC_GREATPERSON_PASSIVE_NAME_DEFAULT"));
+		table.insert(tSections.tLines, "[ICON_Bolt]"..Locale.Lookup(gp.BirthNameTextOverride or "LOC_GREATPERSON_PASSIVE_NAME_DEFAULT"));
 		table.insert(tSections.tLines, gp.BirthEffectTextOverride or table.concat(tPassive, "[NEWLINE]"));
 	end
 
@@ -757,12 +757,21 @@ function MPT_FillGPEraTooltip( kPerson:table )
 				end
 			end
 		end
-		-- ==== 条目31扩展：未招募个体 = 名字行 + 效果行（主动权能/被动能力摘要，即卡片效果区同源文本）
+		-- ==== 条目31扩展：未招募个体 = 名字行 + 效果行（主动权能/被动能力摘要，即卡片效果区同源文本）；
+		--	个体块之间插透明条加大间隔（条目31扩展二）
+		local bFirst:boolean = true;
 		for _, tSections in ipairs(tAvailable) do
+			if not bFirst then
+				MPT_EraTipSpacerIM:GetInstance();
+			end
+			bFirst = false;
 			MPT_EraTipNameIM:GetInstance().NameText:SetText( tSections.sName );
 			if #tSections.tLines > 0 then
 				MPT_EraTipDescIM:GetInstance().DescText:SetText( table.concat(tSections.tLines, "[NEWLINE]") );
 			end
+		end
+		if #tRecruited > 0 and not bFirst then
+			MPT_EraTipSpacerIM:GetInstance();	-- 未招募块与灰字名行之间同款间隔
 		end
 		for _, sText in ipairs(tRecruited) do
 			MPT_EraTipRowIM:GetInstance().RowText:SetText( sText );

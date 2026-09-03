@@ -254,6 +254,6 @@
 	</Instance>
 	<!-- 栈尾透明撑高块（条目24 同款：固定高无需文本布局，吸收末行跨帧测高缺口） -->
 	<Instance Name="MPT_GPEraSpacerInstance">
-		<Box			ID="SpacerRoot"			Size="268,8" Color="0,0,0,0"/>
+		<Box			ID="SpacerRoot"			Size="268,12" Color="0,0,0,0"/>
 	</Instance>
 </Context>
