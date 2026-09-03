@@ -87,12 +87,12 @@ local PlayerInfo_Text = {}
 function OnTPT_Settings_Toggle(ParameterId, Value)
 	if ParameterId == "DiplomacyRibbon_PlayerInfo_PlayerName" then
 		HidePlayerInfo_PlayerName = not Value
-		UpdateLeaders();
+		UpdateLeaders(true);
 		return
 	end
 	if ParameterId == "DiplomacyRibbon_PlayerInfo_CiviName" then
 		HidePlayerInfo_CiviName = not Value
-		UpdateLeaders();
+		UpdateLeaders(true);
 		return
 	end	
 end
@@ -818,12 +818,12 @@ local m_Totalyield = true				-- 是否隐藏 粮锤部分
 
 function OnMouseClick_TPT_Control_1L()
 	m_TechCivisProgress = not m_TechCivisProgress
-	UpdateLeaders();
+	UpdateLeaders(true);
 end
 function OnMouseClick_TPT_Control_1R()
 	UI.PlaySound("Play_UI_Click");		-- 右键没有直接的声音反馈
 	m_Totalyield = not m_Totalyield
-	UpdateLeaders();
+	UpdateLeaders(true);
 end
 -- ===========================================================================
 --	绑定快捷键
@@ -1122,7 +1122,13 @@ function FinishAddingLeader( playerID, uiLeader, kProps)
 	uiLeader.StatStack:CalculateSize();
 	local pSize_StatStack = uiLeader.StatStack:GetSize();
 	local pSize_LeaderContainer = uiLeader.LeaderContainer:GetSize();
-	uiLeader.ActiveLeaderAndStats:SetSizeVal( pSize_LeaderContainer.x + LEADER_ART_OFFSET_X, pSize_StatStack.y + LEADER_ART_OFFSET_Y + 65 );
+	-- 条目24优化：同值幂等守卫——全量重建高频运行时（联机事件簇）阻断冗余 SetSizeVal 引发的再布局
+	local nTargetW = pSize_LeaderContainer.x + LEADER_ART_OFFSET_X;
+	local nTargetH = pSize_StatStack.y + LEADER_ART_OFFSET_Y + 65;
+	local nCurW, nCurH = uiLeader.ActiveLeaderAndStats:GetSizeVal();
+	if nCurW ~= nTargetW or nCurH ~= nTargetH then
+		uiLeader.ActiveLeaderAndStats:SetSizeVal(nTargetW, nTargetH);
+	end
 
 	if uiLeader.TPT_Control_1 ~= nil then		-- 绑定按钮
 		uiLeader.TPT_Control_1:RegisterCallback( Mouse.eLClick, OnMouseClick_TPT_Control_1L)		--左键点击
@@ -2383,7 +2389,7 @@ function LateInitialize()
 	LuaEvents.WorldTracker_OnChatShown.Add(OnChatPanelShown);
 		
 	if not BASE_LateInitialize then	-- Only update leaders if this is the last in the call chain.
-		UpdateLeaders();
+		UpdateLeaders(true);
 	end
 end
 
@@ -2464,7 +2470,19 @@ local m_congressButtonWidth	 = 0;
 -- ===========================================================================
 
 -- ===========================================================================
-function UpdateLeaders()
+-- 条目24优化：重建节流——DiplomacyRelationshipChanged 等事件在联机回合内高频触发，全量重建
+--（ResetInstances+逐条目重加+逐行 SetText+测高）随之高频运行，且测高随文本布局时序波动 →
+-- 高亮/列高高频抖动（用户实测）。0.25 秒冷却合并事件簇（重建为当前状态快照，丢弃重复触发安全）；
+-- 用户即时操作（视图切换/设置广播/轮播翻转/初始构建）传 true 旁路
+local m_nLastRebuildTime = -1;
+function UpdateLeaders(bForce)
+	if bForce ~= true then
+		local tNow = UI.GetElapsedTime();
+		if m_nLastRebuildTime >= 0 and (tNow - m_nLastRebuildTime) < 0.25 then
+			return;
+		end
+		m_nLastRebuildTime = tNow;
+	end
 	-- Create and add World Congress button if one was allocated (based on capabilities)
 	if m_kCongressButtonIM then
 		if Game.GetEras():GetCurrentEra() >= GlobalParameters.WORLD_CONGRESS_INITIAL_ERA then		
@@ -2577,7 +2595,7 @@ function LateInitialize()
 	end
 
 	if not XP2_LateInitialize then	-- Only update leaders if this is the last in the call chain.
-		UpdateLeaders();
+		UpdateLeaders(true);
 	end
 end
 
@@ -2765,44 +2783,45 @@ function MPT_OnScoreMouseClick()
 	UI.PlaySound("Play_UI_Click");
 	if b_score == true then b_score = false;
 	else b_score = true; b_trees = false; b_eras = false; b_army = false; b_yield = false; b_accu = false; end
-	UpdateLeaders()
+	UpdateLeaders(true)
 end
 function MPT_OnTreesMouseClick()
 	UI.PlaySound("Play_UI_Click");
 	if b_trees == true then b_trees = false;
 	else b_score = false; b_trees = true; b_eras = false; b_army = false; b_yield = false; b_accu = false; end
-	UpdateLeaders()
+	UpdateLeaders(true)
 end
 function MPT_OnErasMouseClick()
 	UI.PlaySound("Play_UI_Click");
 	if b_eras == true then b_eras = false;
 	else b_score = false; b_trees = false; b_eras = true; b_army = false; b_yield = false; b_accu = false; end
-	UpdateLeaders()
+	UpdateLeaders(true)
 end
 function MPT_OnArmyMouseClick()
 	UI.PlaySound("Play_UI_Click");
 	if b_army == true then b_army = false;
 	else b_score = false; b_trees = false; b_eras = false; b_army = true; b_yield = false; b_accu = false; end
-	UpdateLeaders()
+	UpdateLeaders(true)
 end
 function MPT_OnYieldMouseClick()
 	UI.PlaySound("Play_UI_Click");
 	if b_yield == true then b_yield = false;
 	else b_score = false; b_trees = false; b_eras = false; b_army = false; b_yield = true; b_accu = false; end
-	UpdateLeaders()
+	UpdateLeaders(true)
 end
 function MPT_OnTotalMouseClick()
 	UI.PlaySound("Play_UI_Click");
 	if b_accu == true then b_accu = false;
 	else b_score = false; b_trees = false; b_eras = false; b_army = false; b_yield = false; b_accu = true; end
-	UpdateLeaders()
+	UpdateLeaders(true)
 end
 
 -- ===========================================================================
 --	观察者 20 秒轮播（BSM OnTimePasses 移植；仅观察者翻转相位，非观察者恒复位为统计行视图）
 -- ===========================================================================
 function OnTimePasses()
-	RealizeSize();
+	-- 条目24优化：RealizeSize 移入翻转分支——本回调挂 GameCoreEventPublishComplete（联机每秒多次），
+	-- 原每 tick 全丝带布局测高为高频无效开销；非翻转期无视觉变化无需重排
 	if bspec_loc == false then
 		b_hide = false
 		b_hide_2 = true
@@ -2819,7 +2838,8 @@ function OnTimePasses()
 			b_hide_2 = false
 		end
 		g_lasttime = currentTime
-		UpdateLeaders()
+		RealizeSize();
+		UpdateLeaders(true)
 	end
 end
 
@@ -2880,9 +2900,10 @@ function MPT_RealizeObserverView(playerID, uiLeader, isMasked, bIsSpec, bmasters
 		uiLeader.LogoContainer:SetHide(true);
 	end
 
-	-- 观察者条目与其余条目：观察者组常亮（承载 SpecTag/SpecData/SpecControl 与视图子组）
+	-- 观察者条目与其余条目：观察者组常亮（承载 SpecTag/SpecControl 与视图子组）。
+	-- SpecData 显隐完全归 UpdateStatValues（每次刷新两分支都显式 SetHide）——条目24优化：删除此处的
+	-- 无条件 unhide（原每轮 unhide→UpdateStatValues 再 hide 的翻转是无谓布局抖动源）
 	uiLeader.Group_Observer:SetHide(false);
-	uiLeader.SpecData:SetHide(false);		-- Host/Ping 行内容有无由 UpdateStatValues 决定（无数据整行隐藏）
 
 	-- SpecControl 六视图按钮：仅主观察者条目可点（原 BSM L588-641）；按钮文案走本地化（条目24修复）
 	local bCtrlVis = bmasterspec and (not isMasked);

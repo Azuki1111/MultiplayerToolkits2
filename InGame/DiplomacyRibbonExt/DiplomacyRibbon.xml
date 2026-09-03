@@ -174,17 +174,17 @@
 								<Label	ID="Total_Faith"		Style="FontNormal14" FontStyle="shadow" ColorSet="ResFaithLabelCS" 		EffectColor="0,0,0,255" String="[ICON_Faith]-"	   ReduceWidth="61"/>
 							</Stack>
 							<!-- 六视图切换按钮（仅本地观察者的主观察者条目显示，文字由 Lua 动态设置；默认文案本地化） -->
-							<Button 	ID="SpecControl_1"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_SCORE" >
+							<Button 	ID="SpecControl_1"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_SCORE" >
 							</Button>
-							<Button 	ID="SpecControl_5"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_YIELD" >
+							<Button 	ID="SpecControl_5"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_YIELD" >
 							</Button>
-							<Button 	ID="SpecControl_6"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TOTAL" >
+							<Button 	ID="SpecControl_6"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TOTAL" >
 							</Button>
-							<Button 	ID="SpecControl_2"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TECHS" >
+							<Button 	ID="SpecControl_2"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_TECHS" >
 							</Button>
-							<Button 	ID="SpecControl_3"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ERAS" >
+							<Button 	ID="SpecControl_3"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ERAS" >
 							</Button>
-							<Button 	ID="SpecControl_4"  Texture="Controls_ButtonSmall" Offset="2,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ARMY" >
+							<Button 	ID="SpecControl_4"  Texture="Controls_ButtonSmall" Offset="0,0" Size="50,25" Anchor="C,C" Style="FontNormal11" FontStyle="shadow" Align="center" String="LOC_MPT_DPR_SPEC_ARMY" >
 							</Button>
 						</Stack>
 					</Stack>
@@ -222,7 +222,7 @@
 		特色内容 = CircleCompass + 图标38；标题 FontFlair14 ShellHeader + 描述 DawnText（原样），文字缩进 55px -->
 	<Instance Name="MPT_TraitRowInstance">
 		<Container	ID="RowRoot"		Size="340,auto">
-			<Image	ID="RowCircleLeader"	Texture="Controls_CircleBacking45" Size="51,51" Offset="0,-2" Hidden="1">
+			<Image	ID="RowCircleLeader"	Texture="Controls_CircleBacking45" Size="51,51" Offset="-2,-2" Hidden="1">
 				<Image	ID="RowIconLeader"	Anchor="C,C" Size="45,45" Offset="0,-1"/>
 			</Image>
 			<Image	ID="RowCircleCiv"		Texture="CircleBacking44" Size="44,44" Hidden="1">
@@ -232,7 +232,7 @@
 			</Image>
 			<!-- x=-8：CircleCompass 画布内左侧自带约 8px 透明留白（用户实测红箭头：可见圆环较
 				CircleBacking45/44 两圈整体右偏），负偏移把圆环拉回与两圈同一中轴 -->
-			<Image	ID="RowCircleUnique"	Texture="Controls_CircleCompass" Size="52,53" Offset="-8,-2" Color="34,58,80,150" Hidden="1">
+			<Image	ID="RowCircleUnique"	Texture="Controls_CircleCompass" Size="52,53" Offset="-4,-2" Color="34,58,80,150" Hidden="1">
 				<Image	ID="RowIconUnique"	Anchor="C,C" Size="38,38"/>
 			</Image>
 			<Stack	ID="RowTextStack"	StackGrowth="Bottom" StackPadding="4" Offset="55,0">
