@@ -188,10 +188,44 @@
 							</Button>
 						</Stack>
 					</Stack>
-					<Button ID="TPT_Control_1" Size="60,115" Anchor="L,T" Offset="0,60"/>	<!--  隐形的按钮 -->		
+						<Button ID="TPT_Control_1" Size="60,115" Anchor="L,T" Offset="0,60"/>	<!--  隐形的按钮 -->
 				</SlideAnim>
 			</Grid>
 		</Container>
   </Instance>
-  
+
+	<!-- 条目24：领袖头像富 Tooltip（自定义 ToolTipType，替换原纯文本 Tooltip——用户裁决，结构/样式
+		参照点击头像打开的 DiplomacyActionView 默认面板（Exp2 Replacements/DiplomacyActionView.xml
+		L413-429 + IconInfoInstance/TextInfoInstance L478-495）：DiplomacyCivHeaderLarge 头两行 +
+		FontFlair14 区头（原版 tag LOC_LOADING_FEATURES_ABILITIES）+ Line 分隔线 + DawnText 描述 +
+		Controls_CircleRim40 圈图标内容行。模板为全局单例，每次悬停由 Lua 重新填充；
+		可变行经 InstanceManager 注入 TraitStack。底板沿用 TeamTooltip 参数（Controls_Tooltip 九宫格） -->
+	<ToolTipType Name="MPT_LeaderInfoTooltip" >
+		<Grid		ID="BG"					Size="390,75" AutoSize="1" SliceCorner="10,10" SliceTextureSize="33,32" Texture="Controls_Tooltip" InnerPadding="25,25" InnerOffset="10,10" >
+			<Stack	ID="InfoStack"			StackGrowth="Down" StackPadding="4">
+				<Label	ID="LeaderName"	Style="DiplomacyCivHeaderLarge" WrapWidth="340"/>
+				<Label	ID="CivName"		Style="DiplomacyCivHeaderLarge" Color0="Dark_Gray" WrapWidth="340"/>
+				<Label	ID="HeaderLabel"	Style="FontFlair14" FontStyle="Shadow" String="{LOC_LOADING_FEATURES_ABILITIES:upper}" SmallCapsType="EveryWord" SmallCaps="20" WrapWidth="340"/>
+				<Line	ID="Divider"		Start="0,0" End="350,0" Width="2" Color="200,200,200,100"/>
+				<Stack	ID="TraitStack"		StackGrowth="Down" StackPadding="10"/>
+			</Stack>
+		</Grid>
+	</ToolTipType>
+
+	<!-- 条目24：领袖富 Tooltip 特性行实例（= 面板 IconInfoInstance/TextInfoInstance 合一：
+		特色内容行带 CircleRim40 圈+图标、文字缩进 36px（Lua 按 RowRim 显隐切换 RowTextStack 缩进），
+		领袖/文明能力行无图标顶格；RowStats 为金色属性行（前置科文/造价/战力，GetPreText）） -->
+	<Instance Name="MPT_TraitRowInstance">
+		<Container	ID="RowRoot"		Size="340,auto">
+			<Image	ID="RowRim"			Texture="Controls_CircleRim40" Size="40,40" Offset="-5,-2" Color="255,255,255,150" Hidden="1">
+				<Image	ID="RowIcon"	Anchor="C,C" Size="32,32"/>
+			</Image>
+			<Stack	ID="RowTextStack"	Offset="0,0" StackGrowth="Bottom" StackPadding="4">
+				<Label	ID="RowTitle"	Style="FontFlair14" FontStyle="Shadow" SmallCapsType="EveryWord" SmallCaps="20" WrapWidth="340"/>
+				<Label	ID="RowStats"	Style="FontNormal12" FontStyle="Shadow" Color0="255,200,0,255" WrapWidth="340"/>
+				<Label	ID="RowDesc"	Style="DawnText" WrapWidth="340"/>
+			</Stack>
+		</Container>
+	</Instance>
+
 </Context>

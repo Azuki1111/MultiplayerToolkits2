@@ -167,10 +167,10 @@ end
 function GetPreCT(PreCivic,PreTech)
 	local result = '无前置'
     if PreCivic and GameInfo.Civics[PreCivic] then
-        result = '[ICON_GoingTo][COLOR_FLOAT_CULTURE]'..Locale.Lookup( GameInfo.Civics[PreCivic].Name )..'[ENDCOLORE]'
+        result = '[ICON_GoingTo][COLOR_FLOAT_CULTURE]'..Locale.Lookup( GameInfo.Civics[PreCivic].Name )..'[ENDCOLOR]'
     end
     if PreTech and GameInfo.Technologies[PreTech] then
-        result = '[ICON_GoingTo][COLOR_Blue]'..Locale.Lookup( GameInfo.Technologies[PreTech].Name )..'[ENDCOLORE]'
+        result = '[ICON_GoingTo][COLOR_Blue]'..Locale.Lookup( GameInfo.Technologies[PreTech].Name )..'[ENDCOLOR]'
     end
     return result
 end
@@ -275,6 +275,176 @@ function Trait2Text(Traits)
 		end
 	end
 	return string.gsub(string.gsub(UpResult .. result,'%[NEWLINE%]%[NEWLINE%]','%[NEWLINE%]'),'%[newline%]%[newline%]','%[newline%]')
+end
+
+
+-- ===========================================================================
+--	条目24：领袖头像富 Tooltip（用户裁决：原纯文本 Tooltip 换自定义 ToolTipType
+--	MPT_LeaderInfoTooltip，内容参考点击头像打开的领袖面板——领袖名/文明名 + 特征与能力 +
+--	领袖/文明特性行 + 特色单位/建筑/区域/改良行，属性行沿用 GetPreText 前置科文/造价/战力统计）。
+--	模板为全局单例，每次悬停重新填充；悬停期间回调被引擎反复触发，按「playerID|相遇态」去重
+--	（官方去重先例 WorldViewIconsManager L734『Don't rebuild tooltip everyframe』+ WorldRankings
+--	TeamTooltip 同款）；无本地玩家/未遇见玩家口径与原 LeaderIcon:GetToolTipString 一致。
+-- ===========================================================================
+local MPT_TipControls = {};			-- ToolTipType 控件表（TTManager 填充）
+local MPT_TipRowIM = nil;			-- 特性行实例管理器（父控件 = MPT_TipControls.TraitStack）
+local MPT_TipRowCache = {};			-- 结构化特性行缓存（GameInfo 静态数据，按玩家缓存）
+local MPT_TipCurrent = nil;			-- 当前 tooltip 承载的去重键
+
+-- 懒初始化（首次悬停时模板必已随本上下文 XML 注册；nil 防御——同名覆盖未生效时静默回退无 tooltip）
+function MPT_EnsureLeaderTooltip()
+	if MPT_TipRowIM == nil then
+		TTManager:GetTypeControlTable("MPT_LeaderInfoTooltip", MPT_TipControls);
+		if MPT_TipControls.TraitStack ~= nil then
+			MPT_TipRowIM = InstanceManager:new("MPT_TraitRowInstance", "RowRoot", MPT_TipControls.TraitStack);
+		end
+	end
+	return MPT_TipRowIM ~= nil;
+end
+
+-- 结构化特性行 {sIcon=, sTitle=, sStats=, sDesc=}：条件与顺序照搬 Trait2Text（区域→建筑→改良→单位，
+-- 各表行须有真名与描述过滤非特色条目；无特色内容的特性回退特性自身名/描述，即领袖/文明能力行，
+-- 能力行在前、特色内容行在后），属性行复用 GetPreText（前置科文/造价/近战力/移动力/远程力等）
+function MPT_GetLeaderInfoSections(playerID)
+	if MPT_TipRowCache[playerID] ~= nil then
+		return MPT_TipRowCache[playerID];
+	end
+	local tSections = {};
+	local pPlayerConfig = PlayerConfigurations[playerID];
+	if pPlayerConfig == nil then
+		return tSections;
+	end
+	local tTraits = {};
+	for row in GameInfo.LeaderTraits() do
+		if row.LeaderType == pPlayerConfig:GetLeaderTypeName() then
+			table.insert(tTraits, row.TraitType);
+		end
+	end
+	for row in GameInfo.CivilizationTraits() do
+		if row.CivilizationType == pPlayerConfig:GetCivilizationTypeName() then
+			table.insert(tTraits, row.TraitType);
+		end
+	end
+	for _,TraitType in ipairs(tTraits) do
+		local nItems = 0;
+		for row in GameInfo.Districts() do
+			if row.TraitType == TraitType and row.Name and row.Name ~= Locale.Lookup(row.Name) and row.Description then
+				table.insert(tSections, {sIcon="ICON_"..row.DistrictType, sTitle=Locale.Lookup(row.Name), sStats=GetPreText(row.DistrictType), sDesc=Locale.Lookup(row.Description)});
+				nItems = nItems + 1;
+			end
+		end
+		for row in GameInfo.Buildings() do
+			if row.TraitType == TraitType and row.Name and row.Name ~= Locale.Lookup(row.Name) and row.Description then
+				table.insert(tSections, {sIcon="ICON_"..row.BuildingType, sTitle=Locale.Lookup(row.Name), sStats=GetPreText(row.BuildingType), sDesc=Locale.Lookup(row.Description)});
+				nItems = nItems + 1;
+			end
+		end
+		for row in GameInfo.Improvements() do
+			if row.TraitType == TraitType and row.Name and row.Name ~= Locale.Lookup(row.Name) and row.Description then
+				table.insert(tSections, {sIcon="ICON_"..row.ImprovementType, sTitle=Locale.Lookup(row.Name), sStats=GetPreText(row.ImprovementType), sDesc=Locale.Lookup(row.Description)});
+				nItems = nItems + 1;
+			end
+		end
+		for row in GameInfo.Units() do
+			if row.TraitType == TraitType and row.Name and row.Name ~= Locale.Lookup(row.Name) and row.Description then
+				table.insert(tSections, {sIcon="ICON_"..row.UnitType, sTitle=Locale.Lookup(row.Name), sStats=GetPreText(row.UnitType), sDesc=Locale.Lookup(row.Description)});
+				nItems = nItems + 1;
+			end
+		end
+		if nItems == 0 then
+			for row in GameInfo.Traits() do
+				if row.TraitType == TraitType and row.Name and row.Description then
+					local LocaleName = Locale.Lookup(row.Name);
+					local LocaleDescription = Locale.Lookup(row.Description);
+					if row.Name ~= LocaleName and row.Description ~= LocaleDescription then
+						table.insert(tSections, {sIcon=nil, sTitle=LocaleName, sStats="", sDesc=LocaleDescription});
+					end
+				end
+			end
+		end
+	end
+	MPT_TipRowCache[playerID] = tSections;
+	return tSections;
+end
+
+-- 悬停填充（UpdateIcon 包装绑定回调；无本地玩家/未遇见玩家与原 GetToolTipString 同口径）
+function MPT_FillLeaderTooltip(playerID)
+	if not MPT_EnsureLeaderTooltip() then
+		return;
+	end
+	local pPlayerConfig = PlayerConfigurations[playerID];
+	if pPlayerConfig == nil or pPlayerConfig:GetLeaderTypeName() == nil then
+		return;
+	end
+	local localPlayerID = Game.GetLocalPlayer();
+	local bNoLocal = (localPlayerID == PlayerTypes.NONE or localPlayerID == PlayerTypes.OBSERVER);
+	local bUnmet = false;
+	if not bNoLocal and playerID ~= localPlayerID and Players[localPlayerID] ~= nil then
+		bUnmet = not Players[localPlayerID]:GetDiplomacy():HasMet(playerID);
+	end
+	-- 悬停期间引擎反复触发回调：同键直接复用已建内容（GameInfo 数据静态、相遇态变化才重建）
+	local sKey = tostring(playerID).."|"..tostring(bUnmet).."|"..tostring(bNoLocal);
+	if MPT_TipCurrent == sKey then
+		return;
+	end
+	MPT_TipCurrent = sKey;
+	MPT_TipRowIM:ResetInstances();
+
+	if bNoLocal then
+		-- 无本地玩家：原口径返回空串 → 清空全部行（tooltip 收缩为空底板）
+		MPT_TipControls.LeaderName:SetText("");
+		MPT_TipControls.CivName:SetHide(true);
+		MPT_TipControls.HeaderLabel:SetHide(true);
+		MPT_TipControls.Divider:SetHide(true);
+		return;
+	end
+
+	if bUnmet then
+		-- 未遇见：原口径只显示未遇见提示（多人局附玩家名）
+		local sText = Locale.Lookup("LOC_DIPLOPANEL_UNMET_PLAYER");
+		if GameConfiguration.IsAnyMultiplayer() then
+			sText = sText .. "（" .. pPlayerConfig:GetPlayerName() .. "）";
+		end
+		MPT_TipControls.LeaderName:SetText(sText);
+		MPT_TipControls.CivName:SetHide(true);
+		MPT_TipControls.HeaderLabel:SetHide(true);
+		MPT_TipControls.Divider:SetHide(true);
+		return;
+	end
+
+	MPT_TipControls.LeaderName:SetText(pPlayerConfig:GetLeaderName());
+	MPT_TipControls.CivName:SetText(pPlayerConfig:GetCivilizationDescription());
+	MPT_TipControls.CivName:SetHide(false);
+	MPT_TipControls.HeaderLabel:SetHide(false);
+	MPT_TipControls.Divider:SetHide(false);
+	for _,t in ipairs(MPT_GetLeaderInfoSections(playerID)) do
+		local kRow = MPT_TipRowIM:GetInstance();
+		if t.sIcon ~= nil then
+			-- 特色内容行（面板 IconInfoInstance 样式）：CircleRim40 圈 + 图标，文字缩进 36px
+			kRow.RowIcon:SetIcon(t.sIcon);
+			kRow.RowRim:SetHide(false);
+			kRow.RowTextStack:SetOffsetVal(36, 0);
+		else
+			-- 领袖/文明能力行（面板 TextInfoInstance 样式）：无图标顶格
+			kRow.RowRim:SetHide(true);
+			kRow.RowTextStack:SetOffsetVal(0, 0);
+		end
+		kRow.RowTitle:SetText(t.sTitle);
+		kRow.RowStats:SetText(t.sStats);
+		kRow.RowStats:SetHide(t.sStats == nil or t.sStats == "");
+		kRow.RowDesc:SetText(t.sDesc);
+	end
+end
+
+-- UpdateIcon 包装：原版设置纯文本 Tooltip 后改挂富 Tooltip 类型+回调（类型优先于字符串，
+-- 见技能库 tooltip-type；ResetInstances 回收复用属性保留，重复设置幂等）
+BASE_LeaderIcon_UpdateIcon = LeaderIcon.UpdateIcon;
+function LeaderIcon:UpdateIcon(iconName, playerID, isUniqueLeader, ttDetails)
+	BASE_LeaderIcon_UpdateIcon(self, iconName, playerID, isUniqueLeader, ttDetails);
+	if self.Controls ~= nil and self.Controls.Portrait ~= nil then
+		self.Controls.Portrait:SetToolTipType("MPT_LeaderInfoTooltip");
+		self.Controls.Portrait:SetToolTipCallback(function() MPT_FillLeaderTooltip(playerID); end);
+	end
 end
 
 
