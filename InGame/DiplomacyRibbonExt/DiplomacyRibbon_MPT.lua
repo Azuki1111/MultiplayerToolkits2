@@ -459,6 +459,17 @@ function MPT_FillLeaderTooltip(playerID)
 						kRow.RowCircleCiv:SetHide(false);
 						kRow.RowCircleUnique:SetHide(true);
 						kRow.RowIconCiv:SetIcon(t.sIcon);
+						-- 文明徽记按玩家双色上色（原版 PlayerSetupLogic L851-855：符号=前景色、圆底=背景色；
+						-- 取色走 UI.GetPlayerColors 运行时玩家色，同本文件 Logo 徽记先例，nil 兜底同款）
+						local primaryColor, secondaryColor = UI.GetPlayerColors(playerID);
+						if primaryColor == nil then
+							primaryColor = UI.GetColorValueFromHexLiteral(0xff99aaaa);
+						end
+						if secondaryColor == nil then
+							secondaryColor = UI.GetColorValueFromHexLiteral(0xffaa9999);
+						end
+						kRow.RowCircleCiv:SetColor(primaryColor);
+						kRow.RowIconCiv:SetColor(secondaryColor);
 					else
 						-- 特色内容行（IconInfoInstance 样式）：CircleCompass + 条目图标
 						kRow.RowCircleLeader:SetHide(true);
