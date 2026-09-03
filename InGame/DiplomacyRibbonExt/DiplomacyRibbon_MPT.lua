@@ -367,6 +367,15 @@ function MPT_GetLeaderInfoSections(playerID)
 	return tSections;
 end
 
+-- 尺寸确定性收口：宽度恒 390（内容 WrapWidth 340 + InnerPadding 25×2），高度 = 内容栈实测 + 50。
+-- 不用 AutoSize 的原因：parent,parent 背景图参与 AutoSize 测量会把外框撑到历史最大/屏高且不再收缩
+--（用户实测整幅背景拖长上千像素、宽度同时失控致内容贴左缘不对齐）
+function MPT_ShrinkLeaderTooltip()
+	MPT_TipControls.InfoStack:CalculateSize();
+	local _, h = MPT_TipControls.InfoStack:GetSizeVal();
+	MPT_TipControls.BG:SetSizeVal(390, h + 50);
+end
+
 -- 悬停填充（UpdateIcon 包装绑定回调；无本地玩家/未遇见玩家与原 GetToolTipString 同口径）
 function MPT_FillLeaderTooltip(playerID)
 	if not MPT_EnsureLeaderTooltip() then
@@ -396,6 +405,7 @@ function MPT_FillLeaderTooltip(playerID)
 		MPT_TipControls.CivName:SetHide(true);
 		MPT_TipControls.HeaderLabel:SetHide(true);
 		MPT_TipControls.Divider:SetHide(true);
+		MPT_ShrinkLeaderTooltip();
 		return;
 	end
 
@@ -409,6 +419,7 @@ function MPT_FillLeaderTooltip(playerID)
 		MPT_TipControls.CivName:SetHide(true);
 		MPT_TipControls.HeaderLabel:SetHide(true);
 		MPT_TipControls.Divider:SetHide(true);
+		MPT_ShrinkLeaderTooltip();
 		return;
 	end
 
@@ -436,6 +447,7 @@ function MPT_FillLeaderTooltip(playerID)
 		kRow.RowStats:SetHide(t.sStats == nil or t.sStats == "");
 		kRow.RowDesc:SetText(t.sDesc);
 	end
+	MPT_ShrinkLeaderTooltip();
 end
 
 -- UpdateIcon 包装：原版设置纯文本 Tooltip 后改挂富 Tooltip 类型+回调（类型优先于字符串，
