@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目31：禁止空过研究参数——高级选项「禁止空过研究」布尔开关（默认关）。
+	勾选后经本 modinfo ActionCriteria MPT_NO_IDLE_RESEARCH 门控 InGameActions 的
+	AddGameplayScripts（不勾选零加载）；Gameplay 行为须全房一致，故走开局参数而非
+	条目12游内设置面板（面板开关写每机本地 Configuration 值会引入 OOS 风险）。
+	字段结构照抄条目16/28（AdvancedOptions 组，开局后不可改），SortIndex 2905 紧随条目28 的 2904 -->
+<GameInfo>
+	<Parameters>
+		<Row ParameterId="MPT_NO_IDLE_RESEARCH" Name="LOC_MPT_NO_IDLE_RESEARCH_NAME" Description="LOC_MPT_NO_IDLE_RESEARCH_DESC" Domain="bool" DefaultValue="0" ConfigurationGroup="Game" ConfigurationId="MPT_NO_IDLE_RESEARCH" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2905" />
+	</Parameters>
+</GameInfo>
