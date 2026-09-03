@@ -139,7 +139,7 @@ local MPT_INTEL_CATEGORY:table = {
 };
 
 -- 目标玩家相对本地的外交能见度（自身与存活队友对目标取最高；队友/自己恒 4=全知）
-function MPT_GetIntelAccessLevel(targetID:number):number
+function MPT_GetIntelAccessLevel(targetID:number)
 	local localID:number = Game.GetLocalPlayer();
 	if localID == nil or localID < 0 or Players[localID] == nil or Players[targetID] == nil then
 		return 4;	-- 无本地玩家等异常局面：不隐藏
@@ -161,7 +161,7 @@ function MPT_GetIntelAccessLevel(targetID:number):number
 end
 
 -- 指定决胜类型的情报对目标玩家是否可见（隐藏 = 摘要串空串，消费端既有 ~= "" 检查自动跳行）
-function MPT_IsIntelVisible(victoryType:string, targetID:number):boolean
+function MPT_IsIntelVisible(victoryType:string, targetID:number)
 	if MPT_INTEL_MODEL == 2 or MPT_INTEL_MODEL == 3 then
 		return true;	-- 公开/默认档：全可见（默认=标准基础上军力恒显示，其余类目标准档本就全公开）
 	end
