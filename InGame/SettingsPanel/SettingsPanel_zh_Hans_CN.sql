@@ -27,7 +27,9 @@ VALUES
 	('LOC_MPT_SETTINGS_NDR_NAME',	'zh_Hans_CN',	'交易声音提醒'),
 	('LOC_MPT_SETTINGS_NDR_TT',	'zh_Hans_CN',	'其他玩家与您进行交易或发出外交请求时会响铃提示（条目26 NDR；通知自动展开不受此开关控制，同 1.67 语义）'),
 	('LOC_MPT_SETTINGS_GPR_NAME',	'zh_Hans_CN',	'他人招募伟人通知'),
-	('LOC_MPT_SETTINGS_GPR_TT',	'zh_Hans_CN',	'其他玩家招募伟人时向您发送通知（条目26）');
+	('LOC_MPT_SETTINGS_GPR_TT',	'zh_Hans_CN',	'其他玩家招募伟人时向您发送通知（条目26）'),
+	('LOC_MPT_SETTINGS_BGP_NAME',	'zh_Hans_CN',	'伟人界面增强'),
+	('LOC_MPT_SETTINGS_BGP_TT',	'zh_Hans_CN',	'伟人招募竞争中显示各家每回合点数增速、招募进度区加高、往期招募倒序、底部背景延伸（条目29，移植 1.65 BGP）');
 -- 条目20初版曾在此加智能计时器开关文本（LOC_MPT_SETTINGS_TIMER_ENABLE_*），条目20扩展
 -- 改用四模式 Game 配置参数（文本移至 InGame/SmartTurnTimer/ 双语 SQL），已删除。
 -- 条目22：BTS 4 选项文本移植自 1.67 BTS/Text/BTS_Text_EN.xml 的 LOC_BTS_SETTING_*，

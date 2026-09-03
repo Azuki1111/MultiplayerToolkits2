@@ -25,6 +25,10 @@
 --   命名与 NotificationPanel_DealRemind 对称，默认开）。
 -- 条目27 世界议会弃权选项行已随功能移除（用户裁决：引擎对未投票决议强制随机代投，
 --   弃权引擎层不可实现，详见 计划.md 条目27移除段）。
+-- 条目29 增一行：BGP 伟人界面增强（BetterGreatPeople_Show 自造 key——1.65 的
+--   SETTINGS_UI_BGP 为开局 Game 参数非运行时开关，无对应行可沿用，命名随目录；
+--   默认开，消费侧 InGame/BetterGreatPeople/GreatPeoplePopup.lua 监听
+--   MPT_Settings_Toggle 双向切换 BGP/原版布局）。
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS MPT_Settings (
 	ParameterId TEXT NOT NULL,
@@ -47,4 +51,5 @@ VALUES
 		("DiplomacyRibbon_PlayerInfo_CiviName",		"LOC_MPT_SETTINGS_DPR_CNAME_NAME",	"LOC_MPT_SETTINGS_DPR_CNAME_TT",		1),
 		("GreatGeneralEraReminder_Show",			"LOC_MPT_SETTINGS_BER_NAME",		"LOC_MPT_SETTINGS_BER_TT",			1),
 		("NotificationPanel_DealRemind",			"LOC_MPT_SETTINGS_NDR_NAME",		"LOC_MPT_SETTINGS_NDR_TT",			1),
-		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",			1);
+		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",			1),
+		("BetterGreatPeople_Show",					"LOC_MPT_SETTINGS_BGP_NAME",		"LOC_MPT_SETTINGS_BGP_TT",			1);
