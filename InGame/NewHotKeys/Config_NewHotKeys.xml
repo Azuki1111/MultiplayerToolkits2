@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目27：更多快捷键参数（移植 1.65 NHK/GameCfg.xml）——高级选项「更多快捷键」布尔开关。
+MPT_NEW_HOTKEYS 为本 mod 独立开关（用户裁决：不与 1.65 NEW_HOTKEYS 共享，两边开关各管各的），
+经 MPT_NEW_HOTKEYS / NHK_MPT / NHK_MPT_MAP 三个 criteria 门控本条目各 action。
+字段结构照抄 1.65 GameCfg.xml（Domain bool / DefaultValue 1 / AdvancedOptions 组 / 开局后不可改），
+SortIndex 2904 紧随 1.65 NEW_HOTKEYS 的 2903（同装时两开关相邻显示）。
+仅 FE 注册（条目16/20 规约：Configuration 参数须前端注册开局建库继承，IG 重复注册主键冲突）
+=========================================================================== -->
+<GameInfo>
+	<Parameters>
+		<Row ParameterId="MPT_NEW_HOTKEYS" Name="LOC_MPT_NEW_HOTKEYS_NAME" Description="LOC_MPT_NEW_HOTKEYS_DESC" Domain="bool" DefaultValue="1" ConfigurationGroup="Game" ConfigurationId="MPT_NEW_HOTKEYS" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2904" />
+	</Parameters>
+</GameInfo>

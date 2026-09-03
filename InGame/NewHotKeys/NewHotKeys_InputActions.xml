@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目27：更多快捷键（NHK）键位注册——移植 1.65 NHK 四个 Config_*.xml + SQL/QueriesConfiguration.sql，
+	并入 CHS-PVP（工坊 3037861572）扩展单位热键，16 个动作合并在单一文件（优化：1.65 分散 5 处）。
+键位以 1.65 为准（用户裁决），两源重合且键位不同的动作（升级/晋升/取消）取 1.65 键位；
+CHS 专属且与 1.65 冲突的改键：编队 Shift+E 改 Ctrl+Shift+E（让位升级）、唤醒 Shift+W 改
+Ctrl+Shift+W（让位随机晋升）、组建军团 Shift+F 改 Shift+C（让位强制结束回合，Corps 首字母助记）。
+全部键位经原版 Base+XP1+XP2 InputConfiguration.xml 全量核验零冲突（原版不占用任何 Shift/Ctrl+Shift 组合）。
+ActionId 沿用两源原名（条目24 DPR 先例：与 1.65 同装时 InsertOrIgnore 双向幂等收敛）；
+共享 4 动作（掠夺/升级/晋升/取消）与 1.65 同 ID 同键，注册值一致无谓先后。
+CHS 文本列内嵌中文不可本地化，本 mod 统一改 LOC tag（zh/en SQL 配套）；
+Corps/Army/Wake/Teleport 沿用 CHS 选用的原版 LOC tag（官方多语言现成）。
+前后端各注册一次（条目20 规约：FE 供主菜单「设置→按键绑定」显示，IG 供运行时 Input.GetActionId）。
+键位效果分两层：本表只注册动作与默认键位；UnitOperations/UnitCommands.HotkeyId 引擎绑定
+在 QueriesGameplay.sql（criteria 门控）；Lua 消费类动作的处理器在同目录各迷你上下文。
+（XML 注释内容不可出现连续半角连字符，故注释不以横线收尾）
+=========================================================================== -->
+<GameInfo>
+	<!-- 地图钉分类（沿用 1.65 NHK/Config_Mappin.xml 的 CategoryId=DMT，InsertOrIgnore 幂等；
+		Name 沿用 DMT 类 mod 原 tag，本 mod 补 en 文本） -->
+	<InputCategories>
+		<InsertOrIgnore CategoryId="DMT" Name="LOC_DMT_OPTIONS_HOTKEY_CATEGORY" Visible="1" SortIndex="0"/>
+	</InputCategories>
+	<InputActions>
+		<!-- 单位命令热键（引擎经 HotkeyId 翻译执行，多数无需 Lua）：4 个与 1.65 同源 + 7 个 CHS 扩展 -->
+		<InsertOrIgnore ActionId="ExtraHotkeysPillageOrRepair" Name="LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_NAME" Description="LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_DESC" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysUpgrade" Name="LOC_UNITOPERATION_UPGRADE_DESCRIPTION" Description="LOC_UNITOPERATION_UPGRADE_DESCRIPTION" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysPromote" Name="LOC_HUD_UNIT_CHOOSE_PROMOTION_TEXT" Description="LOC_HUD_UNIT_CHOOSE_PROMOTION_TEXT" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysUnitCancel" Name="LOC_UNITCOMMAND_STOP_AUTOMATION_DESCRIPTION" Description="LOC_UNITCOMMAND_STOP_AUTOMATION_DESCRIPTION" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysPillageRoadOrRepair" Name="LOC_MPT_NHK_PILLAGE_ROAD_NAME" Description="LOC_MPT_NHK_PILLAGE_ROAD_DESC" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysPlunderTradeRoute" Name="LOC_MPT_NHK_PLUNDER_ROUTE_NAME" Description="LOC_MPT_NHK_PLUNDER_ROUTE_DESC" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysEnterFormation" Name="LOC_MPT_NHK_FORMATION_NAME" Description="LOC_MPT_NHK_FORMATION_DESC" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysFormCorps" Name="LOC_UNITCOMMAND_FORM_CORPS_DESCRIPTION" Description="LOC_UNITCOMMAND_FORM_CORPS_DESCRIPTION" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysFormArmy" Name="LOC_UNITCOMMAND_FORM_ARMY_DESCRIPTION" Description="LOC_UNITCOMMAND_FORM_ARMY_DESCRIPTION" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysUnitWake" Name="LOC_UNITCOMMAND_WAKE_DESCRIPTION" Description="LOC_UNITCOMMAND_WAKE_DESCRIPTION" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysTeleportToCity" Name="LOC_UNITOPERATION_TELEPORT_TO_CITY_DESCRIPTION" Description="LOC_UNITOPERATION_REBASE_DESCRIPTION" CategoryId="UNIT" ContextId="World"/>
+		<InsertOrIgnore ActionId="HotKey_TPT_FastPromote" Name="LOC_FAST_PROMOTE_NAME" Description="LOC_FAST_PROMOTE_DESC" CategoryId="UNIT" ContextId="World"/>
+		<!-- 强制结束回合（Lua 消费：ForcedTurnEnd_HotKey 迷你上下文；条目12 FEB 右键预留点对接同一事件） -->
+		<InsertOrIgnore ActionId="HotKey_TPT_ForcedTurnEnd" Name="LOC_TURNTIME_FORCED_TURNEND_NAME" Description="LOC_TURNTIME_FORCED_TURNEND_DESCRIPTION" CategoryId="ONLINE" ContextId="World"/>
+		<!-- 伟人自动招募（Lua 消费：AutoRecruit_GreatPerson_HotKey 迷你上下文） -->
+		<InsertOrIgnore ActionId="HotKey_TPT_AutoRecruit" Name="LOC_HOTKEY_AUTO_RECRUIT_NAME" Description="LOC_HOTKEY_AUTO_RECRUIT_DESCRIPTION" CategoryId="UI" ContextId="World"/>
+		<!-- 地图钉四键（Lua 消费：MapPin_HotKey 迷你上下文；1.65 原 ActionId 无 TPT 前缀原样保留） -->
+		<InsertOrIgnore ActionId="AddMapMessage" Name="LOC_DMT_OPTIONS_HOTKEY_ADD_MESSAGE_TACK" Description="LOC_DMT_OPTIONS_HOTKEY_ADD_MESSAGE_TACK" CategoryId="DMT" ContextId="World"/>
+		<InsertOrIgnore ActionId="AddMapTack" Name="LOC_DMT_OPTIONS_HOTKEY_ADD_MAP_TACK" Description="LOC_DMT_OPTIONS_HOTKEY_ADD_MAP_TACK" CategoryId="DMT" ContextId="World"/>
+		<InsertOrIgnore ActionId="DeleteMapTack" Name="LOC_DMT_OPTIONS_HOTKEY_DELETE_MAP_TACK" Description="LOC_DMT_OPTIONS_HOTKEY_DELETE_MAP_TACK" CategoryId="DMT" ContextId="World"/>
+		<InsertOrIgnore ActionId="ToggleMapTackVisibility" Name="LOC_DMT_OPTIONS_HOTKEY_TOGGLE_MAP_TACK_VISIBILITY_NAME" Description="LOC_DMT_OPTIONS_HOTKEY_TOGGLE_MAP_TACK_VISIBILITY_DESC" CategoryId="DMT" ContextId="World"/>
+	</InputActions>
+	<InputActionDefaultGestures>
+		<!-- 单位命令：掠夺 Shift+P / 升级 Shift+E / 晋升 Shift+G / 取消 Shift+S（1.65 键位基准） -->
+		<InsertOrIgnore ActionId="ExtraHotkeysPillageOrRepair" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_P"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysUpgrade" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_E"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysPromote" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_G"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysUnitCancel" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_S"/>
+		<!-- CHS 扩展：修路 Ctrl+Shift+P / 劫掠商路 Ctrl+Shift+R / 编队 Ctrl+Shift+E（改键）/ 军团 Shift+C（改键）/ 集团军 Ctrl+Shift+F / 唤醒 Ctrl+Shift+W（改键）/ 传送 Shift+R -->
+		<InsertOrIgnore ActionId="ExtraHotkeysPillageRoadOrRepair" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_CONTROL+LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_P"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysPlunderTradeRoute" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_CONTROL+LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_R"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysEnterFormation" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_CONTROL+LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_E"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysFormCorps" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_C"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysFormArmy" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_CONTROL+LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_F"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysUnitWake" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_CONTROL+LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_W"/>
+		<InsertOrIgnore ActionId="ExtraHotkeysTeleportToCity" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_R"/>
+		<!-- 随机晋升 Shift+W / 强制结束回合 Shift+F / 自动招募 Shift+K（1.65 键位） -->
+		<InsertOrIgnore ActionId="HotKey_TPT_FastPromote" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_W"/>
+		<InsertOrIgnore ActionId="HotKey_TPT_ForcedTurnEnd" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_F"/>
+		<InsertOrIgnore ActionId="HotKey_TPT_AutoRecruit" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_K"/>
+		<!-- 地图钉：发坐标 Shift+Y / 建钉 Shift+A / 删钉 Shift+D / 显隐 Shift+M（1.65 键位） -->
+		<InsertOrIgnore ActionId="AddMapMessage" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_Y"/>
+		<InsertOrIgnore ActionId="AddMapTack" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_A"/>
+		<InsertOrIgnore ActionId="DeleteMapTack" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_D"/>
+		<InsertOrIgnore ActionId="ToggleMapTackVisibility" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_M"/>
+	</InputActionDefaultGestures>
+</GameInfo>

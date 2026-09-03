@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>84</Version>
+		<Version>85</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -101,6 +101,38 @@
 				<ConfigurationId>CPL_NO_PINS</ConfigurationId>
 				<Value>1</Value>
 			</ConfigurationValueMatches>
+		</Criteria>
+		<!-- 条目28：更多快捷键（NHK）开关——高级选项「更多快捷键」布尔（MPT_NEW_HOTKEYS，
+			默认开），门控 IG 键位绑定 SQL；MPT 独立开关（用户裁决，不与 1.65 NEW_HOTKEYS 共享） -->
+		<Criteria id="MPT_NEW_HOTKEYS">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>MPT_NEW_HOTKEYS</ConfigurationId>
+				<Value>1</Value>
+			</ConfigurationValueMatches>
+		</Criteria>
+		<!-- 条目28：NHK Lua 消费上下文门控 = 开关开启 且 1.65 联机工具箱不在装——
+			1.65 在装时其 NHK 原版 Lua（地图钉/随机晋升/自动招募/强制结束/CSA）继续服务，
+			本 mod 让位避免双触发（双建钉/显隐双翻转/双重随机晋升/Shift+F 双翻转互相抵消）；
+			单 Criteria 内多子元素默认 AND（技能库 criteria-patterns 实证） -->
+		<Criteria id="NHK_MPT">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>MPT_NEW_HOTKEYS</ConfigurationId>
+				<Value>1</Value>
+			</ConfigurationValueMatches>
+			<ModInUse inverse="1">00000000-0165-224C-A3AA-154BB4B9C1C5</ModInUse>	<!--	联机工具箱 1.65	-->
+		</Criteria>
+		<!-- 条目28：地图钉热键上下文门控 = NHK_MPT 且 DMT 类高级地图钉 mod 不在装
+			（镜像 1.65 NHK 的 Disable_DMT criteria，modid 沿用其原值） -->
+		<Criteria id="NHK_MPT_MAP">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>MPT_NEW_HOTKEYS</ConfigurationId>
+				<Value>1</Value>
+			</ConfigurationValueMatches>
+			<ModInUse inverse="1">00000000-0165-224C-A3AA-154BB4B9C1C5</ModInUse>	<!--	联机工具箱 1.65	-->
+			<ModInUse inverse="1">4ecfcc62-5471-4435-b295-590df213e8d8</ModInUse>	<!--	DetailedMapTacks	-->
 		</Criteria>
 	</ActionCriteria>
 	<FrontEndActions>
@@ -376,6 +408,36 @@
 			</Properties>
 			<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_zh_Hans_CN.sql</File>
 			<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目28：更多快捷键参数（NHK）——高级选项「更多快捷键」布尔（MPT_NEW_HOTKEYS，
+			MPT 独立开关用户裁决不与 1.65 NEW_HOTKEYS 共享），仅 FE 注册（条目16/20 规约：
+			Configuration 参数须前端注册开局建库继承，IG 重复注册主键冲突），
+			功能生效门控在 InGameActions 的 MPT_NEW_HOTKEYS/NHK_MPT/NHK_MPT_MAP criteria -->
+		<UpdateDatabase id="FE_NHK_Config">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/Config_NewHotKeys.xml</File>
+		</UpdateDatabase>
+		<!-- 条目28：NHK 全部快捷键注册（18 动作 + DMT 分类合并单文件，优化 1.65 的 4 XML+1 SQL
+			分散）——移植 1.65 NHK 四个 Config_*.xml + CHS-PVP（工坊 3037861572）扩展单位热键，
+			ActionId 沿用两源原名（条目24 DPR 先例：与 1.65 同装 InsertOrIgnore 幂等收敛），
+			键位以 1.65 为准（用户裁决），CHS 冲突项改键（编队/唤醒 Ctrl+Shift、军团 Shift+C）。
+			前后端各注册一次（条目20 规约：FE 按键绑定界面显示 / IG 运行时取用） -->
+		<UpdateDatabase id="FE_NHK_Input">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/NewHotKeys_InputActions.xml</File>
+		</UpdateDatabase>
+		<!-- 条目28：NHK 文本（动作名/描述 + 开关文案；FE+IG 双注册，热键名主菜单也要显示；
+			zh 抄 1.65 原文案 + CHS 文案转正为 LOC tag，en 本 mod 补全——1.65 仅中文） -->
+		<UpdateText id="FE_NHK_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/NewHotKeys_zh_Hans_CN.sql</File>
+			<File>InGame/NewHotKeys/NewHotKeys_en_US.sql</File>
 		</UpdateText>
 	</FrontEndActions>
 	<InGameActions>
@@ -1104,6 +1166,93 @@
 			<File>InGame/WorldCongressAbstain/WorldCongressAbstain_zh_Hans_CN.sql</File>
 			<File>InGame/WorldCongressAbstain/WorldCongressAbstain_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目28：更多快捷键（NHK，移植 1.65 NHK/ 目录全模块 + CHS-PVP 扩展单位热键合并）
+			四组功能（用户裁决全选）：①单位命令热键 12 绑定（QueriesGameplay.sql 引擎
+			HotkeyId 层，criteria=MPT_NEW_HOTKEYS）②地图钉四键（Shift+Y/A/D/M，与条目16
+			CPL_NO_PINS 运行时联动 + Disable_DMT 让位）③随机晋升 + 伟人自动招募
+			（Shift+W/K）④强制结束回合（Shift+F，对接条目12 FEB 右键预留点
+			LuaEvents.ForcedEndTurn）。Lua 消费侧 = 四个 XML+同名 Lua 迷你上下文
+			（AddUserInterfaces 900 + ImportFiles 900，同条目12/20 机制，1.65 NHK 原机制），
+			全部 criteria=NHK_MPT（开关 + 1.65 让位，防双触发双建钉/双翻转）；
+			城市远程攻击 CSA 走原版 CityBannerManager_ 通配 include 链（ImportFiles 1000，
+			条目18 MPT 1010 之前）。剔除 1.65 反作弊搭车代码与死键位，优化留痕见各文件头横幅 -->
+		<UpdateDatabase id="IG_NHK_Gameplay" criteria="MPT_NEW_HOTKEYS">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/QueriesGameplay.sql</File>
+		</UpdateDatabase>
+		<UpdateDatabase id="IG_NHK_Input">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/NewHotKeys_InputActions.xml</File>
+		</UpdateDatabase>
+		<UpdateText id="IG_NHK_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/NewHotKeys_zh_Hans_CN.sql</File>
+			<File>InGame/NewHotKeys/NewHotKeys_en_US.sql</File>
+		</UpdateText>
+		<AddUserInterfaces id="IG_NHK_MapPin" criteria="NHK_MPT_MAP">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/NewHotKeys/MapPin_HotKey.xml</File>
+		</AddUserInterfaces>
+		<ImportFiles id="IG_NHK_MapPin_Import" criteria="NHK_MPT_MAP">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/MapPin_HotKey.lua</File>
+		</ImportFiles>
+		<AddUserInterfaces id="IG_NHK_UnitOp" criteria="NHK_MPT">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/NewHotKeys/NewUnitOperation.xml</File>
+		</AddUserInterfaces>
+		<ImportFiles id="IG_NHK_UnitOp_Import" criteria="NHK_MPT">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/NewUnitOperation.lua</File>
+		</ImportFiles>
+		<AddUserInterfaces id="IG_NHK_AutoRecruit" criteria="NHK_MPT">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/NewHotKeys/AutoRecruit_GreatPerson_HotKey.xml</File>
+		</AddUserInterfaces>
+		<ImportFiles id="IG_NHK_AutoRecruit_Import" criteria="NHK_MPT">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/AutoRecruit_GreatPerson_HotKey.lua</File>
+		</ImportFiles>
+		<AddUserInterfaces id="IG_NHK_ForcedEnd" criteria="NHK_MPT">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/NewHotKeys/ForcedTurnEnd_HotKey.xml</File>
+		</AddUserInterfaces>
+		<ImportFiles id="IG_NHK_ForcedEnd_Import" criteria="NHK_MPT">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/ForcedTurnEnd_HotKey.lua</File>
+		</ImportFiles>
+		<ImportFiles id="IG_NHK_CSA" criteria="NHK_MPT">
+			<Properties>
+				<LoadOrder>1000</LoadOrder>
+			</Properties>
+			<File>InGame/NewHotKeys/CityBannerManager_CSA.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -1246,5 +1395,19 @@
 		<File>InGame/WorldCongressAbstain/WorldCongressPopup.xml</File>
 		<File>InGame/WorldCongressAbstain/WorldCongressAbstain_zh_Hans_CN.sql</File>
 		<File>InGame/WorldCongressAbstain/WorldCongressAbstain_en_US.sql</File>
+		<File>InGame/NewHotKeys/Config_NewHotKeys.xml</File>
+		<File>InGame/NewHotKeys/NewHotKeys_InputActions.xml</File>
+		<File>InGame/NewHotKeys/QueriesGameplay.sql</File>
+		<File>InGame/NewHotKeys/MapPin_HotKey.xml</File>
+		<File>InGame/NewHotKeys/MapPin_HotKey.lua</File>
+		<File>InGame/NewHotKeys/NewUnitOperation.xml</File>
+		<File>InGame/NewHotKeys/NewUnitOperation.lua</File>
+		<File>InGame/NewHotKeys/AutoRecruit_GreatPerson_HotKey.xml</File>
+		<File>InGame/NewHotKeys/AutoRecruit_GreatPerson_HotKey.lua</File>
+		<File>InGame/NewHotKeys/ForcedTurnEnd_HotKey.xml</File>
+		<File>InGame/NewHotKeys/ForcedTurnEnd_HotKey.lua</File>
+		<File>InGame/NewHotKeys/CityBannerManager_CSA.lua</File>
+		<File>InGame/NewHotKeys/NewHotKeys_zh_Hans_CN.sql</File>
+		<File>InGame/NewHotKeys/NewHotKeys_en_US.sql</File>
 	</Files>
 </Mod>

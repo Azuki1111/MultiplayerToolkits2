@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目27：单位操作增强上下文壳（移植 1.65 NHK/UI/NewUnitOperation.xml 原样，1.65 本体即空 Context）。
+脚本为同名 NewUnitOperation.lua（AddUserInterfaces 迷你上下文 + ImportFiles 同名 Lua 自动执行，
+同条目12/20 机制）；动作注册在 NewHotKeys_InputActions.xml。
+criteria = NHK_MPT（MPT_NEW_HOTKEYS 开关 + 1.65 让位）
+=========================================================================== -->
+<Context>
+</Context>

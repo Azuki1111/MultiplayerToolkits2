@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+条目27：强制结束回合热键上下文（从 1.65 NHK/UI/TurnTime_HotKey.xml 拆出强制结束回合段；
+条目20 已移植其 ]/[ 加减时热键与聊天框旁加减时两按钮，本上下文只承载 Shift+F 自动强制结束模式）。
+AlphaIn 四角黑边动画 LateInitialize 时 ChangeParent 挂到 /InGame/WorldInput
+（强制结束模式激活时屏幕四周压黑 + 文字提示，1.65 原样）。
+脚本为同名 ForcedTurnEnd_HotKey.lua（AddUserInterfaces 迷你上下文 + ImportFiles 同名 Lua
+自动执行，同条目12/20 机制）；动作注册在 NewHotKeys_InputActions.xml。
+criteria = NHK_MPT（MPT_NEW_HOTKEYS 开关 + 1.65 让位，防双翻转互相抵消）
+=========================================================================== -->
+<Context  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\..\..\..\..\CivTech\Libs\ForgeUI\ForgeUI_Assets\Controls.xsd"
+					ColorSet="Beige_Black" Style="FontNormal16" FontStyle="Shadow" >
+	<AlphaAnim        ID="AlphaIn"      Size="parent,parent"  AlphaBegin="0"  AlphaEnd="1"  Speed="9" Function="Root" Cycle="Once" Hidden="1">
+		<Box																	Color="0,0,0,0" Size="parent,parent" ConsumeMouse="0">
+			<Image															Texture="Controls_Vignette" Size="500,500"   Color="0,0,0,255" Anchor="R,B"/>
+			<Image															Texture="Controls_Vignette" Size="500,500"   Color="0,0,0,255" Anchor="R,T" FlipY="1"/>
+			<Image															Texture="Controls_Vignette" Size="500,500"   Color="0,0,0,255" Anchor="L,T" FlipY="1" FlipX="1"/>
+			<Image															Texture="Controls_Vignette" Size="500,500"   Color="0,0,0,255" Anchor="L,B" FlipX="1"/>
+			<Image															Texture="Controls_Gradient" Size="150,parent"  Color="0,0,0,255" Anchor="L,T" Rotate="90"/>
+			<Image															Texture="Controls_Gradient" Size="150,parent"  Color="0,0,0,255" Anchor="R,T" Rotate="270"/>
+			<Image															Texture="Controls_Gradient" Size="parent,150"  Color="0,0,0,255" Anchor="L,T" FlipY="1"/>
+			<Image															Texture="Controls_Gradient" Size="parent,150"  Color="0,0,0,255" Anchor="L,B"/>
+		</Box>
+
+		<Label			ID="Processing_Text"	ColorSet="ResGoldLabelCS"		Style="FontNormal30" 	Anchor="C,B" String="LOC_TURNTIME_FORCED_TURNEND_DESCRIPTION" Offset="0,75"/>
+	</AlphaAnim>
+</Context>
