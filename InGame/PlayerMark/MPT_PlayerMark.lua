@@ -264,8 +264,10 @@ end
 
 -- ============================================================================
 -- 条目4.8续：隐身设置（隐藏自身 SQL 公共标记）——与前端 4.4 同步（StagingRoom.lua 同款）。
--- 语义：勾选 = 隐藏自己，房间内其他玩家加载我的配置后跳过我的 SQL 公共标记
---   （Admin/Normal/Honor；Ban 强制显示）。默认开启（继承 1.67 IsHiddenPlayerInfo_STR="T"）。
+-- 语义（条目4.8修复取反 fail-safe，与前端一致）：公共标记（Admin/Normal/Honor）默认对
+--   其他玩家不可见；仅当本机广播过「允许显示」（配置键 "F" = 取消勾选「隐藏我的标记」）
+--   他人才可见；Ban 黑名单标记始终显示；键缺失（nil）按不可见处理。默认勾选开启
+--   （继承 1.67 IsHiddenPlayerInfo_STR="T"）。本上下文仅开关存储/广播（无显示层）。
 -- 存储：与 Players 同一命名空间 MPT_PlayerInfo 复合组内的独立表名 HiddenSqlMark
 --   （条目4.3重构：所有表同组承载，按表名分键互不覆盖，LoadFromDisk 已一并读回）。
 -- 广播：设置/进房时写 PlayerConfigurations[我]:SetValue("HiddenPlayerInfo","T"/"F")

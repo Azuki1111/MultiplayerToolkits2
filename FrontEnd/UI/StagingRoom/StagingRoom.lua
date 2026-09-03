@@ -5630,12 +5630,14 @@ end
 
 -- ============================================================================
 -- 条目4.8续：隐身设置（隐藏自身 SQL 公共标记）
--- 语义：勾选 = 隐藏自己，房间内其他玩家加载我的配置后跳过我的 SQL 公共标记
---   （Admin/Normal/Honor；Ban 强制显示）。默认开启（继承 1.67 IsHiddenPlayerInfo_STR="T"）。
+-- 语义（条目4.8修复取反 fail-safe）：公共标记（Admin/Normal/Honor）默认对其他玩家不可见；
+--   仅当本机广播过「允许显示」（配置键 "F" = 取消勾选「隐藏我的标记」）他人才可见；
+--   Ban 黑名单标记不受此控（始终显示）。配置键缺失（nil，进房瞬间/从未同步）按不可见处理，
+--   杜绝加入房间一瞬他人瞥见标记的窗口。默认勾选开启（继承 1.67 IsHiddenPlayerInfo_STR="T"）。
 -- 存储：与 Players 同一命名空间 MPT_PlayerInfo 复合组内的独立表名 HiddenSqlMark
 --   （条目4.3重构：所有表同组承载，按表名分键互不覆盖），存 boolean。
--- 广播：设置/进房时写 PlayerConfigurations[我]:SetValue("HiddenPlayerInfo","T"/"F")
---   + Network.BroadcastPlayerInfo（1.67 同款：键为 1.67 自定义配置键，随房间同步）。
+-- 广播：进房初始化/开关勾选/开面板时写 PlayerConfigurations[我]:SetValue("HiddenPlayerInfo","T"/"F")
+--   + Network.BroadcastPlayerInfo（键值映射与 1.67 一致：T=隐藏 F=显示；仅 nil 缺省语义取反）。
 -- ============================================================================
 
 -- MPT_PlayerMark_ApplyHiddenMarkUI()：复选框 UI 状态 <- 内存设置（g_MPT_MarkHidden）
@@ -6215,6 +6217,26 @@ Controls.PlayerMarkCloseButton:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Cl
 Controls.PlayerMarkModalBlocker:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_Close);
 Controls.PlayerMarkHiddenMarkCheck:RegisterCallback(Mouse.eLClick, MPT_PlayerMark_OnHiddenMarkCheck);
 MPT_PlayerMark_ApplyHiddenMarkUI();	-- 初始勾选态（默认隐身；LoadSettings 读盘后会再刷）
+-- ============================================================================
+-- 条目4.8修复：进房初始化即读隐身存档并广播——原仅点击勾选框/开面板瞬间才广播，
+-- 复选框默认显示勾选但从未点击过时 HiddenPlayerInfo 键从不同步。配合取反语义
+-- （nil=不可见）：取消勾选（允许显示）的玩家必须在进房后尽快把 "F" 同步给全房间，
+-- 否则他人永远看不到；勾选（默认）态广播 "T" 幂等无害。读盘落地前他人按 nil 处理
+-- ＝不可见，正好满足「加入房间一瞬间别人不能看见标记」。
+-- ============================================================================
+MPT_PlayerMark_LoadFromDisk(function()
+	MPT_PlayerMark_ApplyHiddenMarkUI();	-- 按真实存档刷新勾选框（修正默认勾选假象）
+	MPT_PlayerMark_BroadcastHiddenMark();
+	for mptPlayerID in pairs(g_PlayerEntries) do
+		UpdatePlayerEntry(mptPlayerID);	-- 重刷本机房间条目（自愈读盘前的暂态渲染）
+	end
+end);
+-- 上下文跨房间存续（见 MPT_PlayerMark_ResetOnExit 注释）：上面的初始化广播每次上下文加载
+-- 只执行一次，退房重进不重载——再挂「房间界面升起/任一玩家连线」双钩子兜底重广播
+-- （BroadcastHiddenMark 自带 PlayerConfigurations nil 守卫；事件均为低频，广播量可忽略）。
+LuaEvents.HostGame_ShowStagingRoom.Add(MPT_PlayerMark_BroadcastHiddenMark);
+LuaEvents.JoiningRoom_ShowStagingRoom.Add(MPT_PlayerMark_BroadcastHiddenMark);
+if Events.MultiplayerPlayerConnected ~= nil then Events.MultiplayerPlayerConnected.Add(MPT_PlayerMark_BroadcastHiddenMark); end
 
 -- 条目4.9前端：左列双页签按钮（存储标签/房间玩家）——游内条目11 挂在 LoadSettings 回调内注册（无谓的延迟），前端直接进注册区
 Controls.MarkSavedTabButton:RegisterCallback(Mouse.eLClick, function() MPT_PlayerMark_SelectTab("saved"); end);
@@ -6870,7 +6892,8 @@ end	-- 条目4.7 do 块结束（寄存器上限适配）
 --      {Id=SteamID/网络ID, Name, Tag=1好友/2一般/3黑名单, Brief, ...}）——玩家自设提醒，
 --      不受隐身影响；显示 [ICON_x] + 标签名，Tooltip 为昵称+简要描述（[NEWLINE] 换行）。
 --   2) SQL 标记（前端配置库 TPT_PlayerData，Shared/PlayerMark/PlayerMark_Data.sql）——
---      按 Type 区分：Admin/Normal/Honor 为公共标记（玩家开隐身时不显示），Ban 始终显示；
+--      条目4.8修复取反：Admin/Normal/Honor 公共标记默认对其他玩家不可见，仅当该玩家广播过
+--      「允许显示」（HiddenPlayerInfo="F"，即其取消勾选「隐藏我的标记」）才显示；Ban 始终显示；
 --      日期时效校验（Start_Date 未来/End_Date 已过不显示）；Tooltip 优先 ToolTipType（定义见
 --      StagingRoom.xml ContextDefaults 条目4.8），否则 Desc，空则 Name/Icon 兜底。
 -- 效率：数据预加载时一次性构建 [SteamID]=记录 哈希表（SQL 顶层同步、本地档案异步读盘），
@@ -6998,9 +7021,11 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 		if playerID == Network.GetLocalPlayerID() and cfg:GetValue("HiddenPlayerInfo") ~= (g_MPT_MarkHidden and "T" or "F") then
 			cfg:SetValue("HiddenPlayerInfo", g_MPT_MarkHidden and "T" or "F");
 		end
-		local isHidden : boolean = cfg:GetValue("HiddenPlayerInfo") == "T";
+		-- 条目4.8修复：显示许可取反（fail-safe）——配置键 "F"（取消勾选「隐藏」）= 广播过的「允许显示」；
+		-- "T" 或从未广播（nil，含进房瞬间）= 不显示。默认对他人不可见，杜绝进房一瞬的可见窗口。
+		local isAllowed : boolean = cfg:GetValue("HiddenPlayerInfo") == "F";
 		local isPublic : boolean = (sqlRec.Type == "Admin" or sqlRec.Type == "Normal" or sqlRec.Type == "Honor");
-		if not (isHidden and isPublic) then	-- 隐身隐藏公共标记；Ban 与未隐身仍显示
+		if isAllowed or not isPublic then	-- Ban 始终显示；公共标记仅在收到「允许显示」后显示
 			entry.StatusLabel:SetText(sqlRec.Icon or "");
 			if sqlRec.ToolTipType ~= nil and sqlRec.ToolTipType ~= "" then
 				entry.StatusLabel:SetToolTipType(sqlRec.ToolTipType);
