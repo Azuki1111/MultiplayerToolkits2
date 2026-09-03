@@ -110,9 +110,12 @@ local function MPT_OnUnitAddedToMap(playerID : number, unitID : number)
 	if unit == nil then
 		return;
 	end
-	local greatPerson : table = unit:GetGreatPerson();
+	-- 条目26修复同族预防：GetGreatPerson() 返回引擎接口对象（条目21 已证 Get* 家族
+	--   撞 :table 赋值期类型检查），不加 :table 标注
+	local greatPerson = unit:GetGreatPerson();
 	if greatPerson ~= nil and greatPerson:IsGreatPerson() then
-		local notificationData : table = MPT_CreateNotificationData(playerID, greatPerson:GetIndividual());
+		-- nil 可疑返回值（greatPersonDetails 缺失时返回 nil），不加 :table 标注
+		local notificationData = MPT_CreateNotificationData(playerID, greatPerson:GetIndividual());
 		if notificationData ~= nil then
 			NotificationManager.SendNotification(localPlayerID, MPT_OtherPlayerRecruitedGPHash, notificationData);
 		end

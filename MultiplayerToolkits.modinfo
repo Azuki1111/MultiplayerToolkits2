@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>83</Version>
+		<Version>84</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -1031,9 +1031,14 @@
 			NOTIFICATION_OTHER_PLAYER_RECRUITED_GREATPERSON handler，他人招募伟人即发本地通知，
 			Activate 复用原版 OnClaimGreatPersonActivate）。开关收编条目12 MPT_Settings 两行
 			（NotificationPanel_DealRemind 沿用 1.67 原 key 默认开 / NotificationPanel_GreatPersonRecruited
-			自造 key 默认开），lua 侧订阅 MPT_Settings_Toggle 广播（DealRemind 加 TPT 双通道，
-			1.67 同装其面板可控）；与 1.67 同装时其 NDR/NOC 与本条目两文件四通配共载（交易提醒
-			双响）、与源 mod 2459772036 同装伟人通知双份，均建议二选一启用 -->
+			自造 key 默认开），lua 侧订阅 MPT_Settings_Toggle 单通道广播（条目26规范删
+			TPT_Settings_Toggle 双通道行，同条目25规范裁决）；与 1.67 同装时其 NDR/NOC 与
+			本条目两文件四通配共载（交易提醒双响）、与源 mod 2459772036 同装伟人通知双份，
+			均建议二选一启用。条目26修复：DealRemind 查册局部变量误加 :table 标注被引擎
+			赋值期类型检查拒绝（GetNotificationEntry 返回 hmake 'NotificationType' 引擎
+			实例非纯 Lua 表，每次通知到达 Type check failed 中断包裹 → 展开与提示音永不
+			执行），去标注同条目21 引擎对象标注坑，另补条目有册无 UI 实例时 m_Instance
+			nil 守卫 -->
 		<ImportFiles id="IG_NDR_Import">
 			<Properties>
 				<LoadOrder>1010</LoadOrder>
