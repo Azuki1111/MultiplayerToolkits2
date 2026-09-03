@@ -3,8 +3,8 @@
 -- ===========================================================================
 -- ==== 条目29：伟人界面增强（移植 联机工具箱1.65 BGP/UI/GreatPeoplePopup，作者 Infixo
 --	Better Great People，经 1.65 号码菌「修改背景」补丁）——整文件同名覆盖原版
---	Popups/GreatPeoplePopup（ReplaceUIScript 100000 + ImportFiles 100010，无 criteria，
---	运行时开关收编条目12）。基底 = 当前原版文件（保留引擎类型标注，1.65 版基于旧版
+--	Popups/GreatPeoplePopup（ReplaceUIScript 100000 + ImportFiles 100010，无 criteria
+--	无开关恒启用——条目29修订用户裁决：默认增强即可，不收编条目12）。基底 = 当前原版文件（保留引擎类型标注，1.65 版基于旧版
 --	游戏已剥标注，全部剥离属非功能 diff 不采纳），仅打 BGP 功能补丁（横幅逐处留痕）：
 --	①IndividualName 颜色包裹（_COLOR 后缀 tag 探测，原版无该 tag 走 GreatPeopleCS
 --	  与原版同色；XML 样式不改——原版 GreatPeopleLargeText 本就是 FontFlair14+SmallCaps20
@@ -16,9 +16,7 @@
 --	  等价且可运行时还原）
 --	⑤招募进度区加高（RecruitProgressBox 152→242、RecruitScroll 48→180、
 --	  RecruitInfo/ButtonStack 下移）+ 效果区收缩（EffectStackScroller 240→158），
---	  全部布局值由 MPT_BGP_ApplyLayout/MPT_BGP_ApplyInstanceLayout 按开关双向切换
---	开关 = 条目12 设置面板 BetterGreatPeople_Show（自造 key，1.65 无运行时开关，
---	其 SETTINGS_UI_BGP 为开局参数），监听 MPT_Settings_Toggle，面板开着时即时刷新。
+--	  全部布局值由 MPT_BGP_ApplyLayout/MPT_BGP_ApplyInstanceLayout 套用。
 --	原版尾部通配 include("GreatPeoplePopup_", true) 保留——XP1/XP2/巴比伦英雄模式
 --	覆盖文件（Expansion1/2、Babylon_Heroes）经此钩子加载，仅重定义
 --	GetPatronize*TT/IsReadOnly/AddCustomTabs/ResetGreatPeopleInstances，与本移植兼容；
@@ -67,10 +65,6 @@ local m_RefreshFunc			:ifunction = nil;
 local m_pGreatPeopleTabInstance:table	= nil;
 local m_pPrevRecruitedTabInstance:table = nil;
 
--- ==== 条目29（BGP）：伟人界面增强总开关（条目12 BetterGreatPeople_Show，默认开，
---	进局由 MPT_Settings_Toggle 广播存档值覆盖；面板按需打开，初始值在此期间不可见）====
-local m_bBGPEnabled				:boolean = true;
--- ---- 条目29
 -- ===========================================================================
 function ChangeDisplayPlayerID(bBackward)
 	
@@ -183,7 +177,7 @@ function AddRecruit( kData:table, kPerson:table )
 	local instance		:table = m_greatPersonPanelIM:GetInstance();
 	local classData		:table = GameInfo.GreatPersonClasses[kPerson.ClassID];
 	local individualData:table = GameInfo.GreatPersonIndividuals[kPerson.IndividualID];
-	MPT_BGP_ApplyInstanceLayout(instance);	-- ==== 条目29（BGP）：实例布局值按开关套用（开=BGP 加高进度区，关=原版）
+	MPT_BGP_ApplyInstanceLayout(instance);	-- ==== 条目29（BGP）：实例布局值套用（加高招募进度区）
 
 	if (kPerson.ClassID ~= nil) then
 		local portrait:string = "ICON_GENERIC_" .. classData.GreatPersonClassType;
@@ -205,12 +199,10 @@ function AddRecruit( kData:table, kPerson:table )
 --		颜色文本；原版无 _COLOR tag 走 GreatPeopleCS 兜底与原版 ColorSet 同色。
 --		XML 样式不改：原版 GreatPeopleLargeText 本就是 FontFlair14+SmallCaps20 同字体，
 --		仅多 ColorSet=GreatPeopleCS，内联 [COLOR] 标记覆盖之（1.65 换样式只为去掉 ColorSet）
-		if m_bBGPEnabled then
-			if Locale.HasTextKey(individualData.Name..'_COLOR') then
-				individualName = Locale.Lookup(individualData.Name..'_COLOR') .. individualName .. '[ENDCOLOR]';
-			else
-				individualName = '[COLOR:GreatPeopleCS]' .. individualName .. '[ENDCOLOR]';
-			end
+		if Locale.HasTextKey(individualData.Name..'_COLOR') then
+			individualName = Locale.Lookup(individualData.Name..'_COLOR') .. individualName .. '[ENDCOLOR]';
+		else
+			individualName = '[COLOR:GreatPeopleCS]' .. individualName .. '[ENDCOLOR]';
 		end
 -- ---- 条目29
 		instance.IndividualName:SetText( individualName );
@@ -435,11 +427,9 @@ function ViewCurrent( data:table )
 	
 	m_screenWidth = math.max(Controls.PeopleStack:GetSizeX(), 1024);
 	Controls.WoodPaneling:SetSizeX( m_screenWidth );
--- ==== 条目29（BGP）：底部延伸背景两段随内容同步宽度（关闭开关时不刷新，保持隐藏）
-	if m_bBGPEnabled then
-		Controls.WoodPaneling2:SetSizeX( m_screenWidth );
-		Controls.WoodPaneling3:SetSizeX( m_screenWidth );
-	end
+-- ==== 条目29（BGP）：底部延伸背景两段随内容同步宽度
+	Controls.WoodPaneling2:SetSizeX( m_screenWidth );
+	Controls.WoodPaneling3:SetSizeX( m_screenWidth );
 -- ---- 条目29
 
 	-- Clamp overall popup size to not be larger than contents (overspills in 4k and eyefinitiy rigs.)
@@ -470,8 +460,8 @@ end
 function FillRecruitInstance(instance:table, playerPoints:table, personData:table, classData:table)
 	instance.Country:SetText( playerPoints.PlayerName );
 -- ==== 条目29（BGP）：显示每回合伟人点数增速（联机抢伟人关键信息；XML 默认隐藏，
---	关闭开关或增速为 0 时不显示）
-	if m_bBGPEnabled and Round(playerPoints.PointsPerTurn,1) > 0 then
+--	增速为 0 时不显示）
+	if Round(playerPoints.PointsPerTurn,1) > 0 then
 		instance.AmountPerTurn:SetText("+" .. tostring(Round(playerPoints.PointsPerTurn,1)));
 		instance.AmountPerTurn:SetHide(false);
 	else
@@ -525,11 +515,8 @@ function ViewPast( data:table )
 	local PADDING_FOR_SPACE_AROUND_TEXT	:number = 20;
 
 -- ==== 条目29（BGP）：往期招募列表倒序显示——最新招募在最上（1.65 用 StackGrowth Up
---	实现，此处 XML 保持原版 Down 改反序遍历，视觉等价且可随开关运行时还原）
-	local nFirst:number, nLast:number, nStep:number = 1, #data.Timeline, 1;
-	if m_bBGPEnabled then
-		nFirst, nLast, nStep = #data.Timeline, 1, -1;
-	end
+--	实现，此处 XML 保持原版 Down 改反序遍历，视觉等价）
+	local nFirst:number, nLast:number, nStep:number = #data.Timeline, 1, -1;
 	for i = nFirst, nLast, nStep do
 		local kPerson	:table	= data.Timeline[i];
 
@@ -1105,54 +1092,28 @@ function OnPreviousRecruitedClick( uiSelectedButton:table )
 end
 
 -- ===========================================================================
---	条目29（BGP）：伟人界面增强——开关与布局切换
---	所有 BGP 布局改动在 Lua 按开关 m_bBGPEnabled 双向套用（开=BGP 值，关=原版值），
+--	条目29（BGP）：伟人界面增强——布局套用（条目29修订：用户裁决去开关恒启用，
+--	原按 m_bBGPEnabled 双向切换的分支与 MPT_Settings_Toggle 订阅已删）
 --	XML 仅纯插入新控件（WoodPaneling2/3、AmountPerTurn，默认 Hidden）不改原版行。
---	顶层控件在 Initialize 与开关切换时套用；实例控件在 AddRecruit 建实例时套用
+--	顶层控件在 Initialize 套用；实例控件在 AddRecruit 建实例时套用
 --	（EffectStackScroller 等位于 PanelInstance 模板内，无法在上下文初始化期触达）。
 -- ===========================================================================
 
--- 顶层布局套用：背景延伸显隐 + 主背景高度（768=原版 / 520+延伸两段=BGP）
+-- 顶层布局套用：主背景收缩 + 底部延伸背景两段显形（原版高 768，由本函数改 520）
 function MPT_BGP_ApplyLayout()
-	if m_bBGPEnabled then
-		Controls.WoodPaneling:SetSizeY(520);
-		Controls.WoodPaneling2:SetHide(false);
-		Controls.WoodPaneling3:SetHide(false);
-	else
-		Controls.WoodPaneling:SetSizeY(768);
-		Controls.WoodPaneling2:SetHide(true);
-		Controls.WoodPaneling3:SetHide(true);
-	end
+	Controls.WoodPaneling:SetSizeY(520);
+	Controls.WoodPaneling2:SetHide(false);
+	Controls.WoodPaneling3:SetHide(false);
 end
 
--- 实例布局套用：招募进度区加高、效果区收缩（数值 = 原版 XML ↔ 1.65 BGP XML）
+-- 实例布局套用：招募进度区加高、效果区收缩（数值 = 1.65 BGP XML，原版值见行尾注）
 function MPT_BGP_ApplyInstanceLayout( instance:table )
-	if m_bBGPEnabled then
-		instance.EffectStackScroller:SetSizeY(158);		-- 原版 240
-		instance.RecruitProgressBox:SetSizeY(242);		-- 原版 152
-		instance.RecruitScroll:SetSizeY(180);			-- 原版 48（宽 182 与 parent 等效不动）
-		instance.RecruitInfo:SetOffsetVal(0, -32);		-- 原版 0,10
-		instance.RecruitButtonStack:SetOffsetVal(0, 90);-- 原版 0,6
-	else
-		instance.EffectStackScroller:SetSizeY(240);
-		instance.RecruitProgressBox:SetSizeY(152);
-		instance.RecruitScroll:SetSizeY(48);
-		instance.RecruitInfo:SetOffsetVal(0, 10);
-		instance.RecruitButtonStack:SetOffsetVal(0, 6);
-	end
+	instance.EffectStackScroller:SetSizeY(158);		-- 原版 240
+	instance.RecruitProgressBox:SetSizeY(242);		-- 原版 152
+	instance.RecruitScroll:SetSizeY(180);			-- 原版 48（宽 182 与 parent 等效不动）
+	instance.RecruitInfo:SetOffsetVal(0, -32);		-- 原版 0,10
+	instance.RecruitButtonStack:SetOffsetVal(0, 90);-- 原版 0,6
 end
-
--- 条目12 设置广播响应：翻转开关 → 套用顶层布局 → 面板开着则即时重建内容
-function OnMPT_BGP_Settings_Toggle( ParameterId:string, Value:boolean )
-	if ParameterId == "BetterGreatPeople_Show" then
-		m_bBGPEnabled = Value;
-		MPT_BGP_ApplyLayout();
-		if (not ContextPtr:IsHidden()) then
-			Refresh();
-		end
-	end
-end
-LuaEvents.MPT_Settings_Toggle.Add(OnMPT_BGP_Settings_Toggle);
 
 -- ===========================================================================
 -- FOR OVERRIDE
@@ -1298,7 +1259,7 @@ function Initialize()
 
 	m_numTabs = 0;
 
-	MPT_BGP_ApplyLayout();	-- ==== 条目29（BGP）：初始布局按开关套用（进局后由 MPT_Settings_Toggle 广播存档值再校准）
+	MPT_BGP_ApplyLayout();	-- ==== 条目29（BGP）：套用 BGP 顶层布局（收缩主背景 + 显形延伸背景）
 
 	-- Tab setup and setting of default tab.
 	m_tabs = CreateTabs( Controls.TabContainer, 42, 34, UI.GetColorValueFromHexLiteral(0xFF331D05) );

@@ -5,8 +5,8 @@
 
 	<Container							ID="PopupContainer"						Anchor="C,C"									Size="parent,768">
 		<ScrollPanel					ID="PeopleScroller"													Offset="0,0"		Size="parent,parent"	Vertical="0" AutoScrollBar="1">
-			<!-- ==== 条目29（BGP 伟人界面增强）：底部延伸背景两段（纯插入默认隐藏，开关
-					BetterGreatPeople_Show 开启时由 Lua 显形并把主背景 WoodPaneling 768 520 切换；
+			<!-- ==== 条目29（BGP 伟人界面增强）：底部延伸背景两段（纯插入默认隐藏，由 Lua
+					Initialize 时显形并把主背景 WoodPaneling 768 520 切换，恒启用无开关；
 					1.65 原版此处还注释掉了水平滚动条，属不可运行时还原的纯装饰改动，不采纳） -->
 			<Image							ID="WoodPaneling3"					Anchor="C,B"						Offset="0,50"					Size="214,200"    		Texture="GreatPeople_Background" StretchMode="Tile" Hidden="1"/>
 			<Image							ID="WoodPaneling2"					Anchor="C,B"						Offset="0,0"					Size="214,200"    		Texture="GreatPeople_Background" StretchMode="Tile" Hidden="1"/>

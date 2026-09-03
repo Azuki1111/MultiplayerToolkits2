@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>89</Version>
+		<Version>90</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -1227,8 +1227,8 @@
 			号码菌「修改背景」补丁，目录 InGame/BetterGreatPeople/ 描述性命名）——整文件
 			替换原版 Popups/GreatPeoplePopup（条目15/17/21-25 模式：ReplaceUIScript 100000
 			LuaContext=GreatPeoplePopup + ImportFiles 100010，XML 同名覆盖文件名必须保持
-			原名）。无 criteria（运行时开关在 Lua 内，收编条目12 BetterGreatPeople_Show
-			行，见 InGame/SettingsPanel/MPT_Settings.sql）；原版尾部通配 include
+			原名）。无 criteria 无开关恒启用（条目29修订用户裁决：默认增强即可，
+			不收编条目12）；原版尾部通配 include
 			("GreatPeoplePopup_", true) 保留，XP1/XP2/巴比伦英雄模式覆盖文件正常挂钩 -->
 		<ReplaceUIScript id="IG_BGP_Replace">
 			<Properties>

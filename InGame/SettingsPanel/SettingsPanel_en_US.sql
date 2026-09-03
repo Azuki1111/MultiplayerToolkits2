@@ -27,9 +27,7 @@ VALUES
 	('LOC_MPT_SETTINGS_NDR_NAME',	'en_US',	'Deal Sound Reminder'),
 	('LOC_MPT_SETTINGS_NDR_TT',	'en_US',	'Plays a sound when another player sends you a deal or diplomatic request (item 26 NDR; notification auto-expand is not affected by this switch, same as 1.67)'),
 	('LOC_MPT_SETTINGS_GPR_NAME',	'en_US',	'Great Person Recruited Notification'),
-	('LOC_MPT_SETTINGS_GPR_TT',	'en_US',	'Sends you a notification when another player recruits a Great Person (item 26)'),
-	('LOC_MPT_SETTINGS_BGP_NAME',	'en_US',	'Enhanced Great People Screen'),
-	('LOC_MPT_SETTINGS_BGP_TT',	'en_US',	'Shows per-turn Great People point rates in the recruitment race, enlarges the recruit progress area, lists past recruits newest-first and extends the background (item 29, ported from 1.65 BGP)');
+	('LOC_MPT_SETTINGS_GPR_TT',	'en_US',	'Sends you a notification when another player recruits a Great Person (item 26)');
 -- The initial item-20 smart timer switch texts (LOC_MPT_SETTINGS_TIMER_ENABLE_*) were
 -- replaced by the 4-mode Game config parameter in the item-20 extension; texts moved to
 -- InGame/SmartTurnTimer/ localized SQL files.
