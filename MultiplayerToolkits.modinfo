@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>85</Version>
+		<Version>86</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -1091,7 +1091,7 @@
 			LuaContext；DealRemind 链式覆写 OnDefaultAddNotification（外交通知自动展开 + 九种
 			请求文本命中播提示音，3 秒冷却），GreatPerson 链式覆写 RegisterHandlers（挂
 			NOTIFICATION_OTHER_PLAYER_RECRUITED_GREATPERSON handler，他人招募伟人即发本地通知，
-			Activate 复用原版 OnClaimGreatPersonActivate）。开关收编条目12 MPT_Settings 两行
+			Activate 复用原版 OnClaimGreatPersonActivate，条目26扩展入栈即自动展开不加提示音）。开关收编条目12 MPT_Settings 两行
 			（NotificationPanel_DealRemind 沿用 1.67 原 key 默认开 / NotificationPanel_GreatPersonRecruited
 			自造 key 默认开），lua 侧订阅 MPT_Settings_Toggle 单通道广播（条目26规范删
 			TPT_Settings_Toggle 双通道行，同条目25规范裁决）；与 1.67 同装时其 NDR/NOC 与

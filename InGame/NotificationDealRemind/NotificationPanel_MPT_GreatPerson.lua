@@ -22,6 +22,9 @@
 --   3. 未相遇玩家名判定补 nil 防御 + 观察者分支——源 mod 对 Players[GetLocalPlayer()]
 --      直接取 GetDiplomacy，观察者模式（GetLocalPlayer()=-1）下踩空崩脚（本 mod 支持
 --      BSM 观察者局，条目23/24 场景）；观察者按 BSM「一切可见」语义直接显示真名
+--   4. 入栈即自动展开（用户裁决，条目26扩展）：通知入面板时经 handler.Add 包裹调
+--      OnMouseEnterNotification 原版悬停路径（同条目26 DealRemind 展开机制），不加
+--      提示音——DealRemind 的响铃不引入，保留源 mod AddSound=ALERT_NEUTRAL 到达音
 -- 开关订阅：仅 MPT_Settings_Toggle 单通道（key 为本 mod 自造，1.67 面板无此参数，
 --   TPT 通道无意义；不同于同条目 DealRemind 沿用 1.67 原 key 走双通道）
 -- 与源 mod 同装注意：双方都会包裹 RegisterHandlers（BASE 链兼容）但 UnitAddedToMap
@@ -39,6 +42,7 @@ local BASE_RegisterHandlers	= RegisterHandlers;
 -- ===========================================================================
 local MPT_OtherPlayerRecruitedGPHash : number = DB.MakeHash("NOTIFICATION_OTHER_PLAYER_RECRUITED_GREATPERSON");
 local MPT_GreatPersonEnabled : boolean = true;	-- 开关（默认开；初值仅 LoadScreenClose 广播前生效）
+local MPT_BASE_NotificationAdd = nil;	-- 条目26扩展：GPR handler 原 Add（首次 RegisterHandlers 捕获，幂等守卫防调试热载重复包裹）
 
 -- ============================================================================
 -- MPT_GetRecruiterName(playerID : number) : string——招募者名。
@@ -127,14 +131,31 @@ end
 --   调用，晚于本文件通配注入 → 包裹版生效）。先 BASE 注册全部原版/官方扩展/其他扩展
 --   处理器，再挂本功能的通知类型：MakeDefaultHandlers 提供默认显隐/声音/失效行为，
 --   Activate 复用原版 OnClaimGreatPersonActivate（点击跳转伟人界面，NotificationPanel.lua
---   1347 行，CLAIM_GREAT_PERSON 通知同款）；AddSound 沿用源 mod 的 ALERT_NEUTRAL
+--   1347 行，CLAIM_GREAT_PERSON 通知同款）；AddSound 沿用源 mod 的 ALERT_NEUTRAL。
+--   条目26扩展（用户裁决）：Add 包裹——BASE 全包裹链（含条目19/DealRemind 覆写）创建
+--   条目后查册并 OnMouseEnterNotification 自动展开（同 DealRemind 展开机制，无提示音；
+--   GP 类型不触发 DealRemind 的外交类型门控故无双展开）
 -- ============================================================================
 function RegisterHandlers()
 	BASE_RegisterHandlers();
 
-	g_notificationHandlers[MPT_OtherPlayerRecruitedGPHash] = MakeDefaultHandlers();
-	g_notificationHandlers[MPT_OtherPlayerRecruitedGPHash].AddSound = "ALERT_NEUTRAL";
-	g_notificationHandlers[MPT_OtherPlayerRecruitedGPHash].Activate = OnClaimGreatPersonActivate;
+	local kHandlers = MakeDefaultHandlers();
+	g_notificationHandlers[MPT_OtherPlayerRecruitedGPHash] = kHandlers;
+	kHandlers.AddSound = "ALERT_NEUTRAL";
+	kHandlers.Activate = OnClaimGreatPersonActivate;
+
+	if MPT_BASE_NotificationAdd == nil then
+		MPT_BASE_NotificationAdd = kHandlers.Add;	-- 全包裹链最终版（含条目19/DealRemind 覆写）
+	end
+	local BASE_Add = MPT_BASE_NotificationAdd;
+	kHandlers.Add = function(pNotification)
+		BASE_Add(pNotification);
+		-- 入栈即自动展开（条目26扩展）：发送侧已按开关门控，此处不再判
+		local notificationEntry = GetNotificationEntry(pNotification:GetPlayerID(), pNotification:GetID());
+		if notificationEntry ~= nil and notificationEntry.m_Instance ~= nil then
+			OnMouseEnterNotification(notificationEntry.m_Instance);
+		end
+	end
 end
 
 -- ============================================================================
