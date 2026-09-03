@@ -194,40 +194,45 @@
 		</Container>
   </Instance>
 
-	<!-- 条目24：领袖头像富 Tooltip（自定义 ToolTipType，替换原纯文本 Tooltip——用户裁决，结构/样式
-		参照点击头像打开的 DiplomacyActionView 默认面板（Exp2 Replacements/DiplomacyActionView.xml
-		L413-429 + IconInfoInstance/TextInfoInstance L478-495）：DiplomacyCivHeaderLarge 头两行 +
-		FontFlair14 区头（原版 tag LOC_LOADING_FEATURES_ABILITIES）+ Line 分隔线 + DawnText 描述 +
-		Controls_CircleRim40 圈图标内容行。模板为全局单例，每次悬停由 Lua 重新填充；
-		可变行经 InstanceManager 注入 TraitStack。底板沿用 TeamTooltip 参数（Controls_Tooltip 九宫格） -->
+	<!-- 条目24：领袖头像富 Tooltip（用户裁决：仿准备房间领袖详情面板——原版 AdvancedSetup.xml
+		CivToolTip 实例族 + PlayerSetupLogic.lua PopulateLeaderTooltip L833-878 结构取证）：
+		EnhancedToolTip 底板 + 居中区头 + 圈图标行三态。模板为全局单例，每次悬停由 Lua 重新填充；
+		可变行经 InstanceManager 注入 InfoStack -->
 	<ToolTipType Name="MPT_LeaderInfoTooltip" >
-		<!-- 宽 400 = 内容 WrapWidth 340 + InnerPadding 30×2（帧边框 SliceCorner 28，内边距 30>28 保证
-			文字完整包含在帧内），高度由 Lua 按内容栈实测收口（不用 AutoSize：此前背图参与测量失控）。
-			背景 = 原版 EnhancedToolTip 样式（Civ6_Styles：Controls_EnhancedToolTip 九宫格
-			SliceCorner=28,22 / SliceTextureSize=54,54，TutorialGoals 同款自适应框） -->
+		<!-- 宽 400 = 行宽 340 + 帧 InnerPadding 30×2（帧边框 SliceCorner 28，内边距 30>28 文字完整
+			包含在帧内）；高度不固定——Lua 每次悬停按 InfoStack 实测收口（原版 PlayerSetupLogic
+			L876-877 CalculateSize+ReprocessAnchoring 同款收尾），每个领袖条目数不同自适应 -->
 		<Grid		ID="BG"					Size="400,75" Style="EnhancedToolTip" InnerPadding="30,26" >
-			<Stack	ID="InfoStack"			StackGrowth="Down" StackPadding="4">
-				<Label	ID="LeaderName"	Style="DiplomacyCivHeaderLarge" WrapWidth="340"/>
-				<Label	ID="CivName"		Style="DiplomacyCivHeaderLarge" Color0="Dark_Gray" WrapWidth="340"/>
-				<Label	ID="HeaderLabel"	Style="FontFlair14" FontStyle="Shadow" String="{LOC_LOADING_FEATURES_ABILITIES:upper}" SmallCapsType="EveryWord" SmallCaps="20" WrapWidth="340"/>
-				<Line	ID="Divider"		Start="0,0" End="350,0" Width="2" Color="200,200,200,100"/>
-				<Stack	ID="TraitStack"		StackGrowth="Down" StackPadding="10"/>
-			</Stack>
+			<Stack	ID="InfoStack"			StackGrowth="Down" StackPadding="8"/>
 		</Grid>
 	</ToolTipType>
 
-	<!-- 条目24：领袖富 Tooltip 特性行实例（= 面板 IconInfoInstance/TextInfoInstance 合一：
-		特色内容行带 CircleRim40 圈+图标、文字缩进 36px（Lua 按 RowRim 显隐切换 RowTextStack 缩进），
-		领袖/文明能力行无图标顶格；RowStats 为金色属性行（前置科文/造价/战力，GetPreText）） -->
+	<!-- 居中区头（AdvancedSetup HeaderInstance 原样：DivHeader + FontFlair18 glow ShellHeader 大写名） -->
+	<Instance Name="MPT_SectionHeaderInstance">
+		<Grid		ID="HeaderRoot"			Style="DivHeader" Anchor="C,T">
+			<Label	ID="HeaderText"			Style="FontFlair18" FontStyle="glow" ColorSet="ShellHeader" SmallCaps="22" SmallCapsLeading="0" SmallCapsType="EveryWord" Anchor="C,C" Align="Center" Offset="0,1" WrapWidth="parent-40"/>
+		</Grid>
+	</Instance>
+
+	<!-- 圈图标行三态合一（AdvancedSetup IconInstance/CivIconInstance/IconInfoInstance 原样三圈）：
+		领袖能力 = CircleBacking45 + 头像45 / 文明能力 = CircleBacking44+Darker/Lighter 叠层 + 徽记44 /
+		特色内容 = CircleCompass + 图标38；标题 FontFlair14 ShellHeader + 描述 DawnText（原样），文字缩进 55px -->
 	<Instance Name="MPT_TraitRowInstance">
 		<Container	ID="RowRoot"		Size="340,auto">
-			<Image	ID="RowRim"			Texture="Controls_CircleRim40" Size="40,40" Offset="-5,-2" Color="255,255,255,150" Hidden="1">
-				<Image	ID="RowIcon"	Anchor="C,C" Size="32,32"/>
+			<Image	ID="RowCircleLeader"	Texture="Controls_CircleBacking45" Size="51,51" Offset="0,-2" Hidden="1">
+				<Image	ID="RowIconLeader"	Anchor="C,C" Size="45,45" Offset="0,-1"/>
 			</Image>
-			<Stack	ID="RowTextStack"	Offset="0,0" StackGrowth="Bottom" StackPadding="4">
-				<Label	ID="RowTitle"	Style="FontFlair14" FontStyle="Shadow" SmallCapsType="EveryWord" SmallCaps="20" WrapWidth="340"/>
-				<Label	ID="RowStats"	Style="FontNormal12" FontStyle="Shadow" Color0="255,200,0,255" WrapWidth="340"/>
-				<Label	ID="RowDesc"	Style="DawnText" WrapWidth="340"/>
+			<Image	ID="RowCircleCiv"		Texture="CircleBacking44" Size="44,44" Hidden="1">
+				<Image	ID="RowIconCivShadows"	Size="44,44" Texture="Circle44_Darker" Color="0,0,0,50"/>
+				<Image	ID="RowIconCivHighlights"	Size="44,44" Texture="Circle44_Lighter" Color="255,255,255,100"/>
+				<Image	ID="RowIconCiv"		Anchor="C,C" Size="44,44"/>
+			</Image>
+			<Image	ID="RowCircleUnique"	Texture="Controls_CircleCompass" Size="52,53" Offset="0,-2" Color="34,58,80,150" Hidden="1">
+				<Image	ID="RowIconUnique"	Anchor="C,C" Size="38,38"/>
+			</Image>
+			<Stack	ID="RowTextStack"	StackGrowth="Bottom" StackPadding="4" Offset="55,0">
+				<Label	ID="RowTitle"		Style="FontFlair14" FontStyle="Shadow" ColorSet="ShellHeader" SmallCapsType="EveryWord" SmallCaps="20" WrapWidth="285"/>
+				<Label	ID="RowDesc"		Style="DawnText" WrapWidth="285"/>
 			</Stack>
 		</Container>
 	</Instance>

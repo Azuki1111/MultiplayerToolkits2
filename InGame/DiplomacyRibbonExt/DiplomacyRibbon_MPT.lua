@@ -279,32 +279,40 @@ end
 
 
 -- ===========================================================================
---	条目24：领袖头像富 Tooltip（用户裁决：原纯文本 Tooltip 换自定义 ToolTipType
---	MPT_LeaderInfoTooltip，内容参考点击头像打开的领袖面板——领袖名/文明名 + 特征与能力 +
---	领袖/文明特性行 + 特色单位/建筑/区域/改良行，属性行沿用 GetPreText 前置科文/造价/战力统计）。
---	模板为全局单例，每次悬停重新填充；悬停期间回调被引擎反复触发，按「playerID|相遇态」去重
---	（官方去重先例 WorldViewIconsManager L734『Don't rebuild tooltip everyframe』+ WorldRankings
---	TeamTooltip 同款）；无本地玩家/未遇见玩家口径与原 LeaderIcon:GetToolTipString 一致。
+--	条目24：领袖头像富 Tooltip（用户裁决：仿准备房间领袖详情面板——原版 AdvancedSetup.xml CivToolTip
+--	实例族 + PlayerSetupLogic.lua PopulateLeaderTooltip L833-878 结构取证）：
+--	  结构 = EnhancedToolTip 底板 + 居中区头（HeaderInstance 原样：DivHeader + FontFlair18 glow
+--	  ShellHeader，大写领袖/文明名）+ 圈图标行三态——领袖能力 CircleBacking45（图标=领袖头像
+--	  ICON_<LeaderType>）、文明能力 CircleBacking44+Darker/Lighter（图标=文明徽记 ICON_<CivType>）、
+--	  特色内容 CircleCompass（区域/建筑/改良/单位，行须有真名与描述过滤非特色条目）+ TextStack
+--	  （FontFlair14 ShellHeader 标题 + DawnText 描述，缩进 55px）；标题 Locale.ToUpper 照搬原版。
+--	属性行（解锁科文/造价/战力等 GetPreText）按用户裁决去除。
+--	尺寸收尾照搬原版（PlayerSetupLogic L876-877）：InfoStack:CalculateSize()+ReprocessAnchoring()
+--	后按实测高收口外框，且在每次回调都执行——首次构建用全新控件、当帧文本布局未完成实测偏小
+--	（用户实测第一次悬停偏小第二次才对），悬停期间引擎反复触发回调（WorldRankings TeamTooltip
+--	同款取证），第二次起以已布局控件实测自愈；去重仅免行重建。
 -- ===========================================================================
 local MPT_TipControls = {};			-- ToolTipType 控件表（TTManager 填充）
-local MPT_TipRowIM = nil;			-- 特性行实例管理器（父控件 = MPT_TipControls.TraitStack）
-local MPT_TipRowCache = {};			-- 结构化特性行缓存（GameInfo 静态数据，按玩家缓存）
+local MPT_TipHeaderIM = nil;		-- 居中区头实例管理器（MPT_SectionHeaderInstance → InfoStack）
+local MPT_TipRowIM = nil;			-- 圈图标行实例管理器（MPT_TraitRowInstance → InfoStack）
+local MPT_TipRowCache = {};			-- 结构化条目缓存（GameInfo 静态数据，按玩家缓存）
 local MPT_TipCurrent = nil;			-- 当前 tooltip 承载的去重键
 
 -- 懒初始化（首次悬停时模板必已随本上下文 XML 注册；nil 防御——同名覆盖未生效时静默回退无 tooltip）
 function MPT_EnsureLeaderTooltip()
 	if MPT_TipRowIM == nil then
 		TTManager:GetTypeControlTable("MPT_LeaderInfoTooltip", MPT_TipControls);
-		if MPT_TipControls.TraitStack ~= nil then
-			MPT_TipRowIM = InstanceManager:new("MPT_TraitRowInstance", "RowRoot", MPT_TipControls.TraitStack);
+		if MPT_TipControls.InfoStack ~= nil then
+			MPT_TipHeaderIM = InstanceManager:new("MPT_SectionHeaderInstance", "HeaderRoot", MPT_TipControls.InfoStack);
+			MPT_TipRowIM = InstanceManager:new("MPT_TraitRowInstance", "RowRoot", MPT_TipControls.InfoStack);
 		end
 	end
 	return MPT_TipRowIM ~= nil;
 end
 
--- 结构化特性行 {sIcon=, sTitle=, sStats=, sDesc=}：条件与顺序照搬 Trait2Text（区域→建筑→改良→单位，
--- 各表行须有真名与描述过滤非特色条目；无特色内容的特性回退特性自身名/描述，即领袖/文明能力行，
--- 能力行在前、特色内容行在后），属性行复用 GetPreText（前置科文/造价/近战力/移动力/远程力等）
+-- 结构化条目（有序）：{kind="header", sText=} | {kind="leader"|"civ"|"unique", sIcon=, sTitle=, sDesc=}
+-- 顺序照搬准备房间面板（PopulateLeaderTooltip）：领袖区头 → 领袖能力行 → 文明区头 → 文明能力行 →
+-- 特色内容行（区域→建筑→改良→单位，两特性来源合并扫描，各表行须有真名与描述过滤非特色条目）
 function MPT_GetLeaderInfoSections(playerID)
 	if MPT_TipRowCache[playerID] ~= nil then
 		return MPT_TipRowCache[playerID];
@@ -314,52 +322,55 @@ function MPT_GetLeaderInfoSections(playerID)
 	if pPlayerConfig == nil then
 		return tSections;
 	end
+	local sLeaderType = pPlayerConfig:GetLeaderTypeName();
+	local sCivType = pPlayerConfig:GetCivilizationTypeName();
+	-- 领袖区：区头（大写名）+ 领袖特性行（圈=领袖头像）
+	table.insert(tSections, {kind="header", sText=Locale.ToUpper(Locale.Lookup(pPlayerConfig:GetLeaderName()))});
+	for row in GameInfo.LeaderTraits() do
+		if row.LeaderType == sLeaderType then
+			local tTrait = GameInfo.Traits[row.TraitType];
+			if tTrait ~= nil and tTrait.Name and tTrait.Description and tTrait.Name ~= Locale.Lookup(tTrait.Name) and tTrait.Description ~= Locale.Lookup(tTrait.Description) then
+				table.insert(tSections, {kind="leader", sIcon="ICON_"..sLeaderType, sTitle=Locale.ToUpper(Locale.Lookup(tTrait.Name)), sDesc=Locale.Lookup(tTrait.Description)});
+			end
+		end
+	end
+	-- 文明区：区头 + 文明特性行（圈=文明徽记）
+	table.insert(tSections, {kind="header", sText=Locale.ToUpper(Locale.Lookup(pPlayerConfig:GetCivilizationName()))});
+	for row in GameInfo.CivilizationTraits() do
+		if row.CivilizationType == sCivType then
+			local tTrait = GameInfo.Traits[row.TraitType];
+			if tTrait ~= nil and tTrait.Name and tTrait.Description and tTrait.Name ~= Locale.Lookup(tTrait.Name) and tTrait.Description ~= Locale.Lookup(tTrait.Description) then
+				table.insert(tSections, {kind="civ", sIcon="ICON_"..sCivType, sTitle=Locale.ToUpper(Locale.Lookup(tTrait.Name)), sDesc=Locale.Lookup(tTrait.Description)});
+			end
+		end
+	end
+	-- 特色内容区（区域→建筑→改良→单位，两特性来源合并）
 	local tTraits = {};
 	for row in GameInfo.LeaderTraits() do
-		if row.LeaderType == pPlayerConfig:GetLeaderTypeName() then
-			table.insert(tTraits, row.TraitType);
-		end
+		if row.LeaderType == sLeaderType then table.insert(tTraits, row.TraitType); end
 	end
 	for row in GameInfo.CivilizationTraits() do
-		if row.CivilizationType == pPlayerConfig:GetCivilizationTypeName() then
-			table.insert(tTraits, row.TraitType);
-		end
+		if row.CivilizationType == sCivType then table.insert(tTraits, row.TraitType); end
 	end
 	for _,TraitType in ipairs(tTraits) do
-		local nItems = 0;
 		for row in GameInfo.Districts() do
 			if row.TraitType == TraitType and row.Name and row.Name ~= Locale.Lookup(row.Name) and row.Description then
-				table.insert(tSections, {sIcon="ICON_"..row.DistrictType, sTitle=Locale.Lookup(row.Name), sStats=GetPreText(row.DistrictType), sDesc=Locale.Lookup(row.Description)});
-				nItems = nItems + 1;
+				table.insert(tSections, {kind="unique", sIcon="ICON_"..row.DistrictType, sTitle=Locale.ToUpper(Locale.Lookup(row.Name)), sDesc=Locale.Lookup(row.Description)});
 			end
 		end
 		for row in GameInfo.Buildings() do
 			if row.TraitType == TraitType and row.Name and row.Name ~= Locale.Lookup(row.Name) and row.Description then
-				table.insert(tSections, {sIcon="ICON_"..row.BuildingType, sTitle=Locale.Lookup(row.Name), sStats=GetPreText(row.BuildingType), sDesc=Locale.Lookup(row.Description)});
-				nItems = nItems + 1;
+				table.insert(tSections, {kind="unique", sIcon="ICON_"..row.BuildingType, sTitle=Locale.ToUpper(Locale.Lookup(row.Name)), sDesc=Locale.Lookup(row.Description)});
 			end
 		end
 		for row in GameInfo.Improvements() do
 			if row.TraitType == TraitType and row.Name and row.Name ~= Locale.Lookup(row.Name) and row.Description then
-				table.insert(tSections, {sIcon="ICON_"..row.ImprovementType, sTitle=Locale.Lookup(row.Name), sStats=GetPreText(row.ImprovementType), sDesc=Locale.Lookup(row.Description)});
-				nItems = nItems + 1;
+				table.insert(tSections, {kind="unique", sIcon="ICON_"..row.ImprovementType, sTitle=Locale.ToUpper(Locale.Lookup(row.Name)), sDesc=Locale.Lookup(row.Description)});
 			end
 		end
 		for row in GameInfo.Units() do
 			if row.TraitType == TraitType and row.Name and row.Name ~= Locale.Lookup(row.Name) and row.Description then
-				table.insert(tSections, {sIcon="ICON_"..row.UnitType, sTitle=Locale.Lookup(row.Name), sStats=GetPreText(row.UnitType), sDesc=Locale.Lookup(row.Description)});
-				nItems = nItems + 1;
-			end
-		end
-		if nItems == 0 then
-			for row in GameInfo.Traits() do
-				if row.TraitType == TraitType and row.Name and row.Description then
-					local LocaleName = Locale.Lookup(row.Name);
-					local LocaleDescription = Locale.Lookup(row.Description);
-					if row.Name ~= LocaleName and row.Description ~= LocaleDescription then
-						table.insert(tSections, {sIcon=nil, sTitle=LocaleName, sStats="", sDesc=LocaleDescription});
-					end
-				end
+				table.insert(tSections, {kind="unique", sIcon="ICON_"..row.UnitType, sTitle=Locale.ToUpper(Locale.Lookup(row.Name)), sDesc=Locale.Lookup(row.Description)});
 			end
 		end
 	end
@@ -367,12 +378,13 @@ function MPT_GetLeaderInfoSections(playerID)
 	return tSections;
 end
 
--- 尺寸确定性收口：宽度恒 400（内容 WrapWidth 340 + EnhancedToolTip 帧 InnerPadding 30×2），
--- 高度 = 内容栈实测 + InnerPadding 26×2（每个领袖特性行数不同，逐次悬停实测，不固定高度）。
+-- 尺寸确定性收口：宽度恒 400（行宽 340 + EnhancedToolTip 帧 InnerPadding 30×2），高度 = 内容栈
+-- 实测 + 26×2。收尾两连照搬原版 PlayerSetupLogic L876-877（CalculateSize + ReprocessAnchoring）。
 -- 不用 AutoSize 的原因：此前 parent,parent 背景图参与 AutoSize 测量会把外框撑到历史最大/屏高
 -- 且不再收缩（用户实测整幅背景拖长上千像素、宽度同时失控致内容贴左缘不对齐）
 function MPT_ShrinkLeaderTooltip()
 	MPT_TipControls.InfoStack:CalculateSize();
+	MPT_TipControls.InfoStack:ReprocessAnchoring();
 	local _, h = MPT_TipControls.InfoStack:GetSizeVal();
 	MPT_TipControls.BG:SetSizeVal(400, h + 52);
 end
@@ -392,62 +404,56 @@ function MPT_FillLeaderTooltip(playerID)
 	if not bNoLocal and playerID ~= localPlayerID and Players[localPlayerID] ~= nil then
 		bUnmet = not Players[localPlayerID]:GetDiplomacy():HasMet(playerID);
 	end
-	-- 悬停期间引擎反复触发回调：同键直接复用已建内容（GameInfo 数据静态、相遇态变化才重建）
+	-- 行重建按「playerID|相遇态」去重（GameInfo 数据静态、相遇态变化才重建）；尺寸收口在去重之外
+	-- 每次回调都执行——首次构建用全新控件、当帧文本布局未完成实测偏小（用户实测第一次悬停偏小
+	-- 第二次才对），悬停期间引擎反复触发回调，第二次起以已布局控件实测自愈
 	local sKey = tostring(playerID).."|"..tostring(bUnmet).."|"..tostring(bNoLocal);
-	if MPT_TipCurrent == sKey then
-		return;
-	end
-	MPT_TipCurrent = sKey;
-	MPT_TipRowIM:ResetInstances();
+	if MPT_TipCurrent ~= sKey then
+		MPT_TipCurrent = sKey;
+		MPT_TipHeaderIM:ResetInstances();
+		MPT_TipRowIM:ResetInstances();
 
-	if bNoLocal then
-		-- 无本地玩家：原口径返回空串 → 清空全部行（tooltip 收缩为空底板）
-		MPT_TipControls.LeaderName:SetText("");
-		MPT_TipControls.CivName:SetHide(true);
-		MPT_TipControls.HeaderLabel:SetHide(true);
-		MPT_TipControls.Divider:SetHide(true);
-		MPT_ShrinkLeaderTooltip();
-		return;
-	end
-
-	if bUnmet then
-		-- 未遇见：原口径只显示未遇见提示（多人局附玩家名）
-		local sText = Locale.Lookup("LOC_DIPLOPANEL_UNMET_PLAYER");
-		if GameConfiguration.IsAnyMultiplayer() then
-			sText = sText .. "（" .. pPlayerConfig:GetPlayerName() .. "）";
-		end
-		MPT_TipControls.LeaderName:SetText(sText);
-		MPT_TipControls.CivName:SetHide(true);
-		MPT_TipControls.HeaderLabel:SetHide(true);
-		MPT_TipControls.Divider:SetHide(true);
-		MPT_ShrinkLeaderTooltip();
-		return;
-	end
-
-	-- GetLeaderName/GetCivilizationDescription 返回裸 LOC tag（原纯文本链经 Locale.Lookup(标题, 参数)
-	-- 间接本地化，直接 SetText 会漏 lookup 显示原文 tag——用户实测截图），显式包一层 Locale.Lookup
-	MPT_TipControls.LeaderName:SetText(Locale.Lookup(pPlayerConfig:GetLeaderName()));
-	MPT_TipControls.CivName:SetText(Locale.Lookup(pPlayerConfig:GetCivilizationDescription()));
-	MPT_TipControls.CivName:SetHide(false);
-	MPT_TipControls.HeaderLabel:SetHide(false);
-	MPT_TipControls.Divider:SetHide(false);
-	for _,t in ipairs(MPT_GetLeaderInfoSections(playerID)) do
-		local kRow = MPT_TipRowIM:GetInstance();
-		if t.sIcon ~= nil then
-			-- 特色内容行（面板 IconInfoInstance 样式）：CircleRim40 圈 + 图标，文字缩进 36px
-			kRow.RowIcon:SetIcon(t.sIcon);
-			kRow.RowRim:SetHide(false);
-			kRow.RowTextStack:SetOffsetVal(36, 0);
+		if bNoLocal then
+			-- 无本地玩家：原口径返回空串 → 全空（tooltip 收缩为空底板）
+		elseif bUnmet then
+			-- 未遇见：原口径只显示未遇见提示（多人局附玩家名）
+			local sText = Locale.Lookup("LOC_DIPLOPANEL_UNMET_PLAYER");
+			if GameConfiguration.IsAnyMultiplayer() then
+				sText = sText .. "（" .. pPlayerConfig:GetPlayerName() .. "）";
+			end
+			MPT_TipHeaderIM:GetInstance().HeaderText:SetText(sText);
 		else
-			-- 领袖/文明能力行（面板 TextInfoInstance 样式）：无图标顶格
-			kRow.RowRim:SetHide(true);
-			kRow.RowTextStack:SetOffsetVal(0, 0);
+			for _,t in ipairs(MPT_GetLeaderInfoSections(playerID)) do
+				if t.kind == "header" then
+					MPT_TipHeaderIM:GetInstance().HeaderText:SetText(t.sText);
+				else
+					local kRow = MPT_TipRowIM:GetInstance();
+					if t.kind == "leader" then
+						-- 领袖能力行（IconInstance 样式）：CircleBacking45 + 领袖头像
+						kRow.RowCircleLeader:SetHide(false);
+						kRow.RowCircleCiv:SetHide(true);
+						kRow.RowCircleUnique:SetHide(true);
+						kRow.RowIconLeader:SetIcon(t.sIcon);
+					elseif t.kind == "civ" then
+						-- 文明能力行（CivIconInstance 样式）：CircleBacking44 + 叠层 + 文明徽记
+						kRow.RowCircleLeader:SetHide(true);
+						kRow.RowCircleCiv:SetHide(false);
+						kRow.RowCircleUnique:SetHide(true);
+						kRow.RowIconCiv:SetIcon(t.sIcon);
+					else
+						-- 特色内容行（IconInfoInstance 样式）：CircleCompass + 条目图标
+						kRow.RowCircleLeader:SetHide(true);
+						kRow.RowCircleCiv:SetHide(true);
+						kRow.RowCircleUnique:SetHide(false);
+						kRow.RowIconUnique:SetIcon(t.sIcon);
+					end
+					kRow.RowTitle:SetText(t.sTitle);
+					kRow.RowDesc:SetText(t.sDesc);
+				end
+			end
 		end
-		kRow.RowTitle:SetText(t.sTitle);
-		kRow.RowStats:SetText(t.sStats);
-		kRow.RowStats:SetHide(t.sStats == nil or t.sStats == "");
-		kRow.RowDesc:SetText(t.sDesc);
 	end
+	-- 收口在去重之外：每次回调都按当前已布局内容实测（首帧失真由悬停期间后续回调自愈）
 	MPT_ShrinkLeaderTooltip();
 end
 
