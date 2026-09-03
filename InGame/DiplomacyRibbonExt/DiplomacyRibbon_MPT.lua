@@ -1487,28 +1487,43 @@ end
 
 -- ===========================================================================
 function SetOffsetX2Center( Ctr , width )
+	-- 条目24优化：偏移变更守卫——UpdateStatValues 高频刷新下每次 SetOffsetX 都会使布局失效重排；
+	-- 控件宽与目标宽都未变化时不重复写偏移（「不是每次都需要重新计算偏移」）
 	local sizeX = Ctr:GetSizeX();
+	local nOffset = 0;
 	if sizeX < width then
-		Ctr:SetOffsetX( (width-sizeX)/2 )
-	else
-		Ctr:SetOffsetX( 0 )
+		nOffset = (width - sizeX) / 2;
+	end
+	if Ctr:GetOffsetX() ~= nOffset then
+		Ctr:SetOffsetX( nOffset );
 	end
 end
 
 
-function UpdateStatValues( playerID, uiLeader )	
+function UpdateStatValues( playerID, uiLeader )
+
+	-- 条目24修复：观察者条目名字行整体退出 ScrollTextField（用户实测：占位文本「ayerName」错位、
+	-- 测宽游移、测高波动三连）——ScrollTextField 随文本自适应宽高，是名字行偏移游移与 StatStack
+	-- 测高波动的根源；改由 CivName 纯 Label 承载玩家名（ReduceWidth=61 定宽截断 + SetOffsetX2Center
+	-- 稳定居中，与普通玩家文明名行同款机制），受「玩家名」设置项门控；PlayerName 控件整行隐藏
+	local bIsSpectatorEntry = (PlayerConfigurations[playerID] ~= nil and PlayerConfigurations[playerID]:GetLeaderTypeName() == "LEADER_SPECTATOR");
 
 	if uiLeader.PlayerName:IsVisible() then
-		if PlayerConfigurations[playerID] ~= nil and PlayerConfigurations[playerID]:GetLeaderTypeName() == "LEADER_SPECTATOR" then
-			-- 条目24修复：观察者名字行改 SetOffsetX2Center 定位（用户裁决）——原 PlayerNameLen 测宽
-			-- 回写偏移随文本布局时序左右游移（ScrollTextField 长名测宽不稳定，用户实测两帧名字位置不同）
-			SetOffsetX2Center( uiLeader.PlayerName , 60 )
-		elseif uiLeader.PlayerName:GetText() == "PlayerName" or uiLeader.PlayerName:GetText() ~= Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() )then
-			uiLeader.PlayerName:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() ) )
-			uiLeader.PlayerNameLen:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() ) )
-		end
+		if bIsSpectatorEntry then
+			uiLeader.PlayerName:SetHide(true);
+			if HidePlayerInfo_PlayerName then
+				uiLeader.CivName:SetHide(true);
+			else
+				uiLeader.CivName:SetHide(false);
+				uiLeader.CivName:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() ) );
+				SetOffsetX2Center( uiLeader.CivName , 60 );
+			end
+		else
+			if uiLeader.PlayerName:GetText() == "PlayerName" or uiLeader.PlayerName:GetText() ~= Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() )then
+				uiLeader.PlayerName:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() ) )
+				uiLeader.PlayerNameLen:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetPlayerName() ) )
+			end
 
-		if PlayerConfigurations[playerID] == nil or PlayerConfigurations[playerID]:GetLeaderTypeName() ~= "LEADER_SPECTATOR" then
 			local pSize_PlayerNameLen = uiLeader.PlayerNameLen:GetSizeX();
 			if pSize_PlayerNameLen < 60 then
 				uiLeader.PlayerName:SetOffsetX(	(60 - pSize_PlayerNameLen)/2 )
@@ -1517,13 +1532,11 @@ function UpdateStatValues( playerID, uiLeader )
 			end
 		end
 	end
-	
+
 	if uiLeader.CivName:IsVisible() then
-		-- 条目24修复：观察者条目不显示文明名行（观察者 GetCivilizationShortDescription 返回「Spectator」
-		-- 多余描述，用户实测截图——观察者条目只保留 SpecTag「观察者」）；else 分支按设置回写显隐，
-		-- 防实例回收复用后观察者行的隐藏态泄漏到普通玩家行
-		if PlayerConfigurations[playerID] ~= nil and PlayerConfigurations[playerID]:GetLeaderTypeName() == "LEADER_SPECTATOR" then
-			uiLeader.CivName:SetHide(true);
+		if bIsSpectatorEntry then
+			-- 观察者条目：CivName 已由上方名字行分支处置（承载玩家名或随设置隐藏），此处跳过——
+			-- 观察者 GetCivilizationShortDescription 返回「Spectator」多余描述不显示（用户裁决）
 		else
 			uiLeader.CivName:SetHide(HidePlayerInfo_CiviName);
 			uiLeader.CivName:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetCivilizationShortDescription() ) )
