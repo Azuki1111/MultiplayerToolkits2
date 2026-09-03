@@ -27,9 +27,7 @@ VALUES
 	('LOC_MPT_SETTINGS_NDR_NAME',	'zh_Hans_CN',	'交易声音提醒'),
 	('LOC_MPT_SETTINGS_NDR_TT',	'zh_Hans_CN',	'其他玩家与您进行交易或发出外交请求时会响铃提示（条目26 NDR；通知自动展开不受此开关控制，同 1.67 语义）'),
 	('LOC_MPT_SETTINGS_GPR_NAME',	'zh_Hans_CN',	'他人招募伟人通知'),
-	('LOC_MPT_SETTINGS_GPR_TT',	'zh_Hans_CN',	'其他玩家招募伟人时向您发送通知（条目26）'),
-	('LOC_MPT_SETTINGS_WCABSTAIN_NAME',	'zh_Hans_CN',	'世界议会弃权选项'),
-	('LOC_MPT_SETTINGS_WCABSTAIN_TT',	'zh_Hans_CN',	'世界议会所有决议与提案投票中提供「弃权」按钮，弃权项按 0 票提交（条目27）；关闭后恢复原版每项必投');
+	('LOC_MPT_SETTINGS_GPR_TT',	'zh_Hans_CN',	'其他玩家招募伟人时向您发送通知（条目26）');
 -- 条目20初版曾在此加智能计时器开关文本（LOC_MPT_SETTINGS_TIMER_ENABLE_*），条目20扩展
 -- 改用四模式 Game 配置参数（文本移至 InGame/SmartTurnTimer/ 双语 SQL），已删除。
 -- 条目22：BTS 4 选项文本移植自 1.67 BTS/Text/BTS_Text_EN.xml 的 LOC_BTS_SETTING_*，
@@ -37,4 +35,4 @@ VALUES
 -- 条目25：BER 开关文本沿用 1.67 原文案（1.67 仅 zh 且重复注册两遍，此处补 en_US）。
 -- 条目26：NDR 开关文本沿用 1.67 原文案（LOC_TPT_NDR_SOUND_NAME/TT 仅 zh，此处补 en_US）；
 --   GPR 开关文本自拟（源 mod 2459772036 无设置体系）。
--- 条目27：WCABSTAIN 开关文本自拟（1.67 无此功能）。
+-- 条目27 WCABSTAIN 开关文本已随功能移除（用户裁决：引擎无法跳过投票，弃权不可实现）。
