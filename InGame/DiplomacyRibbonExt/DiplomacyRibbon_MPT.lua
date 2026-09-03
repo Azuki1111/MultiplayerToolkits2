@@ -58,7 +58,6 @@ local SpecStr_Total		= Locale.Lookup("LOC_MPT_DPR_SPEC_TOTAL");
 local SpecStr_Techs		= Locale.Lookup("LOC_MPT_DPR_SPEC_TECHS");
 local SpecStr_Eras		= Locale.Lookup("LOC_MPT_DPR_SPEC_ERAS");
 local SpecStr_Army		= Locale.Lookup("LOC_MPT_DPR_SPEC_ARMY");
-local SpecStr_Host		= Locale.Lookup("LOC_MPT_DPR_SPEC_HOST");
 local SpecStr_Land		= Locale.Lookup("LOC_MPT_DPR_SPEC_LAND");
 local SpecStr_Navy		= Locale.Lookup("LOC_MPT_DPR_SPEC_NAVY");
 local SpecStr_Air		= Locale.Lookup("LOC_MPT_DPR_SPEC_AIR");
@@ -1474,8 +1473,16 @@ function UpdateStatValues( playerID, uiLeader )
 	end
 	
 	if uiLeader.CivName:IsVisible() then
-		uiLeader.CivName:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetCivilizationShortDescription() ) )
-		SetOffsetX2Center( uiLeader.CivName , 60 )
+		-- 条目24修复：观察者条目不显示文明名行（观察者 GetCivilizationShortDescription 返回「Spectator」
+		-- 多余描述，用户实测截图——观察者条目只保留 SpecTag「观察者」）；else 分支按设置回写显隐，
+		-- 防实例回收复用后观察者行的隐藏态泄漏到普通玩家行
+		if PlayerConfigurations[playerID] ~= nil and PlayerConfigurations[playerID]:GetLeaderTypeName() == "LEADER_SPECTATOR" then
+			uiLeader.CivName:SetHide(true);
+		else
+			uiLeader.CivName:SetHide(HidePlayerInfo_CiviName);
+			uiLeader.CivName:SetText( Locale.Lookup( PlayerConfigurations[playerID]:GetCivilizationShortDescription() ) )
+			SetOffsetX2Center( uiLeader.CivName , 60 )
+		end
 	end
 
 	RefreshAccessLevel()		-- 刷新能见度
@@ -1713,17 +1720,15 @@ function UpdateStatValues( playerID, uiLeader )
 	
 	-- ==== 条目24：BSM 观察者数据行（原 BSM UpdateStatValues 补充段；组不可见即不计算，性能语义与上行门槛一致）====
 	if uiLeader.Group_Observer:IsVisible() then
-		-- Host/Ping。原 BSM Data 行受 1.67 MPH_ON 门控且走 "GAP_<playerID>" 平均延迟协议（依赖 1.67 MPH
-		-- 写入配置，本 mod 未移植必 nil → 残留「L: na」乱数行，用户实测截图）——条目24修复：剔除 GAP 协议，
-		-- 仅主机标识/真实延迟存在时显示，否则整行隐藏（嵌套 Stack 隐藏行自动跳过布局）
+		-- Ping。原 BSM Data 行受 1.67 MPH_ON 门控且走 "GAP_<playerID>" 平均延迟协议（依赖 1.67 MPH
+		-- 写入配置，本 mod 未移植必 nil → 残留「L: na」乱数行）——条目24修复剔除 GAP 协议；条目24修复2：
+		-- 「主机」标识按用户裁决移除（观察者条目只保留「观察者」），仅真实延迟存在时显示，否则整行隐藏
+		--（嵌套 Stack 隐藏行自动跳过布局）
 		local data = "";
-		if Network.GetGameHostPlayerID() ~= nil and Network.GetGameHostPlayerID() == playerID then
-			data = SpecStr_Host;
-		end
 		if playerID ~= Game.GetLocalPlayer() then
 			local ping = Network.GetPingTime( playerID );
 			if ping ~= nil and ping ~= -1 then
-				data = data.." P:"..ping;
+				data = " P:"..ping;
 			end
 		end
 		if data == "" then
