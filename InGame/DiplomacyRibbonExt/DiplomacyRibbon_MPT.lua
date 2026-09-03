@@ -334,8 +334,15 @@ function MPT_GetLeaderInfoSections(playerID)
 			end
 		end
 	end
-	-- 文明区：区头 + 文明特性行（圈=文明徽记）
-	table.insert(tSections, {kind="header", sText=Locale.ToUpper(Locale.Lookup(pPlayerConfig:GetCivilizationName()))});
+	-- 文明区：区头 + 文明特性行（圈=文明徽记）。文明名取 GameInfo.Civilizations 行的 CivilizationName
+	--（原版 PlayerSetupLogic L580 同源）——PlayerConfiguration 无 GetCivilizationName 方法，误用即
+	-- Runtime Error「function expected instead of nil」（用户实测）
+	local tCiv = GameInfo.Civilizations[sCivType];
+	local sCivName = "";
+	if tCiv ~= nil and tCiv.CivilizationName ~= nil then
+		sCivName = Locale.ToUpper(Locale.Lookup(tCiv.CivilizationName));
+	end
+	table.insert(tSections, {kind="header", sText=sCivName});
 	for row in GameInfo.CivilizationTraits() do
 		if row.CivilizationType == sCivType then
 			local tTrait = GameInfo.Traits[row.TraitType];
