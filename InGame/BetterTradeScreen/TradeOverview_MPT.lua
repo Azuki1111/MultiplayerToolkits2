@@ -7,8 +7,9 @@
 -- 相对 1.67 的改动：
 --   1.【核心修复】收益不及时刷新——Open() 先 CacheEmpty()（打开必新算，联机同时
 --     回合下开面板前的变化必反映）；政策变更补 CacheEmpty（1.67 只 Refresh）；新增
---     建筑/区域/商路/宣战议和/新城失效事件（MPT_OnTradeDataInvalidated），打开时
---     立即 Refresh，validity 类变化强制重建候选表（m_HasBuiltTradeRouteTable=false）。
+--     建筑/区域/商路/宣战议和/新城失效事件（MPT_OnTradeDataInvalidated），条目22优化：
+--     经 0.5 秒去抖合并刷新（BuildingChanged 实为建造进度 tick 高频事件，防事件风暴
+--     放大成重复全量重建），validity 类变化强制重建候选表（m_HasBuiltTradeRouteTable=false）。
 --   2. 商人自动化剔除（1.67 v1.34 禁用，底层已不移植）：每行「取消自动化」按钮
 --     （CancelAutomation + IsTraderAutomated/CancelAutomatedTrader 调用段）删除，
 --     XML 控件一并移除；自动化随 1.67 从未激活，按钮本就恒隐。
@@ -2149,6 +2150,9 @@ function OnLocalPlayerTurnEnd()
     m_AvailableTradeRoutes = nil;
     m_FinalTradeRoutes = nil;
     m_AvailableGroupedRoutes = nil;
+
+    -- ==== 条目22优化：未应用的去抖失效随回合作废（CacheEmpty 已执行，刷新无意义）
+    m_TradeDataDirty = false;
 end
 
 function OnUnitOperationStarted( ownerID:number, unitID:number, operationID:number )
@@ -2297,27 +2301,66 @@ function OnGameDebugReturn( context:string, contextTable:table )
 end
 
 function OnPolicyChanged( ePlayer )
-    if m_AnimSupport.IsVisible() and ePlayer == Game.GetLocalPlayer() then
+    if m_AnimSupport ~= nil and m_AnimSupport.IsVisible() and ePlayer == Game.GetLocalPlayer() then
         -- ==== 条目22改动1：1.67 只 Refresh 不清缓存——政策卡收益修正永远滞后一拍
-        CacheEmpty();
-        Refresh();
+        --（条目22优化：经去抖合并，见 MPT_OnTradeDataInvalidated）
+        MPT_OnTradeDataInvalidated(false);
     end
 end
 
 -- ===========================================================================
--- 条目22改动1：商路数据失效事件（核心修复）——yield 类变化清缓存 + 打开时 Refresh
--- （各页签读缓存时经 CacheTouchRoute 按需重算）；validity 类变化改变可选目的地集合，
--- 强制重建候选表（m_HasBuiltTradeRouteTable=false 使 ViewAvailableRoutes 重建分支命中）。
+-- 条目22改动1：商路数据失效事件（核心修复）+ 条目22优化：去抖合并。
+-- 失效事件分两类：yield 类（政策/建筑/区域/他方商路建贸易站）只影响收益数值；
+-- validity 类（宣战/议和/商路容量/新城）改变可选目的地集合——强制重建标记
+-- （m_HasBuiltTradeRouteTable=false）在事件到达时立即落，面板关闭也保证下次
+-- 打开 ViewAvailableRoutes 走重建分支。
+-- 去抖（效率审查 P1）：BuildingChanged 携带 iPercentComplete，每个在建建筑每次进度
+-- 变化都发（原版 WorldTracker 对同事件只置脏标记轮询合并，WorldTracker.lua:698-707），
+-- AI 回合末建造批可连发数十次；逐事件立即 CacheEmpty+Refresh 会被放大成重复全量
+-- 重建（最坏：停「可用商路」页签遇建造批 = 每 tick 整页重建+全行重算收益）。
+-- 改为面板可见时置脏 + 0.5 秒合并窗口（条目18 单订阅调度器单任务版）：
+-- GameCoreEventPublishComplete tick 到期后一次 CacheEmpty+Refresh；面板关闭时不置脏
+-- （Open() 必清缓存，当回合缓存护栏得以保留）。
 -- ===========================================================================
+local MPT_INVALIDATE_DELAY : number = 0.5;	-- 合并窗口（秒）
+local m_TradeDataDirty : boolean = false;	-- 有失效待应用
+local m_TradeDataDeadline : number = -1;	-- 首脏到期限（单调时钟）
+
+-- 单调时钟（条目18修复同款闭包包装：cfunction 不可赋 ifunction 标注变量）
+local MPT_GetTime : ifunction = function()
+    if UI.GetElapsedTime ~= nil then
+        return UI.GetElapsedTime();
+    end
+    return os.clock();
+end;
+
+-- MPT_OnTradeDataInvalidated(forceRebuild)：失效事件统一入口（yield 类传 false，
+--   validity 类传 true）——validity 立即落重建标记；面板可见才置脏，不立即刷新
 function MPT_OnTradeDataInvalidated( forceRebuild:boolean )
-    CacheEmpty();
     if forceRebuild then
         m_HasBuiltTradeRouteTable = false;
     end
-    if m_AnimSupport ~= nil and m_AnimSupport.IsVisible() then
+    if m_AnimSupport ~= nil and m_AnimSupport:IsVisible() then
+        if not m_TradeDataDirty then
+            m_TradeDataDeadline = MPT_GetTime() + MPT_INVALIDATE_DELAY;
+        end
+        m_TradeDataDirty = true;
+    end
+end
+
+-- 去抖 tick（本文件唯一一条 GameCoreEventPublishComplete 订阅，同条目18）：
+--   到期一次 CacheEmpty + Refresh（合并窗口内后续事件不再各自触发整页刷新）
+local function MPT_OnTradeDataDirtyTick()
+    if not m_TradeDataDirty or MPT_GetTime() < m_TradeDataDeadline then
+        return;
+    end
+    m_TradeDataDirty = false;
+    if m_AnimSupport ~= nil and m_AnimSupport:IsVisible() then
+        CacheEmpty();
         Refresh();
     end
 end
+Events.GameCoreEventPublishComplete.Add(MPT_OnTradeDataDirtyTick);
 
 function MPT_OnYieldsInvalidated()       MPT_OnTradeDataInvalidated(false); end
 function MPT_OnRouteSetInvalidated()     MPT_OnTradeDataInvalidated(true);  end

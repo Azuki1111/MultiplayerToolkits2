@@ -7,7 +7,8 @@
 --     CacheRoutesInfo 闸），联机同时回合下开面板前发生的政策/建筑/贸易站/宣战议和
 --     变化全部显示为旧值。修复：Open() 先 CacheEmpty()（打开必新算）；
 --     政策变更补 CacheEmpty（1.67 只 Refresh 不清缓存）；新增建筑/区域/商路/宣战
---     议和等失效事件（MPT_OnTradeDataInvalidated），打开时立即 Refresh。
+--     议和等失效事件（MPT_OnTradeDataInvalidated），条目22优化：经 0.5 秒去抖合并
+--     刷新（BuildingChanged 实为建造进度 tick 高频事件，防事件风暴放大成重复全量刷新）。
 --   2. 原版 2.0 弹窗互斥回迁（1.67 基于旧版原版缺失）：LuaEvents.TradeRouteChooser_
 --     CloseIfPopups / ReOpen / WorldInput_MakeTradeRouteDestination 三订阅 +
 --     OnWorldInputMakeTradeRoute + CheckNeedsToOpen 的 UI.IsInGame() 守卫 +
@@ -19,8 +20,8 @@
 --   4. 1.67 bug 修复：Open() 恢复上次商路处引用未定义全局 DestinationCityID（应为
 --     lastRoute.DestinationCityID）——1.67 的「上次商路自动预选」实际从未生效。
 --   5. DeepLogic 可见性补丁盲区修复：m_PlotRevealed 表回合末清空（1.67 永不清空，
---     探索-迷雾-再探索的同一格永不再次触发重建）；可见性变化在面板打开时立即
---     Refresh（1.67 只置标记等下次 Refresh 被动消费）。
+--     探索-迷雾-再探索的同一格永不再次触发重建）；可见性变化在面板打开时经去抖
+--     合并刷新（1.67 只置标记等下次 Refresh 被动消费；初版逐事件立即 Refresh 已废止）。
 --   6. 设置不开放配置（条目22调整，用户裁决）：1.67 经 GameConfiguration BTS_* 可调的
 --     两个本面板选项（排序序号显示/全部路径绘制）硬编码 1.67 BTS_Settings.sql 默认值
 --     （序号关/全部路径开），MPT_Settings_Toggle 订阅与 OnSettingsChange 移除。
@@ -90,7 +91,9 @@ local opt_print = false
 -- ===========================================================================
 --  [DeepLogic added] Refresh after visibility changed
 --  （条目22改动5：m_PlotRevealed 回合末清空修复「重复探索同格不再触发」盲区；
---    面板打开时立即 Refresh，不再只置标记等下次被动消费）
+--    条目22优化：面板打开时改经去抖合并刷新——初版逐事件立即 Refresh 已废止，
+--    侦察移动首次揭示可连发数十次，逐次全量重建+重缓存被去抖窗口合并为一次；
+--    1.67 惰性标记语义保留，下次 Refresh 被动消费）
 -- ===========================================================================
 local m_PlotRevealed = {};
 local m_NeedRefreshPlotVisibility = false;
@@ -100,7 +103,7 @@ function OnPlotVisibilityChanged(posX, posY, visibilityType)
         m_PlotRevealed[key] = true;
         m_NeedRefreshPlotVisibility = true;
         if not ContextPtr:IsHidden() then
-            Refresh();
+            MPT_OnTradeDataInvalidated(false);
         end
     end
 end
@@ -1251,6 +1254,9 @@ function OnLocalPlayerTurnEnd()
     -- ==== 条目22改动5：DeepLogic 盲区修复——已揭示格记录回合末清空，
     -- 否则探索-迷雾-再探索的同一格永不再次触发刷新（1.67 永不清空）
     m_PlotRevealed = {};
+
+    -- ==== 条目22优化：未应用的去抖失效随回合作废（CacheEmpty 已执行，刷新无意义）
+    m_TradeDataDirty = false;
 end
 
 function OnUnitActivityChanged( playerID :number, unitID :number, eActivityType :number)
@@ -1263,30 +1269,65 @@ function OnUnitActivityChanged( playerID :number, unitID :number, eActivityType 
 end
 
 function OnPolicyChanged( ePlayer )
-    if not ContextPtr:IsHidden() and ePlayer == Game.GetLocalPlayer() then
-        -- ==== 条目22改动1：1.67 只 Refresh 不清缓存——政策卡收益修正永远滞后一拍
-        CacheEmpty();
-        Refresh();
-    end
+	if not ContextPtr:IsHidden() and ePlayer == Game.GetLocalPlayer() then
+		-- ==== 条目22改动1：1.67 只 Refresh 不清缓存——政策卡收益修正永远滞后一拍
+		--（条目22优化：经去抖合并，见 MPT_OnTradeDataInvalidated）
+		MPT_OnTradeDataInvalidated(false);
+	end
 end
 
 -- ===========================================================================
--- 条目22改动1：商路数据失效事件（核心修复）——1.67 每回合只建一次缓存，联机同时
--- 回合下这些变化发生在本回合内时全部不反映。yield 类变化清缓存即可（Refresh 的
--- 列表重建条件不含它们，但缓存重建后显示即新值）；validity 类变化改变可选目的地
--- 集合（宣战/议和/新城），必须强制重建候选列表（m_TurnBuiltRouteTable 置 -1 使
--- Refresh 的重建条件命中）。
--- 用法：各事件订阅统一走 MPT_OnTradeDataInvalidated(forceRebuild:boolean)
+-- 条目22改动1：商路数据失效事件（核心修复）+ 条目22优化：去抖合并。
+-- 失效事件分两类：yield 类（政策/建筑/区域/他方商路建贸易站）只影响收益数值；
+-- validity 类（宣战/议和/商路容量/新城）改变可选目的地集合——强制重建标记
+-- （m_TurnBuiltRouteTable=-1）在事件到达时立即落，面板关闭也保证下次打开重建。
+-- 去抖（效率审查 P1）：BuildingChanged 携带 iPercentComplete，每个在建建筑每次进度
+-- 变化都发（原版 WorldTracker 对同事件只置脏标记轮询合并，WorldTracker.lua:698-707），
+-- AI 回合末建造批可连发数十次；PlotVisibilityChanged（侦察移动首次揭示）同理突发。
+-- 条目22初版逐事件立即 CacheEmpty+Refresh，面板打开时被放大成重复全量重建+重缓存。
+-- 改为面板可见时置脏 + 0.5 秒合并窗口（条目18 单订阅调度器单任务版）：
+-- GameCoreEventPublishComplete tick 到期后一次 CacheEmpty+Refresh；面板关闭时不置脏
+-- （Open() 必清缓存，当回合缓存护栏得以保留）。
 -- ===========================================================================
+local MPT_INVALIDATE_DELAY : number = 0.5;	-- 合并窗口（秒）
+local m_TradeDataDirty : boolean = false;	-- 有失效待应用
+local m_TradeDataDeadline : number = -1;	-- 首脏到期限（单调时钟）
+
+-- 单调时钟（条目18修复同款闭包包装：cfunction 不可赋 ifunction 标注变量）
+local MPT_GetTime : ifunction = function()
+    if UI.GetElapsedTime ~= nil then
+        return UI.GetElapsedTime();
+    end
+    return os.clock();
+end;
+
+-- MPT_OnTradeDataInvalidated(forceRebuild)：失效事件统一入口（yield 类传 false，
+--   validity 类传 true）——validity 立即落重建标记；面板可见才置脏，不立即刷新
 function MPT_OnTradeDataInvalidated( forceRebuild:boolean )
-    CacheEmpty();
     if forceRebuild then
         m_TurnBuiltRouteTable = -1;
     end
     if not ContextPtr:IsHidden() then
+        if not m_TradeDataDirty then
+            m_TradeDataDeadline = MPT_GetTime() + MPT_INVALIDATE_DELAY;
+        end
+        m_TradeDataDirty = true;
+    end
+end
+
+-- 去抖 tick（本文件唯一一条 GameCoreEventPublishComplete 订阅，同条目18）：
+--   到期一次 CacheEmpty + Refresh（合并窗口内后续事件不再各自触发整页刷新）
+local function MPT_OnTradeDataDirtyTick()
+    if not m_TradeDataDirty or MPT_GetTime() < m_TradeDataDeadline then
+        return;
+    end
+    m_TradeDataDirty = false;
+    if not ContextPtr:IsHidden() then
+        CacheEmpty();
         Refresh();
     end
 end
+Events.GameCoreEventPublishComplete.Add(MPT_OnTradeDataDirtyTick);
 
 function MPT_OnYieldsInvalidated()       MPT_OnTradeDataInvalidated(false); end
 function MPT_OnRouteSetInvalidated()     MPT_OnTradeDataInvalidated(true);  end
