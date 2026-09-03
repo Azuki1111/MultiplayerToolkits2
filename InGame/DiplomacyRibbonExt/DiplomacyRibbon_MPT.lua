@@ -367,13 +367,14 @@ function MPT_GetLeaderInfoSections(playerID)
 	return tSections;
 end
 
--- 尺寸确定性收口：宽度恒 390（内容 WrapWidth 340 + InnerPadding 25×2），高度 = 内容栈实测 + 50。
--- 不用 AutoSize 的原因：parent,parent 背景图参与 AutoSize 测量会把外框撑到历史最大/屏高且不再收缩
---（用户实测整幅背景拖长上千像素、宽度同时失控致内容贴左缘不对齐）
+-- 尺寸确定性收口：宽度恒 400（内容 WrapWidth 340 + EnhancedToolTip 帧 InnerPadding 30×2），
+-- 高度 = 内容栈实测 + InnerPadding 26×2（每个领袖特性行数不同，逐次悬停实测，不固定高度）。
+-- 不用 AutoSize 的原因：此前 parent,parent 背景图参与 AutoSize 测量会把外框撑到历史最大/屏高
+-- 且不再收缩（用户实测整幅背景拖长上千像素、宽度同时失控致内容贴左缘不对齐）
 function MPT_ShrinkLeaderTooltip()
 	MPT_TipControls.InfoStack:CalculateSize();
 	local _, h = MPT_TipControls.InfoStack:GetSizeVal();
-	MPT_TipControls.BG:SetSizeVal(390, h + 50);
+	MPT_TipControls.BG:SetSizeVal(400, h + 52);
 end
 
 -- 悬停填充（UpdateIcon 包装绑定回调；无本地玩家/未遇见玩家与原 GetToolTipString 同口径）

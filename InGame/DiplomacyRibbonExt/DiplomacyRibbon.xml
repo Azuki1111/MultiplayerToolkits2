@@ -201,12 +201,11 @@
 		Controls_CircleRim40 圈图标内容行。模板为全局单例，每次悬停由 Lua 重新填充；
 		可变行经 InstanceManager 注入 TraitStack。底板沿用 TeamTooltip 参数（Controls_Tooltip 九宫格） -->
 	<ToolTipType Name="MPT_LeaderInfoTooltip" >
-		<!-- 固定宽 390（内容 WrapWidth 340 + InnerPadding 25×2），高度由 Lua 按内容栈实测收口
-			（不用 AutoSize：parent,parent 背图参与 AutoSize 测量会把外框撑到历史最大不收缩——用户实测） -->
-		<Grid		ID="BG"					Size="390,75" InnerPadding="25,25" >
-			<!-- 背景按面板原样：Controls_BannerWide 竖向平铺（面板 PlayerPanelWindow 同款 Image+TileY，
-				非九宫格；外框尺寸确定后 parent,parent 跟随填充） -->
-			<Image	Texture="Controls_BannerWide"	Size="parent,parent" StretchMode="TileY" Anchor="L,T"/>
+		<!-- 宽 400 = 内容 WrapWidth 340 + InnerPadding 30×2（帧边框 SliceCorner 28，内边距 30>28 保证
+			文字完整包含在帧内），高度由 Lua 按内容栈实测收口（不用 AutoSize：此前背图参与测量失控）。
+			背景 = 原版 EnhancedToolTip 样式（Civ6_Styles：Controls_EnhancedToolTip 九宫格
+			SliceCorner=28,22 / SliceTextureSize=54,54，TutorialGoals 同款自适应框） -->
+		<Grid		ID="BG"					Size="400,75" Style="EnhancedToolTip" InnerPadding="30,26" >
 			<Stack	ID="InfoStack"			StackGrowth="Down" StackPadding="4">
 				<Label	ID="LeaderName"	Style="DiplomacyCivHeaderLarge" WrapWidth="340"/>
 				<Label	ID="CivName"		Style="DiplomacyCivHeaderLarge" Color0="Dark_Gray" WrapWidth="340"/>
