@@ -12,8 +12,9 @@
 --   2. 商人自动化剔除（1.67 v1.34 禁用，底层已不移植）：每行「取消自动化」按钮
 --     （CancelAutomation + IsTraderAutomated/CancelAutomatedTrader 调用段）删除，
 --     XML 控件一并移除；自动化随 1.67 从未激活，按钮本就恒隐。
---   3. 设置源迁移：GameConfiguration BTS_ShowSortPriorities → 条目12 MPT_Settings
---     表 + MPT_Settings_Toggle 广播订阅；OnSettingsChange 的无条件 print 删除。
+--   3. 设置不开放配置（条目22调整，用户裁决）：GameConfiguration BTS_ShowSortPriorities
+--     硬编码 1.67 默认值（关），MPT_Settings_Toggle 订阅与 OnSettingsChange 移除；
+--     1.67 OnSettingsChange 的无条件 print 一并消失。
 --   4. dbug_print 默认 false（1.67 发布态遗留 true，每次刷新刷十余行日志）。
 --   5. 零散：OnSettingsButton 死函数与 SettingsButton 控件删除（指向已不移植的
 --     BTS 独立设置面板）；TradeSupportTracker_Initialize 保留（在途商路剩余回合）。
@@ -29,7 +30,7 @@ include("SupportFunctions");
 include("TradeSupport");
 
 -- ===========================================================================
---  SETTINGS（条目22：MPT_Settings 广播订阅，初值 = 1.67 BTS_Settings.sql 默认值）
+--  SETTINGS（条目22调整：不开放配置，硬编码 1.67 BTS_Settings.sql 默认值）
 -- ===========================================================================
 
 local showSortPriorities = false;	-- BTS_ShowSortPriorities 默认 0
@@ -2118,19 +2119,7 @@ function OnCloseAllExcept( contextToStayOpen:string )
     Close();
 end
 
--- ==== 条目22改动3：设置源迁移——GameConfiguration BTS_* → MPT_Settings 广播；
--- 1.67 此处的无条件 print 一并删除。广播为全参数共用事件，仅本功能参数触发重算
-function OnSettingsChange(ParameterId, Value)
-    if ParameterId == "BTS_ShowSortPriorities" then
-        showSortPriorities = (Value == true or Value == 1);
-        CacheEmpty()
-
-        if m_isOpen then
-            Refresh()
-        end
-    end
-end
-
+-- ==== 条目22调整：OnSettingsChange 设置响应函数移除（改动 3，4 选项不开放配置）
 -- ===========================================================================
 --  Game Event
 -- ===========================================================================
@@ -2415,8 +2404,7 @@ function Initialize()
     Events.TradeRouteCapacityChanged.Add( MPT_OnRouteSetInvalidated );
     Events.CityAddedToMap.Add( MPT_OnRouteSetInvalidated );
 
-    -- Setting change update（条目22改动3：MPT_Settings 广播）
-    LuaEvents.MPT_Settings_Toggle.Add( OnSettingsChange )
+    -- ==== 条目22调整：MPT_Settings_Toggle 订阅移除（改动 3，4 选项不开放配置硬编码默认值）
 
     -- Hot-Reload Events
     ContextPtr:SetInitHandler(OnInit);

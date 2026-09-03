@@ -10,14 +10,6 @@ VALUES
 	('LOC_MPT_SETTINGS_SHOW_FEB_TT',		'zh_Hans_CN',	'显示按钮'),
 	('LOC_MPT_SETTINGS_NOC_DISABLE_NAME',	'zh_Hans_CN',	'禁用清理通知按钮'),
 	('LOC_MPT_SETTINGS_NOC_DISABLE_TT',		'zh_Hans_CN',	'不再显示右下角通知栏的「清理通知」按钮'),
-	('LOC_MPT_SETTINGS_BTS_PATH_NAME',		'zh_Hans_CN',	'BTS 商路：近似商路路径'),
-	('LOC_MPT_SETTINGS_BTS_PATH_TT',		'zh_Hans_CN',	'用直线距离近似商路路径而非实际路径。城市很多时商路面板打开更快，但商路回合数估算在特定情况下会严重不准'),
-	('LOC_MPT_SETTINGS_BTS_SORT_NAME',		'zh_Hans_CN',	'BTS 商路：常驻排序优先级'),
-	('LOC_MPT_SETTINGS_BTS_SORT_TT',		'zh_Hans_CN',	'在排序按钮上常驻显示多级排序的优先级序号，适合按食物+生产力等多产量组合排序；关闭后按住 Shift 临时显示'),
-	('LOC_MPT_SETTINGS_BTS_LPATH_NAME',		'zh_Hans_CN',	'BTS 商路：显示全部商路路径'),
-	('LOC_MPT_SETTINGS_BTS_LPATH_TT',		'zh_Hans_CN',	'目的地选择面板中显示全部候选商路的路径而非仅选中项。关闭可加快面板打开'),
-	('LOC_MPT_SETTINGS_BTS_TPATH_NAME',		'zh_Hans_CN',	'BTS 商路：选中商人显示路径'),
-	('LOC_MPT_SETTINGS_BTS_TPATH_TT',		'zh_Hans_CN',	'选中己方商人时自动显示其在途商路路径与两端城市'),
 	('LOC_MPT_SETTINGS_DPR_PNAME_NAME',		'zh_Hans_CN',	'外交丝带：显示玩家名'),
 	('LOC_MPT_SETTINGS_DPR_PNAME_TT',		'zh_Hans_CN',	'在外交丝带头像卡片顶部显示玩家名'),
 	('LOC_MPT_SETTINGS_DPR_CNAME_NAME',		'zh_Hans_CN',	'外交丝带：显示文明名'),
@@ -30,8 +22,8 @@ VALUES
 	('LOC_MPT_SETTINGS_GPR_TT',				'zh_Hans_CN',	'其他玩家招募伟人时向您发送通知');
 -- 条目20初版曾在此加智能计时器开关文本（LOC_MPT_SETTINGS_TIMER_ENABLE_*），条目20扩展
 -- 改用四模式 Game 配置参数（文本移至 InGame/SmartTurnTimer/ 双语 SQL），已删除。
--- 条目22：BTS 4 选项文本移植自 1.67 BTS/Text/BTS_Text_EN.xml 的 LOC_BTS_SETTING_*，
--- tag 换 LOC_MPT_SETTINGS_BTS_* 前缀（项目规约），措辞有润色。
+-- 条目22 曾加 BTS 4 选项文本（LOC_MPT_SETTINGS_BTS_*），条目22调整按用户裁决回退
+--   （4 选项不开放配置，硬编码 1.67 默认值，参数行与文本同步移除）。
 -- 条目25：BER 开关文本沿用 1.67 原文案（1.67 仅 zh 且重复注册两遍，此处补 en_US）。
 -- 条目26：NDR 开关文本沿用 1.67 原文案（LOC_TPT_NDR_SOUND_NAME/TT 仅 zh，此处补 en_US）；
 --   GPR 开关文本自拟（源 mod 2459772036 无设置体系）。

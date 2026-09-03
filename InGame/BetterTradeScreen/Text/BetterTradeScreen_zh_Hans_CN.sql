@@ -4,8 +4,8 @@
 -- LOC_TRADE_* 为覆盖原版同名 tag 或 BTS 新增 tag，字符串与 1.67 一致（同装无冲突）。
 -- 裁剪（随代码剔除不携带）：商人自动化 4 tag（LOC_TRADE_REPEAT_ROUTE_* /
 --   LOC_TRADE_FROM_TOP_SORT_ENTRY_* / LOC_TRADE_CANCEL_AUTOMATION_TOOLTIP）、
---   BTS 独立设置面板 8 tag（LOC_BTS_*，设置收编条目12面板 → LOC_MPT_SETTINGS_BTS_*，
---   见 InGame/SettingsPanel/SettingsPanel_zh_Hans_CN.sql）。
+--   BTS 独立设置面板 8 tag（LOC_BTS_*，条目22调整按用户裁决 4 选项不开放配置、
+--   硬编码 1.67 默认值，设置面板文本不携带）。
 -- 仅游戏内消费 → 仅 IG UpdateText 注册（同条目21 先例）。
 -- 1.67 中文文件相对英文的缺项（LOC_TRADE_OVERVIEW_ORIGIN_AZ 等 4 个 A-Z/Z-A 分组
 --   tag，1.67 Lua 已注释禁用对应分组项）回落英文，维持 1.67 现状。

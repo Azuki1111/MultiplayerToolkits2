@@ -21,8 +21,9 @@
 --   5. DeepLogic 可见性补丁盲区修复：m_PlotRevealed 表回合末清空（1.67 永不清空，
 --     探索-迷雾-再探索的同一格永不再次触发重建）；可见性变化在面板打开时立即
 --     Refresh（1.67 只置标记等下次 Refresh 被动消费）。
---   6. 设置源迁移：GameConfiguration BTS_* → 条目12 MPT_Settings 表 +
---     MPT_Settings_Toggle 广播订阅（初值 = 1.67 默认：排序序号关/全部路径开）。
+--   6. 设置不开放配置（条目22调整，用户裁决）：1.67 经 GameConfiguration BTS_* 可调的
+--     两个本面板选项（排序序号显示/全部路径绘制）硬编码 1.67 BTS_Settings.sql 默认值
+--     （序号关/全部路径开），MPT_Settings_Toggle 订阅与 OnSettingsChange 移除。
 --   7. 零散：OnSettingsButton 死函数与 SettingsButton 控件删除（1.67 指向已不移植的
 --     BTS 独立设置面板，按钮常隐）；dbug 打印不携带（本文件无开启态打印）。
 -- ===========================================================================
@@ -34,7 +35,7 @@ include("SupportFunctions");
 include("TradeSupport");
 
 -- ===========================================================================
---  Settings（条目22：MPT_Settings 广播订阅，初值 = 1.67 BTS_Settings.sql 默认值）
+--  Settings（条目22调整：不开放配置，硬编码 1.67 BTS_Settings.sql 默认值）
 -- ===========================================================================
 
 local showSortPriorities = false;	-- BTS_ShowSortPriorities 默认 0
@@ -1201,20 +1202,7 @@ function OnGameDebugReturn( context:string, contextTable:table )
     Refresh();
 end
 
--- ==== 条目22改动6：设置源迁移——GameConfiguration BTS_* → MPT_Settings 广播
-function OnSettingsChange(ParameterId, Value)
-    if ParameterId == "BTS_ShowSortPriorities" then
-        showSortPriorities = (Value == true or Value == 1);
-    elseif ParameterId == "BTS_ShowAllRoutePaths" then
-        showAllRoutePaths = (Value == true or Value == 1);
-        CacheEmpty()
-    end
-
-    if m_isOpen then
-        Refresh()
-    end
-end
-
+-- ==== 条目22调整：OnSettingsChange 设置响应函数移除（改动 6，4 选项不开放配置）
 -- ===========================================================================
 --  GAME Event
 -- ===========================================================================
@@ -1422,8 +1410,7 @@ function Initialize()
     Events.TradeRouteCapacityChanged.Add( MPT_OnRouteSetInvalidated );
     Events.CityAddedToMap.Add( MPT_OnRouteSetInvalidated );
 
-    -- Setting change update（条目22改动6：MPT_Settings 广播）
-    LuaEvents.MPT_Settings_Toggle.Add( OnSettingsChange )
+    -- ==== 条目22调整：MPT_Settings_Toggle 订阅移除（改动 6，4 选项不开放配置硬编码默认值）
 
     -- Control Events
     InitButton(Controls.BeginRouteButton, RequestTradeRoute)

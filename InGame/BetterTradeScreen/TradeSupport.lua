@@ -11,9 +11,10 @@
 --     回合内政策/建筑/贸易站/宣战议和的变化全部不反映，直到下回合。修复在两个
 --     面板文件（打开面板即 CacheEmpty + 扩大失效事件订阅），本文件提供 CacheEmpty
 --     导出不变；缓存本身保留（TradeOverview 三页签大量行的性能护栏）。
---   2. 设置源迁移：GameConfiguration BTS_* → 条目12 MPT_Settings 表 + 
---     LuaEvents.MPT_Settings_Toggle 广播订阅（文件底部文件级订阅，本 chunk 每上下文
---     自注册，不再依赖 1.67「由 TradeOverview 代为广播 BTS_SettingsUpdate」的跨文件约定）。
+--   2. 设置不开放配置（条目22调整，用户裁决）：1.67 经 GameConfiguration BTS_* +
+--     BTS_SettingsUpdate 广播 + 独立设置面板可调的 4 个选项，全部硬编码 1.67
+--     BTS_Settings.sql 默认值（本文件两项：近似路径关/选中显示路径开），不订阅
+--     MPT_Settings_Toggle（每个上下文一份 chunk 的订阅开销也一并省去）。
 --   3. 商人自动化整体剔除（1.67 v1.34 已禁用 UI，此处连底层死代码一并移除）：
 --     AutomateTrader/CancelAutomatedTrader/FindTopRoute/GetTopRouteFromSortSettings/
 --     RenewTradeRoutes/IsTraderAutomated/SaveTraderAutomatedInfo/LoadTraderAutomatedInfo/
@@ -30,11 +31,11 @@
 include( "Colors" );
 
 -- ===========================================================================
---  Settings（条目22：MPT_Settings 广播订阅，初值 = 1.67 BTS_Settings.sql 默认值）
+--  Settings（条目22调整：不开放配置，硬编码 1.67 BTS_Settings.sql 默认值）
 -- ===========================================================================
 
-local approximateTraderPath:boolean = false;			-- BTS_ApproximateTraderPath 默认 0
-local showTraderPathOnSelection:boolean = true;		-- BTS_ShowTraderPathOnSelection 默认 1
+local approximateTraderPath:boolean = false;		-- BTS_ApproximateTraderPath 默认 0
+local showTraderPathOnSelection:boolean = true;	-- BTS_ShowTraderPathOnSelection 默认 1
 local useCache = true
 
 -- ===========================================================================
@@ -2101,14 +2102,7 @@ end
 --  Event handlers
 -- ===========================================================================
 
--- ==== 条目22：设置源迁移——GameConfiguration BTS_* → MPT_Settings 广播（改动 2）
-local function OnSettingsChange(ParameterId, Value)
-    if ParameterId == "BTS_ApproximateTraderPath" then
-        approximateTraderPath = (Value == true or Value == 1);
-    elseif ParameterId == "BTS_ShowTraderPathOnSelection" then
-        showTraderPathOnSelection = (Value == true or Value == 1);
-    end
-end
+-- ==== 条目22调整：OnSettingsChange 设置响应函数整体移除（改动 2，见文件尾说明）
 
 function TradeSupportTracker_Initialize()
     --print("Initializing BTS Trade Support Tracker");
@@ -2126,8 +2120,7 @@ function TradeSupportTracker_Initialize()
     Events.UnitSelectionChanged.Add( TradeSupportTracker_OnUnitSelectionChanged );
 end
 
--- ==== 条目22：设置订阅改为文件级自注册（改动 2）——本 chunk 每个包含本文件的上下文
--- 各执行一次，订阅各自成立；设置面板 LoadScreenClose ApplyAll 全量广播（早于本文件的
--- 事件消费时机，必达），此后每次勾选单条广播。1.67 的「由 TradeOverview 代广播
--- BTS_SettingsUpdate」跨文件约定与 TradeSupportAutomater_Initialize（自动化，改动 3）一并移除。
-LuaEvents.MPT_Settings_Toggle.Add( OnSettingsChange );
+-- ==== 条目22：TradeSupportAutomater_Initialize（自动化，改动 3）一并移除。
+-- ==== 条目22调整：设置订阅整体移除（改动 2，4 选项不开放配置硬编码默认值）——
+-- 1.67 的 OnSettingsChange/BTS_SettingsUpdate 与本 mod 曾用的 MPT_Settings_Toggle
+-- 订阅均不再需要。
