@@ -16,12 +16,13 @@ include("Civ6Common"); --FormatTimeRemaining
 --
 -- 原版行为：常规会每条决议必须选 A/B + 目标 + 票数>0，特别会每条提案必须 votes~=0，
 -- CanMoveToNextPhase() 强制全表态后才能进确认页——没有「弃权」。
--- 引擎侧 0 票提交本就合法（= 弃权的等价实现）：
---   ① OnAccept 决议仅票数>0 才发送 WORLD_CONGRESS_RESOLUTION_VOTE（0 票自然不发）；
---   ② 提案按表全量发送 WORLD_CONGRESS_DISCUSSION_VOTE，0 票引擎接受（未受邀应急成员同款）；
+-- 引擎侧事实（条目27修复·首测实证修正）：
+--   ① 决议：引擎对「未投过票」的决议会在会期结算时随机代投（用户实测）——弃权不能只不发操作，
+--      必须显式发一张 0 票的 WORLD_CONGRESS_RESOLUTION_VOTE 把玩家标记为已投票；
+--   ② 提案：按表全量发送 WORLD_CONGRESS_DISCUSSION_VOTE，0 票引擎接受且从不随机（未受邀应急成员同款）；
 --   ③ WORLD_CONGRESS_SUBMIT_TURN 只标记「本玩家投票完毕」，与票数无关（无票可投时原版自动发送）。
 -- 故本功能为纯 UI 改动：每张决议/提案卡加「弃权」按钮（XML 同名覆盖 AbstainButton），
--- 弃权 = 清零票数并豁免 CanMoveToNextPhase 校验，确认页显示弃权状态，提交即 0 票。
+-- 弃权 = 清零票数并豁免 CanMoveToNextPhase 校验，确认页显示弃权状态，提交时弃权项显式投 0 票。
 -- 开关收编条目12 设置面板（WorldCongressAbstain_Show，单通道 MPT_Settings_Toggle，
 -- 默认开；关闭时清空弃权标记并隐藏按钮，完全还原原版行为）。
 -- ============================================================================
@@ -68,12 +69,17 @@ end
 
 -- ===========================================================================
 -- 条目27：生成决议弃权切换回调（决议卡 AbstainButton 用）。
--- 置弃权：A/B 票数清零、选项/目标复位（-1，引擎收不到该决议的投票操作 = 弃权）；
+-- 置弃权：A/B 票数清零、选项/目标复位（-1）；提交时 OnAccept 为弃权项显式投 0 票
+--（见 OnAccept 条目27修复段——不发操作会被引擎随机代投）；
 -- 取消弃权：恢复可投，票数从 0 重新分配（原版投票流程不变）。
 -- Abstained 标记存三处：根表（校验/确认页用）+ A/B 子表（UpdateVotingWidget 步进器锁定用）。
 -- ===========================================================================
 function MPT_OnToggleAbstainResolution(kVoteData:table, kCostData:table)
 	return function()
+		-- 条目27修复：会期数据已被回合末清空（陈旧卡场景）时点击无效，防 nil 索引崩脚
+		if m_kResolutionVotes == nil or m_kResolutionChoices == nil then
+			return;
+		end
 		local bAbstained:boolean = not kVoteData.Abstained;
 		kVoteData.Abstained = bAbstained;
 		kVoteData.A.Abstained = bAbstained;
@@ -103,16 +109,22 @@ end
 -- ===========================================================================
 function MPT_OnToggleAbstainProposal(kVoteData:table, kCostData:table)
 	return function()
+		-- 条目27修复：会期数据已被回合末清空（陈旧卡场景）时点击无效，防 nil 索引崩脚
+		if m_kProposalVotes == nil then
+			return;
+		end
 		local bAbstained:boolean = not kVoteData.Abstained;
 		kVoteData.Abstained = bAbstained;
 		if bAbstained then
 			kVoteData.votes = 0;
 			kVoteData.cost = 0;
 			kVoteData.voteDirection = NO_VOTE;
-			UpdateProposal(kVoteData); -- 卡片底纹恢复未选中态
+			if kVoteData.instance ~= nil then
+				UpdateProposal(kVoteData); -- 卡片底纹恢复未选中态
+			end
 		end
 		UpdateWorkingFavor();
-		if kVoteData.instance.UpdateTitle then
+		if kVoteData.instance ~= nil and kVoteData.instance.UpdateTitle then
 			kVoteData.instance.UpdateTitle(); -- 分类标题票数汇总刷新
 		end
 		UpdateNavButtons();
@@ -2437,11 +2449,25 @@ function OnAccept()
 
 		if m_CurrentStage == 1 then
  			for _, kVoteData in pairs(m_kResolutionVotes) do
-				if kVoteData.A.votes + kVoteData.B.votes > 0 then
+-- ==== 条目27修复：弃权决议显式投 0 票（旧代码注释保留） ====
+--				if kVoteData.A.votes + kVoteData.B.votes > 0 then
+				if kVoteData.Abstained then
+					-- 引擎对「未投过票」的决议会在会期结算时随机代投（用户实测），故弃权不能
+					-- 只是不发操作：显式发一张 0 票的 WORLD_CONGRESS_RESOLUTION_VOTE 把玩家
+					-- 标记为该决议已投票 → 不触发随机代投，0 票对结果零影响、0 外交支持消耗
+					-- （提案侧原版即全量发送 0 票操作、从不随机，同款语义）；
+					-- OPTION/SELECTION 取合法占位值（A 选项/首个目标），0 票下不参与任何统计
+					local kParameters:table = {};
+					kParameters[PlayerOperations.PARAM_RESOLUTION_TYPE] = kVoteData.Hash;
+					kParameters[PlayerOperations.PARAM_WORLD_CONGRESS_VOTES] = 0;
+					kParameters[PlayerOperations.PARAM_RESOLUTION_OPTION] = 1;
+					kParameters[PlayerOperations.PARAM_RESOLUTION_SELECTION] = 0;
+					UI.RequestPlayerOperation(playerID, PlayerOperations.WORLD_CONGRESS_RESOLUTION_VOTE, kParameters);
+				elseif kVoteData.A.votes + kVoteData.B.votes > 0 then
 					local kParameters:table = {};
 					kParameters[PlayerOperations.PARAM_RESOLUTION_TYPE] = kVoteData.Hash;
 					kParameters[PlayerOperations.PARAM_WORLD_CONGRESS_VOTES] = kVoteData.A.votes + kVoteData.B.votes;
-					
+
 					local kChoiceData:table = m_kResolutionChoices[kVoteData.Hash];
 					if kChoiceData then
 						kParameters[PlayerOperations.PARAM_RESOLUTION_OPTION] = kChoiceData.choice;
@@ -2450,6 +2476,7 @@ function OnAccept()
 
 					UI.RequestPlayerOperation(playerID, PlayerOperations.WORLD_CONGRESS_RESOLUTION_VOTE, kParameters);
 				end
+-- ---- 条目27修复 ----
 			end
 		end
 
@@ -2751,14 +2778,21 @@ end
 -- ===========================================================================
 -- Flush vote data to ensure every congress has isolated data
 -- ===========================================================================
-function OnLocalPlayerTurnEnd()	
+function OnLocalPlayerTurnEnd()
 	m_kProposalVotes = nil;
 	m_kResolutionVotes = nil;
-	m_kResolutionChoices = nil;		
+	m_kResolutionChoices = nil;
 	m_kProposalItemIM:ResetInstances();
 	m_kEmergencyProposalIM:ResetInstances();
-	
-	ClosePopup();	-- Always close due to timeout in MP not reseting all data	
+-- ==== 条目27修复：补销毁决议卡实例（旧代码无此行注释保留） ====
+--	（原版只重置提案两个 IM 不重置决议 IM：会期数据置 nil 后重开界面（OnResumeCongress 路径
+--	不经过 SetStage）旧决议卡仍显示可点，点其上任何控件都会 nil 索引崩脚——原版步进器同款
+--	陈旧卡陷阱，条目27 弃权按钮首测踩中 L86 崩溃实证；重置后 HasChoices 两 IM 一致归零，
+--	ResumeCongress 正确走 BetweenTurns 分支） ====
+	m_kResolutionItemIM:ResetInstances();
+-- ---- 条目27修复 ----
+
+	ClosePopup();	-- Always close due to timeout in MP not reseting all data
 end
 
 -- ===========================================================================
