@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>93</Version>
+		<Version>94</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -58,10 +58,6 @@
 	</LocalizedText>
 	<!-- 条目10：交易限制与外交限制（移植 1.67 DDV）条件注册（本 mod 首个 ActionCriteria 用例） -->
 	<ActionCriteria>
-		<!-- MPH 未启用时才注册本 mod 的交易参数与交易界面覆盖（MPH 定义同名参数，避免 Parameters 主键冲突） -->
-		<Criteria id="Disable_MPH">
-			<ModInUse inverse="1">619ac86e-d99d-4bf3-b8f0-8c5b8c402567</ModInUse>	<!--	Multiplayer Helper 1.7.2	-->
-		</Criteria>
 		<!-- 无代表团 -->
 		<Criteria id="Diplomatic_delegation_Off">
 			<ConfigurationValueMatches>
@@ -112,29 +108,6 @@
 				<Value>1</Value>
 			</ConfigurationValueMatches>
 		</Criteria>
-		<!-- 条目28：单位侧 Lua 上下文门控 = 开关开启 且 1.65 联机工具箱不在装——
-			1.65 在装时其 NHK 原版 Lua 继续服务，本 mod 让位避免双重随机晋升；
-			单 Criteria 内多子元素默认 AND（技能库 criteria-patterns 实证） -->
-		<Criteria id="NHK_MPT">
-			<ConfigurationValueMatches>
-				<Group>Game</Group>
-				<ConfigurationId>MPT_NEW_HOTKEYS</ConfigurationId>
-				<Value>1</Value>
-			</ConfigurationValueMatches>
-			<ModInUse inverse="1">00000000-0165-224C-A3AA-154BB4B9C1C5</ModInUse>	<!--	联机工具箱 1.65	-->
-		</Criteria>
-		<!-- 条目28：非单位侧功能让位 = 仅 1.65 不在装（条目28调整：自动招募/强制结束回合/
-			城市远程攻击不受「更多快捷键」开关影响，1.65 在装时其原版 Lua 继续服务防双触发） -->
-		<Criteria id="Disable_TPT">
-			<ModInUse inverse="1">00000000-0165-224C-A3AA-154BB4B9C1C5</ModInUse>	<!--	联机工具箱 1.65	-->
-		</Criteria>
-		<!-- 条目28：地图钉热键上下文让位 = 1.65 不在装 且 DMT 类高级地图钉 mod 不在装
-			（条目28调整：不受「更多快捷键」开关影响；镜像 1.65 NHK 的 Disable_DMT criteria，
-			modid 沿用其原值） -->
-		<Criteria id="Disable_TPT_DMT">
-			<ModInUse inverse="1">00000000-0165-224C-A3AA-154BB4B9C1C5</ModInUse>	<!--	联机工具箱 1.65	-->
-			<ModInUse inverse="1">4ecfcc62-5471-4435-b295-590df213e8d8</ModInUse>	<!--	DetailedMapTacks	-->
-		</Criteria>
 	</ActionCriteria>
 	<FrontEndActions>
 		<!-- 条目2：联机常用游戏设置预设（默认无蛮族开/回合60秒/允许重复文明领袖，新增禁用领袖池参数） -->
@@ -145,8 +118,8 @@
 			<File>FrontEnd/Config/Config_Base.xml</File>
 		</UpdateDatabase>
 		<!-- 条目10：交易限制配置（移植 1.67 DDV）——交易设置四模式（常规/经典/独立/自定义）+ 8 个禁止项 + 无代表团 + 无友谊；
-			MPH 启用时不注册（同名参数冲突，由 MPH 提供） -->
-		<UpdateDatabase id="FE_DDV_Config" criteria="Disable_MPH">
+			条目10/28调整：不再考虑与 MPH 兼容，无条件注册（原 Disable_MPH 让位门控废止） -->
+		<UpdateDatabase id="FE_DDV_Config">
 			<Properties>
 				<LoadOrder>10</LoadOrder>
 			</Properties>
@@ -414,8 +387,9 @@
 			MPT 独立开关用户裁决不与 1.65 NEW_HOTKEYS 共享），仅 FE 注册（条目16/20 规约：
 			Configuration 参数须前端注册开局建库继承，IG 重复注册主键冲突）；
 			条目28调整：开关作用域收窄，功能生效门控仅单位侧（InGameActions 的
-			MPT_NEW_HOTKEYS/NHK_MPT criteria），自动招募/强制结束/地图钉/城市远程攻击
-			仅 1.65/DMT 让位（Disable_TPT/Disable_TPT_DMT）不受开关影响 -->
+			MPT_NEW_HOTKEYS criteria），自动招募/强制结束/地图钉/城市远程攻击不受开关影响；
+			条目10/28调整：不再考虑与 1.65/DMT 兼容，原让位 criteria（NHK_MPT/
+			Disable_TPT/Disable_TPT_DMT）废止 -->
 		<UpdateDatabase id="FE_NHK_Config">
 			<Properties>
 				<LoadOrder>10</LoadOrder>
@@ -592,8 +566,8 @@
 		</UpdateText>
 		<!-- 条目10：交易限制执行层（移植 1.67 DDV）——DiplomacyDealView_MPT.lua 经原版 include("DiplomacyDealView_", true)
 			通配符注入交易界面上下文，按 MPT_ResolveTradeRules() 结果覆盖 PopulateAvailable* 隐藏/禁止对应类别；
-			MPT_TradeRules.lua 为统一解析器（TopPanel 条目9 与交易界面共用）；MPH 启用时不导入（MPH 自带执行层） -->
-		<ImportFiles id="IG_DDV_DealView" criteria="Disable_MPH">
+			MPT_TradeRules.lua 为统一解析器（TopPanel 条目9 与交易界面共用）；条目10/28调整：不再考虑与 MPH 兼容，无条件导入（原 Disable_MPH 让位门控废止） -->
+		<ImportFiles id="IG_DDV_DealView">
 			<Properties>
 				<LoadOrder>1010</LoadOrder>
 			</Properties>
@@ -1142,15 +1116,17 @@
 		<!-- 条目28：更多快捷键（NHK，移植 1.65 NHK/ 目录全模块 + CHS-PVP 扩展单位热键合并）
 			四组功能（用户裁决全选）：①单位命令热键 12 绑定（QueriesGameplay.sql 引擎
 			HotkeyId 层，criteria=MPT_NEW_HOTKEYS）②地图钉四键（Shift+Y/A/D/M，与条目16
-			CPL_NO_PINS 运行时联动 + Disable_DMT 让位）③随机晋升 + 伟人自动招募
+			CPL_NO_PINS 运行时联动）③随机晋升 + 伟人自动招募
 			（Shift+W/K）④强制结束回合（Shift+F，对接条目12 FEB 右键预留点
 			LuaEvents.ForcedEndTurn）。Lua 消费侧 = 四个 XML+同名 Lua 迷你上下文
 			（AddUserInterfaces 900 + ImportFiles 900，同条目12/20 机制，1.65 NHK 原机制）。
 			条目28调整（用户裁决）：「更多快捷键」开关作用域收窄——仅管单位侧
-			（IG_NHK_Gameplay/UnitOp = MPT_NEW_HOTKEYS 或 NHK_MPT）；自动招募/强制结束/
-			地图钉/城市远程攻击不受开关影响，仅 1.65/DMT 同装让位（Disable_TPT/
-			Disable_TPT_DMT，防双触发双建钉/双翻转）；城市远程攻击 CSA 走原版
+			（IG_NHK_Gameplay/UnitOp = MPT_NEW_HOTKEYS）；自动招募/强制结束/
+			地图钉/城市远程攻击不受开关影响；城市远程攻击 CSA 走原版
 			CityBannerManager_ 通配 include 链（ImportFiles 1000，条目18 MPT 1010 之前）。
+			条目10/28调整（用户裁决）：不再考虑与 1.65/DMT 兼容，同装让位 criteria
+			（NHK_MPT/Disable_TPT/Disable_TPT_DMT）废止——地图钉/自动招募/强制结束/CSA
+			转无条件加载，UnitOp 并入 MPT_NEW_HOTKEYS 开关。
 			剔除 1.65 反作弊搭车代码与死键位，优化留痕见各文件头横幅 -->
 		<UpdateDatabase id="IG_NHK_Gameplay" criteria="MPT_NEW_HOTKEYS">
 			<Properties>
@@ -1171,59 +1147,59 @@
 			<File>InGame/NewHotKeys/NewHotKeys_zh_Hans_CN.sql</File>
 			<File>InGame/NewHotKeys/NewHotKeys_en_US.sql</File>
 		</UpdateText>
-		<AddUserInterfaces id="IG_NHK_MapPin" criteria="Disable_TPT_DMT">
+		<AddUserInterfaces id="IG_NHK_MapPin">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 				<Context>InGame</Context>
 			</Properties>
 			<File>InGame/NewHotKeys/MapPin_HotKey.xml</File>
 		</AddUserInterfaces>
-		<ImportFiles id="IG_NHK_MapPin_Import" criteria="Disable_TPT_DMT">
+		<ImportFiles id="IG_NHK_MapPin_Import">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 			</Properties>
 			<File>InGame/NewHotKeys/MapPin_HotKey.lua</File>
 		</ImportFiles>
-		<AddUserInterfaces id="IG_NHK_UnitOp" criteria="NHK_MPT">
+		<AddUserInterfaces id="IG_NHK_UnitOp" criteria="MPT_NEW_HOTKEYS">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 				<Context>InGame</Context>
 			</Properties>
 			<File>InGame/NewHotKeys/NewUnitOperation.xml</File>
 		</AddUserInterfaces>
-		<ImportFiles id="IG_NHK_UnitOp_Import" criteria="NHK_MPT">
+		<ImportFiles id="IG_NHK_UnitOp_Import" criteria="MPT_NEW_HOTKEYS">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 			</Properties>
 			<File>InGame/NewHotKeys/NewUnitOperation.lua</File>
 		</ImportFiles>
-		<AddUserInterfaces id="IG_NHK_AutoRecruit" criteria="Disable_TPT">
+		<AddUserInterfaces id="IG_NHK_AutoRecruit">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 				<Context>InGame</Context>
 			</Properties>
 			<File>InGame/NewHotKeys/AutoRecruit_GreatPerson_HotKey.xml</File>
 		</AddUserInterfaces>
-		<ImportFiles id="IG_NHK_AutoRecruit_Import" criteria="Disable_TPT">
+		<ImportFiles id="IG_NHK_AutoRecruit_Import">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 			</Properties>
 			<File>InGame/NewHotKeys/AutoRecruit_GreatPerson_HotKey.lua</File>
 		</ImportFiles>
-		<AddUserInterfaces id="IG_NHK_ForcedEnd" criteria="Disable_TPT">
+		<AddUserInterfaces id="IG_NHK_ForcedEnd">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 				<Context>InGame</Context>
 			</Properties>
 			<File>InGame/NewHotKeys/ForcedTurnEnd_HotKey.xml</File>
 		</AddUserInterfaces>
-		<ImportFiles id="IG_NHK_ForcedEnd_Import" criteria="Disable_TPT">
+		<ImportFiles id="IG_NHK_ForcedEnd_Import">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
 			</Properties>
 			<File>InGame/NewHotKeys/ForcedTurnEnd_HotKey.lua</File>
 		</ImportFiles>
-		<ImportFiles id="IG_NHK_CSA" criteria="Disable_TPT">
+		<ImportFiles id="IG_NHK_CSA">
 			<Properties>
 				<LoadOrder>1000</LoadOrder>
 			</Properties>

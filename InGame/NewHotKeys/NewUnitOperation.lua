@@ -17,9 +17,8 @@
 --      恶意行为，整段剔除，include("PopupDialog") 亦随之删除
 --   3) 【不移植】1.65 已注释停用的全体取消/全体驻扎死键位（HotKey_TPT_CancelAll/
 --      FortifyAll）
--- 相对 1.65 的让位（criteria 层，modinfo 配置）：1.65 在装时本上下文不加载（其原版
---   Lua 继续服务，避免晋升预清命令双发）。
--- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=NHK_MPT
+-- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=MPT_NEW_HOTKEYS（条目10/28调整：
+--   不再考虑与 1.65 兼容，原 NHK_MPT 让位门控废止并入开关门控）
 -- ===========================================================================
 
 local m_PromoteActionId    : number = Input.GetActionId("ExtraHotkeysPromote");

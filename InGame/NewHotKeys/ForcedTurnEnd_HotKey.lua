@@ -19,10 +19,8 @@
 --   3) 删除 1.65 全部调试 print（每回合刷 Lua.log）
 --   4) 【不移植】1.65 同文件的 ]/[ 加减时热键、P++/P-- 按钮与 TOOLS_COMMAND 门控
 --      （条目20 SmartTurnTimer 已按 MPT 规范承载）
--- 相对 1.65 的让位（criteria 层，modinfo 配置）：1.65 在装时本上下文不加载（其原版
---   Lua 继续服务，避免 Shift+F 双翻转互相抵消、FEB 右键事件双处理）。
--- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=Disable_TPT（条目28调整：不受
--- 「更多快捷键」开关影响，仅 1.65 同装让位）
+-- 注册：AddUserInterfaces(900) + ImportFiles(900)，无 criteria（条目10/28调整：不再考虑
+--   与 1.65 兼容，原 Disable_TPT 让位门控废止；不受「更多快捷键」开关影响）
 -- ===========================================================================
 
 local m_ForcedTurnEndActionId : number = Input.GetActionId("HotKey_TPT_ForcedTurnEnd");

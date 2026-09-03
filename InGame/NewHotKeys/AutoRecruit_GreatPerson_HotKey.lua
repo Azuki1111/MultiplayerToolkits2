@@ -16,10 +16,8 @@
 --   3) 点数类别表 nil 防御：PointsByClass[classID] 空表/缺项时跳过该伟人（1.65 直接
 --      [1] 索引，全灭等极端局踩空崩脚）
 --   4) 【不移植】1.65 已注释停用的手动招募键 HotKey_TPT_Recruit（Shift+L 死代码）
--- 相对 1.65 的让位（criteria 层，modinfo 配置）：1.65 在装时本上下文不加载（其原版
---   Lua 继续服务，避免双重招募请求）。
--- 注册：AddUserInterfaces(900) + ImportFiles(900)，criteria=Disable_TPT（条目28调整：不受
--- 「更多快捷键」开关影响，仅 1.65 同装让位）
+-- 注册：AddUserInterfaces(900) + ImportFiles(900)，无 criteria（条目10/28调整：不再考虑
+--   与 1.65 兼容，原 Disable_TPT 让位门控废止；不受「更多快捷键」开关影响）
 -- ===========================================================================
 
 include("GameCapabilities");

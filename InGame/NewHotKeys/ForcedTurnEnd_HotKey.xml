@@ -6,7 +6,8 @@ AlphaIn 四角黑边动画 LateInitialize 时 ChangeParent 挂到 /InGame/WorldI
 （强制结束模式激活时屏幕四周压黑 + 文字提示，1.65 原样）。
 脚本为同名 ForcedTurnEnd_HotKey.lua（AddUserInterfaces 迷你上下文 + ImportFiles 同名 Lua
 自动执行，同条目12/20 机制）；动作注册在 NewHotKeys_InputActions.xml。
-criteria = Disable_TPT（条目28调整：不受「更多快捷键」开关影响，仅 1.65 同装让位防双翻转）
+criteria = 无（条目10/28调整：不再考虑与 1.65 兼容，原 Disable_TPT 让位门控废止；
+不受「更多快捷键」开关影响）
 =========================================================================== -->
 <Context  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\..\..\..\..\CivTech\Libs\ForgeUI\ForgeUI_Assets\Controls.xsd"
 					ColorSet="Beige_Black" Style="FontNormal16" FontStyle="Shadow" >

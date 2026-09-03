@@ -5,7 +5,8 @@ Context Name="AGPHK" 沿用）。GPA_Icon 指示灯 LateInitialize 时 ChangePar
 /InGame/LaunchBar/GreatPeopleButton（伟人按钮右上角模式指示灯）。
 脚本为同名 AutoRecruit_GreatPerson_HotKey.lua（AddUserInterfaces 迷你上下文 + ImportFiles
 同名 Lua 自动执行，同条目12/20 机制）；动作注册在 NewHotKeys_InputActions.xml。
-criteria = Disable_TPT（条目28调整：不受「更多快捷键」开关影响，仅 1.65 同装让位）
+criteria = 无（条目10/28调整：不再考虑与 1.65 兼容，原 Disable_TPT 让位门控废止；
+不受「更多快捷键」开关影响）
 =========================================================================== -->
 <Context Name="AGPHK">
 	<Image ID="GPA_Icon"   Size="32,32"  Texture="Units32.dds" TextureOffset="96,0" Anchor="C,C" Offset="-1,-2" Color="255,255,255,255" Hidden="1"/>
