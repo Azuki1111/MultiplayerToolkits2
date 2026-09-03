@@ -65,6 +65,11 @@ local m_RefreshFunc			:ifunction = nil;
 local m_pGreatPeopleTabInstance:table	= nil;
 local m_pPrevRecruitedTabInstance:table = nil;
 
+-- ==== 条目30（RGP）：招募历史过滤——按伟人类别与招募者筛选（-1 = 全部；
+--	每次 Open() 重建下拉项并复位为全部，会话内不持久化，RGP 同款行为）====
+local m_filterClassID			:number = -1;
+local m_filterPlayerID			:number = -1;
+-- ---- 条目30
 -- ===========================================================================
 function ChangeDisplayPlayerID(bBackward)
 	
@@ -498,6 +503,94 @@ function GetPatronizeWithFaithTT(kPerson)
 end
 
 -- =======================================================================================
+--	条目30（RGP）：招募历史过滤下拉（移植 Real Great People Plus 的 Infixo 过滤器）
+--	两个 PullDown：类别（全部 + 各伟人类别，图标字串前缀）/ 招募者（全部 + 本地文明 +
+--	已相遇主要文明「文明 - 领袖」）；点击即置过滤并 Refresh 重建列表。
+--	文本全部复用原版 tag（LOC_HUD_CITY_TOTAL=总计 / LOC_GREAT_PEOPLE_RECRUITED_BY_YOU），
+--	零新增文本；观察者局 GetDiplomacy() nil 防御（条目23/24 惯例）。
+-- =======================================================================================
+function MPT_OnClassNamePullClicked( classID:number, className:string )
+	if m_filterClassID == classID then return; end	-- 选中同一项不重建
+	Controls.ClassNamePull:GetButton():LocalizeAndSetText( className );
+	m_filterClassID = classID;
+	Refresh();
+end
+
+function MPT_PopulateClassNamePull()
+	Controls.ClassNamePull:ClearEntries();
+
+	-- 「总计」= 全部
+	local sAllText:string = Locale.Lookup("LOC_HUD_CITY_TOTAL");
+	local controlTable:table = {};
+	Controls.ClassNamePull:BuildEntry( "InstanceOne", controlTable );
+	controlTable.Button:LocalizeAndSetText( sAllText );
+	controlTable.Button:RegisterCallback( Mouse.eLClick, function() MPT_OnClassNamePullClicked(-1, sAllText); end );
+
+	-- 各伟人类别（图标字串前缀）
+	for classInfo in GameInfo.GreatPersonClasses() do
+		local classID:number = classInfo.Index;
+		local className:string = classInfo.IconString.." "..Locale.Lookup(classInfo.Name);
+		local controlTable:table = {};
+		Controls.ClassNamePull:BuildEntry( "InstanceOne", controlTable );
+		controlTable.Button:LocalizeAndSetText( className );
+		controlTable.Button:RegisterCallback( Mouse.eLClick, function() MPT_OnClassNamePullClicked(classID, className); end );
+	end
+
+	Controls.ClassNamePull:GetButton():LocalizeAndSetText( sAllText );
+	m_filterClassID = -1;
+	Controls.ClassNamePull:CalculateInternals();
+end
+
+function MPT_OnCivLeaderPullClicked( playerID:number, playerName:string )
+	if m_filterPlayerID == playerID then return; end
+	Controls.CivLeaderPull:GetButton():LocalizeAndSetText( playerName );
+	m_filterPlayerID = playerID;
+	Refresh();
+end
+
+function MPT_PopulateCivLeaderPull()
+	Controls.CivLeaderPull:ClearEntries();
+
+	-- 「总计」= 全部
+	local sAllText:string = Locale.Lookup("LOC_HUD_CITY_TOTAL");
+	local controlAll:table = {};
+	Controls.CivLeaderPull:BuildEntry( "InstanceOne", controlAll );
+	controlAll.Button:LocalizeAndSetText( sAllText );
+	controlAll.Button:RegisterCallback( Mouse.eLClick, function() MPT_OnCivLeaderPullClicked(-1, sAllText); end );
+
+	-- 本地玩家（文明 - 您）
+	local localPlayerID:number = Game.GetLocalPlayer();
+	local localPlayerConfig:table = PlayerConfigurations[localPlayerID];
+	if (localPlayerConfig ~= nil) then
+		local localPlayerName:string = Locale.Lookup( GameInfo.Civilizations[localPlayerConfig:GetCivilizationTypeID()].Name ).." - "..Locale.Lookup("LOC_GREAT_PEOPLE_RECRUITED_BY_YOU");
+		local controlLocal:table = {};
+		Controls.CivLeaderPull:BuildEntry( "InstanceOne", controlLocal );
+		controlLocal.Button:LocalizeAndSetText( localPlayerName );
+		controlLocal.Button:RegisterCallback( Mouse.eLClick, function() MPT_OnCivLeaderPullClicked(localPlayerID, localPlayerName); end );
+	end
+
+	-- 已相遇主要文明（文明 - 领袖）；观察者局 GetDiplomacy() 可能 nil，防御跳过
+	for _, pPlayer in ipairs(Game.GetPlayers()) do
+		if pPlayer ~= nil and pPlayer:IsAlive() and pPlayer:IsMajor() then
+			local pDiplomacy:table = pPlayer:GetDiplomacy();
+			if (pDiplomacy ~= nil and pDiplomacy:HasMet(localPlayerID)) then
+				local playerConfig:table = PlayerConfigurations[pPlayer:GetID()];
+				local name:string = Locale.Lookup(GameInfo.Civilizations[playerConfig:GetCivilizationTypeID()].Name).." - "..Locale.Lookup(playerConfig:GetPlayerName());
+				local controlTable:table = {};
+				Controls.CivLeaderPull:BuildEntry( "InstanceOne", controlTable );
+				controlTable.Button:LocalizeAndSetText( name );
+				controlTable.Button:RegisterCallback( Mouse.eLClick, function() MPT_OnCivLeaderPullClicked(pPlayer:GetID(), name); end );
+			end
+		end
+	end
+
+	Controls.CivLeaderPull:GetButton():LocalizeAndSetText( sAllText );
+	m_filterPlayerID = -1;
+	Controls.CivLeaderPull:CalculateInternals();
+end
+-- ---- 条目30
+
+-- =======================================================================================
 --	Layout the data for previously recruited great people.
 -- =======================================================================================
 function ViewPast( data:table )
@@ -517,8 +610,15 @@ function ViewPast( data:table )
 -- ==== 条目29（BGP）：往期招募列表倒序显示——最新招募在最上（1.65 用 StackGrowth Up
 --	实现，此处 XML 保持原版 Down 改反序遍历，视觉等价）
 	local nFirst:number, nLast:number, nStep:number = #data.Timeline, 1, -1;
+	local iTotal:number = 0;	-- ==== 条目30（RGP）：过滤后行数统计
 	for i = nFirst, nLast, nStep do
 		local kPerson	:table	= data.Timeline[i];
+
+-- ==== 条目30（RGP）：过滤——类别与招募者双条件（-1 = 全部），不匹配行跳过不入列
+		local bShowClass:boolean = (m_filterClassID == -1) or (kPerson.ClassID == m_filterClassID);
+		local bShowPlayer:boolean = (m_filterPlayerID == -1) or (kPerson.ClaimantID == m_filterPlayerID);
+		if (bShowClass and bShowPlayer) then
+-- ---- 条目30
 
 		local instance	:table	= m_greatPersonRowIM:GetInstance();
 		local classData	:table = GameInfo.GreatPersonClasses[kPerson.ClassID];
@@ -632,11 +732,18 @@ function ViewPast( data:table )
 
 		instance.Content:SetSizeY( rowHeight );
 
+		iTotal = iTotal + 1;	-- ==== 条目30（RGP）：过滤后计数
+		end	-- ==== 条目30（RGP）：过滤条件块结束
+
 	end
+
+	-- ==== 条目30（RGP）：过滤后总数显示（复用原版「总计」tag + Lua 拼接）
+	Controls.Total:SetText( Locale.Lookup("LOC_HUD_CITY_TOTAL")..": "..tostring(iTotal) );
+-- ---- 条目30
 
 	-- Scaling to screen width required for the previously recruited tab
 	Controls.PopupContainer:SetSizeX( m_screenWidth );
-	Controls.ModalFrame:SetSizeX( m_screenWidth );	
+	Controls.ModalFrame:SetSizeX( m_screenWidth );
 
 	Controls.RecruitedStack:CalculateSize();
 	Controls.RecruitedScroller:CalculateSize();
@@ -874,6 +981,11 @@ function Open()
 	if (Game.GetLocalPlayer() == -1) then
 		return
 	end
+
+	-- ==== 条目30（RGP）：每次打开重建过滤下拉项（相遇状态可能变化；复位为全部）
+	MPT_PopulateClassNamePull();
+	MPT_PopulateCivLeaderPull();
+	-- ---- 条目30
 
 	-- Queue the screen as a popup, but we want it to render at a desired location in the hierarchy, not on top of everything.
 	if not UIManager:IsInPopupQueue(ContextPtr) then

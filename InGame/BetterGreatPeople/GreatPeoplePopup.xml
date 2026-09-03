@@ -32,6 +32,14 @@
 
 		<Box									ID="RecruitedArea"																					Size="parent,parent"							Color="11,27,40,255">
 			<Label																						Anchor="C,T"	Offset="0,95"		Style="FontBoldFlair18"						Color="188,180,167,255" SmallCaps="24" SmallCapsType="EveryWord" String="{LOC_GREAT_PEOPLE_RECRUITMENT_HISTORY:upper}" />
+			<!-- ==== 条目30（RGP 移植 Real Great People Plus 的 Infixo 过滤器）：招募历史过滤——
+					类别下拉（LOC_HUD_CITY_TOTAL=全部 + 各伟人类别）/ 招募者下拉（全部 + 本地文明
+					+ 已相遇文明），过滤逻辑见同名 Lua ViewPast/MPT_Populate*Pull；Total 计数标签
+					文本由 Lua 每次刷新写入。文本全复用原版 tag 零新增。==== -->
+			<Label						ID="Total"							Anchor="L,T"	Offset="20,95"		Style="GreatPeopleChartHeader"			String="$TotalRecruited$"/>
+			<PullDown					ID="ClassNamePull"					Anchor="L,T"	Offset="110,90"		Size="210,24"		Style="PullDownBlue" ScrollThreshold="400" AutoSizePopUp="1" SpaceForScroll="0"/>
+			<PullDown					ID="CivLeaderPull"					Anchor="L,T"	Offset="360,90"		Size="250,24"		Style="PullDownBlue" ScrollThreshold="400" AutoSizePopUp="1" SpaceForScroll="0"/>
+			<!-- ==== 条目30 留痕止 ==== -->
 			<Line																							Start="10,130" End="parent-10,130"	Width="2"										Color="48,60,68,255" />
 			<Container																											Offset="10,131" Size="parent-20,28" >
 				<Label																					Anchor="L,T"	Offset="12,16"	Style="GreatPeopleChartHeader"		String="LOC_GREAT_PEOPLE_EARN_DATE" />
