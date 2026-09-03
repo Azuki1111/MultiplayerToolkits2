@@ -240,6 +240,14 @@
 			<Label	ID="HeaderText"		Style="FontFlair14" FontStyle="glow" ColorSet="ShellHeader" SmallCaps="18" SmallCapsType="EveryWord" Anchor="C,C" Align="Center" Offset="0,1" WrapWidth="268"/>
 		</Grid>
 	</Instance>
+	<!-- 条目31扩展：未招募个体名行（FontFlair14 亮字）与效果描述行（DawnText 缩进 12px，
+		文本 = 卡片效果区同源摘要，主动权能/被动能力各成段） -->
+	<Instance Name="MPT_GPEraNameInstance">
+		<Label		ID="NameText"				Style="FontFlair14" FontStyle="Shadow" ColorSet="ShellHeader" SmallCaps="18" SmallCapsType="EveryWord" WrapWidth="268"/>
+	</Instance>
+	<Instance Name="MPT_GPEraDescInstance">
+		<Label		ID="DescText"				Style="DawnText" WrapWidth="256" Offset="12,0"/>
+	</Instance>
 	<!-- 名册行（DawnText 亮字于暗底，条目24 行描述同款样式） -->
 	<Instance Name="MPT_GPEraRowInstance">
 		<Label		ID="RowText"				Style="DawnText" WrapWidth="268"/>

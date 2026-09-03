@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>100</Version>
+		<Version>101</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -1028,7 +1028,7 @@
 		</ImportFiles>
 		<!-- 条目29：伟人界面增强（BGP = Infixo Better Great People + 号码菌改背景，整文件替换原版 GreatPeoplePopup） -->
 		<!-- 条目30：招募历史过滤（移植工坊 3148047463 Real Great People Plus 的 Infixo 过滤器，同目录同两文件零新增注册）——往期招募页头部类别/招募者两个 PullDown + Total 计数标签，ViewPast 双条件过滤，文本全复用原版 tag -->
-		<!-- 条目31：同代伟人名册 Tooltip（学习同源 RGP 数据口径，同目录同两文件零新增注册）——Portrait 悬停 MPT_GPEraTooltip 富 Tooltip（条目24 模式）列同类别同时代全部伟人：未招募正常色排前、已招募灰字「- 不可用」（LOC_TECH_KEY_UNAVAILABLE 原版 tag）置后，已招募=GetPastTimeline 出现过。条目31修复：Fill 去重（ClassID|EraID，回调悬停期间反复触发不去重=全量重建）+ 撑高块 ResetInstances（漏了=每次回调 +8px 棘轮式增高，用户实测 tooltip 逐渐变长内容沉底）+ ViewCurrent 清键保招募状态新鲜 -->
+		<!-- 条目31：同代伟人名册 Tooltip（学习同源 RGP 数据口径，同目录同两文件零新增注册）——Portrait 悬停 MPT_GPEraTooltip 富 Tooltip（条目24 模式）列同类别同时代全部伟人：未招募正常色排前、已招募灰字「- 不可用」（LOC_TECH_KEY_UNAVAILABLE 原版 tag）置后，已招募=GetPastTimeline 出现过。条目31扩展：名册带效果文本（用户裁决「关键是显示伟人效果」）——数据口径 = RGP 百科页：主动=GreatPersonIndividualActionModifiers、被动=GreatPersonIndividualBirthModifiers，GetModifierText(ModifierId,"Summary")（include GameEffectsText 原版共享脚本）渲染自然语言，Override/ActionCharges/先知特例同百科页处理，GameInfo 静态数据按个体缓存；未招募个体 = 名字行（FontFlair14）+效果行（DawnText 缩进），已招募仍仅灰字名行。条目31修复：Fill 去重（ClassID|EraID，回调悬停期间反复触发不去重=全量重建）+ 撑高块 ResetInstances（漏了=每次回调 +8px 棘轮式增高，用户实测 tooltip 逐渐变长内容沉底）+ ViewCurrent 清键保招募状态新鲜 -->
 		<ReplaceUIScript id="IG_BGP_Replace">
 			<Properties>
 				<LoadOrder>100000</LoadOrder>

@@ -30,6 +30,7 @@ include("SupportFunctions");
 include("Civ6Common"); --DifferentiateCiv
 include("ModalScreen_PlayerYieldsHelper");
 include("GameCapabilities");
+include("GameEffectsText");	-- ==== 条目31：GetModifierText（伟人名册 Tooltip 渲染个体 Modifier 摘要，原版百科页同款）
 
 -- ===========================================================================
 --	CONSTANTS
@@ -607,9 +608,12 @@ end
 -- =======================================================================================
 local MPT_EraTipControls	:table = {};
 local MPT_EraTipHeaderIM	:table = nil;
-local MPT_EraTipRowIM		:table = nil;
+local MPT_EraTipNameIM		:table = nil;	-- 未招募个体名行（条目31扩展）
+local MPT_EraTipDescIM		:table = nil;	-- 个体效果描述行（条目31扩展）
+local MPT_EraTipRowIM		:table = nil;	-- 已招募灰字名行
 local MPT_EraTipSpacerIM	:table = nil;
 local MPT_EraTipCurrent		:string = nil;	-- 去重键「ClassID|EraID」（条目31修复）
+local MPT_EraTipSectionsCache:table = {};	-- 个体效果文本缓存（条目31扩展：GameInfo 静态数据按个体缓存）
 
 -- 懒初始化（首次悬停时模板必已随本上下文 XML 注册；nil 防御——未生效时静默回退无 tooltip）
 function MPT_EnsureEraTooltip()
@@ -617,6 +621,8 @@ function MPT_EnsureEraTooltip()
 		TTManager:GetTypeControlTable("MPT_GPEraTooltip", MPT_EraTipControls);
 		if MPT_EraTipControls.GPStack ~= nil then
 			MPT_EraTipHeaderIM = InstanceManager:new("MPT_GPEraHeaderInstance", "HeaderRoot", MPT_EraTipControls.GPStack);
+			MPT_EraTipNameIM = InstanceManager:new("MPT_GPEraNameInstance", "NameText", MPT_EraTipControls.GPStack);
+			MPT_EraTipDescIM = InstanceManager:new("MPT_GPEraDescInstance", "DescText", MPT_EraTipControls.GPStack);
 			MPT_EraTipRowIM = InstanceManager:new("MPT_GPEraRowInstance", "RowText", MPT_EraTipControls.GPStack);
 			MPT_EraTipSpacerIM = InstanceManager:new("MPT_GPEraSpacerInstance", "SpacerRoot", MPT_EraTipControls.GPStack);
 			-- 文本布局跨帧完成（条目24 同款）：栈尺寸实际变化时引擎回调再收口一次；
@@ -649,6 +655,63 @@ function MPT_IsGreatPersonRecruited( eIndividual:number )
 	return false;
 end
 
+-- ==== 条目31扩展：个体效果文本（关键需求「显示伟人效果」）——数据口径 = RGP 百科页：
+--	主动 = GreatPersonIndividualActionModifiers、被动 = GreatPersonIndividualBirthModifiers，
+--	经 GetModifierText(ModifierId, "Summary") 渲染为自然语言（GameEffectsText 原版共享脚本，
+--	无 GameEffects DLL 时回退 ModifierStrings 表）；Override 字段与先知特例同百科页处理。
+--	GameInfo 静态数据，按个体 Type 缓存。返回 {sName=, tLines={效果行...}}
+function MPT_GetEraTipSections( sIndividualType:string )
+	local tCache:table = MPT_EraTipSectionsCache[sIndividualType];
+	if tCache ~= nil then
+		return tCache;
+	end
+	local gp:table = GameInfo.GreatPersonIndividuals[sIndividualType];
+	if gp == nil then
+		local tEmpty:table = { sName = sIndividualType, tLines = {} };
+		MPT_EraTipSectionsCache[sIndividualType] = tEmpty;
+		return tEmpty;
+	end
+	local tSections:table = { sName = Locale.Lookup(gp.Name), tLines = {} };
+
+	-- 主动权能：ActionModifiers 摘要（有次数或有 Override 才算存在）
+	local tActive:table = {};
+	for row in GameInfo.GreatPersonIndividualActionModifiers() do
+		if row.GreatPersonIndividualType == sIndividualType then
+			local sText:string = GetModifierText(row.ModifierId, "Summary");
+			if sText then
+				table.insert(tActive, sText);
+			end
+		end
+	end
+	if (gp.ActionCharges > 0) and (#tActive > 0 or gp.ActionEffectTextOverride ~= nil) then
+		table.insert(tSections.tLines, Locale.Lookup("LOC_UI_PEDIA_GREATPERSON_ACTION", gp.ActionNameTextOverride or "LOC_GREATPERSON_ACTION_NAME_DEFAULT", gp.ActionCharges));
+		table.insert(tSections.tLines, gp.ActionEffectTextOverride or table.concat(tActive, "[NEWLINE]"));
+	end
+
+	-- 被动能力：BirthModifiers 摘要
+	local tPassive:table = {};
+	for row in GameInfo.GreatPersonIndividualBirthModifiers() do
+		if row.GreatPersonIndividualType == sIndividualType then
+			local sText:string = GetModifierText(row.ModifierId, "Summary");
+			if sText then
+				table.insert(tPassive, sText);
+			end
+		end
+	end
+	if (#tPassive > 0 or gp.BirthEffectTextOverride ~= nil) then
+		table.insert(tSections.tLines, Locale.Lookup(gp.BirthNameTextOverride or "LOC_GREATPERSON_PASSIVE_NAME_DEFAULT"));
+		table.insert(tSections.tLines, gp.BirthEffectTextOverride or table.concat(tPassive, "[NEWLINE]"));
+	end
+
+	-- 先知特例（原版百科页同款：无 Modifier，固定创立宗教说明）
+	if gp.GreatPersonClassType == "GREAT_PERSON_CLASS_PROPHET" then
+		table.insert(tSections.tLines, Locale.Lookup("LOC_GREATPERSON_ACTION_USAGE_FOUND_RELIGION"));
+	end
+
+	MPT_EraTipSectionsCache[sIndividualType] = tSections;
+	return tSections;
+end
+
 -- 悬停填充（AddRecruit 闭包绑定 Portrait；kPerson 为当前卡对应伟人）。
 -- ==== 条目31修复：回调在悬停期间被引擎反复触发，必须按「ClassID|EraID」去重——否则每次
 --	触发全量重建且撑高块逐次累加（用户实测 tooltip 棘轮式增高、内容沉底）；去重后不变仅
@@ -672,6 +735,8 @@ function MPT_FillGPEraTooltip( kPerson:table )
 	if MPT_EraTipCurrent ~= sKey then
 		MPT_EraTipCurrent = sKey;
 		MPT_EraTipHeaderIM:ResetInstances();
+		MPT_EraTipNameIM:ResetInstances();
+		MPT_EraTipDescIM:ResetInstances();
 		MPT_EraTipRowIM:ResetInstances();
 		MPT_EraTipSpacerIM:ResetInstances();	-- 撑高块同样回收（漏 Reset = 每次回调 +8px）
 
@@ -679,21 +744,25 @@ function MPT_FillGPEraTooltip( kPerson:table )
 		local kHeader:table = MPT_EraTipHeaderIM:GetInstance();
 		kHeader.HeaderText:SetText( Locale.Lookup(classData.Name) .. " - " .. Locale.Lookup(eraData.Name) );
 
-		-- 同类别同时代全部伟人；未招募排前、已招募灰字置后（组内保持 GameInfo 顺序）
+		-- 同类别同时代全部伟人；未招募（名行 + 效果行）排前、已招募灰字置后（组内保持 GameInfo 顺序）
 		local tAvailable:table = {};
 		local tRecruited:table = {};
 		for gp in GameInfo.GreatPersonIndividuals() do
 			if gp.GreatPersonClassType == sGPClass and gp.EraType == sEraType then
-				local sName:string = Locale.Lookup(gp.Name);
+				local tSections:table = MPT_GetEraTipSections(gp.GreatPersonIndividualType);
 				if MPT_IsGreatPersonRecruited(gp.Index) then
-					table.insert(tRecruited, "[COLOR_Grey]"..sName.." - "..Locale.Lookup("LOC_TECH_KEY_UNAVAILABLE").."[ENDCOLOR]");
+					table.insert(tRecruited, "[COLOR_Grey]"..tSections.sName.." - "..Locale.Lookup("LOC_TECH_KEY_UNAVAILABLE").."[ENDCOLOR]");
 				else
-					table.insert(tAvailable, sName);
+					table.insert(tAvailable, tSections);
 				end
 			end
 		end
-		for _, sName in ipairs(tAvailable) do
-			MPT_EraTipRowIM:GetInstance().RowText:SetText( sName );
+		-- ==== 条目31扩展：未招募个体 = 名字行 + 效果行（主动权能/被动能力摘要，即卡片效果区同源文本）
+		for _, tSections in ipairs(tAvailable) do
+			MPT_EraTipNameIM:GetInstance().NameText:SetText( tSections.sName );
+			if #tSections.tLines > 0 then
+				MPT_EraTipDescIM:GetInstance().DescText:SetText( table.concat(tSections.tLines, "[NEWLINE]") );
+			end
 		end
 		for _, sText in ipairs(tRecruited) do
 			MPT_EraTipRowIM:GetInstance().RowText:SetText( sText );
