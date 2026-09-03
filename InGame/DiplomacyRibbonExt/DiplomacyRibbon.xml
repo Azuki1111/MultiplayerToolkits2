@@ -203,7 +203,10 @@
 			包含在帧内）；高度不固定——Lua 每次悬停按 InfoStack 实测收口（原版 PlayerSetupLogic
 			L876-877 CalculateSize+ReprocessAnchoring 同款收尾），每个领袖条目数不同自适应 -->
 		<Grid		ID="BG"					Size="400,75" Style="EnhancedToolTip" InnerPadding="30,26" >
-			<Stack	ID="InfoStack"			StackGrowth="Down" StackPadding="8"/>
+			<!-- 内容栈水平居中 + 顶部 26px（EnhancedToolTip 样式下 InnerPadding 不缩进子控件——原版
+				CivToolTip 的 ScrollPanel 就是手动 Anchor=C,T + Offset 内缩，此处同款：左右各 (400-340)/2=30，
+				上下 26 与 Lua 收口 h+52 对称） -->
+			<Stack	ID="InfoStack"			StackGrowth="Down" StackPadding="8" Anchor="C,T" Offset="0,26"/>
 		</Grid>
 	</ToolTipType>
 
