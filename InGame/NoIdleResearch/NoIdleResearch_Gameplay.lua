@@ -16,30 +16,44 @@
 --      文件加载，默认关零开销）。不放条目12游内设置面板：本功能是 Gameplay 模拟
 --      行为须全房一致，面板开关写每机本地 Configuration 值会引入 OOS 风险。
 --
--- 条目31修复：「可研究」判定重建（用户实测前置未解锁的未来科技被自动选中）——
+-- 条目31修复一：「可研究」判定重建（用户实测前置未解锁的未来科技被自动选中）——
 --   Technologies/Civics 主表并无 PrereqTech/PrereqCivic 列（v1 误读恒为 nil → 全体
---   判为无前置可研究 → argmax 剩余量恒为最贵的 Repeatable 未来科技/未来市政），
---   前置关系在 TechnologyPrereqs（Technology/PrereqTech）/ CivicPrereqs（Civic/
---   PrereqCivic）邻接表，多前置行为 AND（如 TECH_COMPUTERS 前置 Electricity+Radio）。
---   修复 = 采用原版面板同款约束 API：PlayerTechs:CanResearch(Index)（TechTree.lua
---   L1107 READY 判定 / ResearchChooser.lua L71 入选条件）/ PlayerCulture:CanProgress
---   (Index)（CivicsChooser.lua L68），Gameplay 侧可用性未验证 → 首次补选时探测，
---   nil 则回退手写邻接表 AND 判定（两种判定输入全为模拟层确定性状态，全机一致）。
+--   判为无前置可研究），前置关系在 TechnologyPrereqs/CivicPrereqs 邻接表，多前置行
+--   为 AND。修复 = 原版面板同款约束 API：PlayerTechs:CanResearch(Index)（TechTree.lua
+--   L1107 / ResearchChooser.lua L71）与 PlayerCulture:CanProgress(Index)
+--  （CivicsChooser.lua L68），Gameplay 侧首次补选探测，nil 则回退手写邻接表 AND 判定
+--  （实测：CanResearch 在 Gameplay 侧可用（mode=1），CanProgress 为 nil（mode=2））。
+--
+-- 条目31修复二：随机前置节点排除（用户实测市政 mode=2 仍误选 CIVIC_SMART_POWER_
+--   DOCTRINE）——GS 对未来时代节点采用「随机前置」机制：Civics_XP2/Technologies_XP2
+--   表 RandomPrereqs="true" 的行（市政 6 项：智能权力教义/全球变暖缓解/信息战/出走
+--   imperative/文化霸权/未来市政；科技 8 项：海上家园/高级AI/高级能源电池等）的
+--   前置由引擎每局随机抽定，邻接表中合法地没有行，手动图永远验证不了 → v2 判成
+--   「无前置根节点」→ argmax 剩余量恒选最贵者。修复 = mode2 判定追加两条硬约束：
+--   ①命中随机前置集合 → 不自动补选（交还玩家手选）；②无前置行且非远古根节点
+--  （合法根 = 陶术/畜牧/采矿/法典，EraType=ERA_ANCIENT）→ 不自动补选（对同机制的
+--   其他 mod 内容也保守兜底）。mode1 引擎判定天然知道随机前置，不受影响。
 --
 -- 其余不移植项：源实现 next(pPlayerCulture)==nil 的死代码检查丢弃；硬编码
 -- 0..58 / 0..73 循环（全 DLC 下后期科技/市政索引越界遗漏）改为 GameInfo 全量遍历。
 --
--- 确定性（联机无 OOS）：候选枚举/前置判定/费用进度/产出全部为模拟层确定性状态，
--- GameInfo 静态表按行序（Index 升序）遍历，并列取 Index 小者，全部客户端同回合
--- 得出同一选择；判定方式探测结果仅取决于上下文（全机同 context 同结果）；
--- 全房需同装本 mod（条目4.1 模组校验保证）。
+-- 确定性（联机无 OOS）：候选枚举/前置判定/费用进度/产出全部为模拟层确定性状态
+--（随机前置集合来自静态数据表，同样确定），GameInfo 静态表按行序（Index 升序）
+-- 遍历，并列取 Index 小者，全部客户端同回合得出同一选择；判定方式探测结果仅取决
+-- 于上下文（全机同 context 同结果）；全房需同装本 mod（条目4.1 模组校验保证）。
 -- ============================================================================
 
--- 静态候选表：Index 升序数组（GameInfo 行序即 Index 序）与前置邻接图（Index → 前置 Index 数组）
+-- 静态候选表：Index 升序数组（GameInfo 行序即 Index 序）、前置邻接图（Index → 前置
+-- Index 数组）、远古根节点标记（无前置行时唯一可补选的合法形态）、随机前置集合
+--（Civics_XP2/Technologies_XP2 的 RandomPrereqs 行，前置由引擎随机抽定无法本地验证）
 local m_techList :table = {};
 local m_civicList :table = {};
 local m_techPrereqs :table = {};
 local m_civicPrereqs :table = {};
+local m_techNoEdgeOk :table = {};
+local m_civicNoEdgeOk :table = {};
+local m_techRandom :table = {};
+local m_civicRandom :table = {};
 -- 可研究判定方式（首次补选时探测一次并缓存）：1=引擎 API（原版面板同款）
 -- 2=手动邻接表 AND 回退（引擎 API 在 Gameplay 侧为 nil 时）
 local m_techCheckMode :number = 0;
@@ -51,19 +65,29 @@ local m_civicProgressMode :number = 0;	-- 0=未探测 1=GetCulturalProgress 2=Ge
 -- ============================================================================
 -- 构建静态候选表与前置邻接图：前置在 TechnologyPrereqs（Technology/PrereqTech 两列）
 -- 与 CivicPrereqs（Civic/PrereqCivic）邻接表，多前置行为 AND（如 TECH_COMPUTERS 前置
--- Electricity+Radio）；主表的 PrereqTech/PrereqCivic 列不存在（v1 修复根因）。
+-- Electricity+Radio）；主表的 PrereqTech/PrereqCivic 列不存在（修复一根因）。
 -- GameInfo 行序即 Index 升序，table.insert 保序，ipairs 天然确定
 -- ============================================================================
 local function MPT_NoIdleResearch_BuildStaticTables()
 	local techTypeToIndex = {};
 	local civicTypeToIndex = {};
 	for row in GameInfo.Technologies() do
-		techTypeToIndex[row.TechnologyType] = row.Index;
-		table.insert(m_techList, row.Index);
+		if row.TechnologyType ~= nil and row.Index ~= nil then
+			techTypeToIndex[row.TechnologyType] = row.Index;
+			table.insert(m_techList, row.Index);
+			if row.EraType == "ERA_ANCIENT" then
+				m_techNoEdgeOk[row.Index] = true;
+			end
+		end
 	end
 	for row in GameInfo.Civics() do
-		civicTypeToIndex[row.CivicType] = row.Index;
-		table.insert(m_civicList, row.Index);
+		if row.CivicType ~= nil and row.Index ~= nil then
+			civicTypeToIndex[row.CivicType] = row.Index;
+			table.insert(m_civicList, row.Index);
+			if row.EraType == "ERA_ANCIENT" then
+				m_civicNoEdgeOk[row.Index] = true;
+			end
+		end
 	end
 	for row in GameInfo.TechnologyPrereqs() do
 		local iTech = techTypeToIndex[row.Technology];
@@ -87,6 +111,27 @@ local function MPT_NoIdleResearch_BuildStaticTables()
 				m_civicPrereqs[iCivic] = list;
 			end
 			table.insert(list, iPrereq);
+		end
+	end
+	-- GS 随机前置集合（表仅 GS 环境存在，nil 守卫；RandomPrereqs 兼容布尔/字符串两种暴露形态）
+	if GameInfo.Civics_XP2 ~= nil then
+		for row in GameInfo.Civics_XP2() do
+			if row.CivicType ~= nil and (row.RandomPrereqs == true or row.RandomPrereqs == "true") then
+				local iCivic = civicTypeToIndex[row.CivicType];
+				if iCivic ~= nil then
+					m_civicRandom[iCivic] = true;
+				end
+			end
+		end
+	end
+	if GameInfo.Technologies_XP2 ~= nil then
+		for row in GameInfo.Technologies_XP2() do
+			if row.TechnologyType ~= nil and (row.RandomPrereqs == true or row.RandomPrereqs == "true") then
+				local iTech = techTypeToIndex[row.TechnologyType];
+				if iTech ~= nil then
+					m_techRandom[iTech] = true;
+				end
+			end
 		end
 	end
 end
@@ -116,7 +161,8 @@ end
 -- ============================================================================
 -- 「可研究」判定（未研究的过滤在外层候选循环）：优先原版面板同款约束 API
 --（TechTree.lua L1107 READY 判定 / CivicsChooser.lua L68 入选条件），引擎 API 在
--- Gameplay 侧不可用时回退手写邻接表 AND 判定（全部前置已研究才可研究）
+-- Gameplay 侧不可用时回退手写判定：随机前置集合成员直接排除（前置由引擎随机抽定
+-- 无法本地验证）；邻接表 AND 全部前置已研究；无前置行仅远古根节点放行
 -- ============================================================================
 local function MPT_NoIdleResearch_IsTechResearchable(pTechs :table, techIndex :number)
 	if m_techCheckMode == 0 then
@@ -125,6 +171,9 @@ local function MPT_NoIdleResearch_IsTechResearchable(pTechs :table, techIndex :n
 	if m_techCheckMode == 1 then
 		return pTechs:CanResearch(techIndex);
 	end
+	if m_techRandom[techIndex] then
+		return false;
+	end
 	local prereqs = m_techPrereqs[techIndex];
 	if prereqs ~= nil then
 		for _, prereqIndex in ipairs(prereqs) do
@@ -132,6 +181,8 @@ local function MPT_NoIdleResearch_IsTechResearchable(pTechs :table, techIndex :n
 				return false;
 			end
 		end
+	elseif not m_techNoEdgeOk[techIndex] then
+		return false;
 	end
 	return true;
 end
@@ -143,6 +194,9 @@ local function MPT_NoIdleResearch_IsCivicResearchable(pCulture :table, civicInde
 	if m_civicCheckMode == 1 then
 		return pCulture:CanProgress(civicIndex);
 	end
+	if m_civicRandom[civicIndex] then
+		return false;
+	end
 	local prereqs = m_civicPrereqs[civicIndex];
 	if prereqs ~= nil then
 		for _, prereqIndex in ipairs(prereqs) do
@@ -150,6 +204,8 @@ local function MPT_NoIdleResearch_IsCivicResearchable(pCulture :table, civicInde
 				return false;
 			end
 		end
+	elseif not m_civicNoEdgeOk[civicIndex] then
+		return false;
 	end
 	return true;
 end
@@ -270,4 +326,12 @@ local mpt_civicEdges :number = 0;
 for _, list in pairs(m_civicPrereqs) do
 	mpt_civicEdges = mpt_civicEdges + #list;
 end
-print("[MPT_NoIdleResearch] Gameplay script initialized (techs " .. #m_techList .. ", tech-prereq-edges " .. mpt_techEdges .. ", civics " .. #m_civicList .. ", civic-prereq-edges " .. mpt_civicEdges .. ").");
+local mpt_techRandomCount :number = 0;
+for _ in pairs(m_techRandom) do
+	mpt_techRandomCount = mpt_techRandomCount + 1;
+end
+local mpt_civicRandomCount :number = 0;
+for _ in pairs(m_civicRandom) do
+	mpt_civicRandomCount = mpt_civicRandomCount + 1;
+end
+print("[MPT_NoIdleResearch] Gameplay script initialized (techs " .. #m_techList .. ", tech-prereq-edges " .. mpt_techEdges .. ", tech-random-prereqs " .. mpt_techRandomCount .. ", civics " .. #m_civicList .. ", civic-prereq-edges " .. mpt_civicEdges .. ", civic-random-prereqs " .. mpt_civicRandomCount .. ").");
