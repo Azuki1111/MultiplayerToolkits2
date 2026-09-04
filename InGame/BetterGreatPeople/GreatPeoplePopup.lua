@@ -737,14 +737,12 @@ function MPT_GetEraTipSections( sIndividualType:string )
 		end
 	end
 
-	-- 先知特例（原版百科页同款：无 Modifier，固定创立宗教说明）——并入被动体
+	-- 先知特例（条目31修复六）：效果文本引擎硬编码无数据列，tag = LOC_GREATPERSON_ACTION_EFFECT_FOUND_RELIGION
+	--（与卡片完全同句「创立一个宗教，并以创立宗教的城市作为圣城。」）；卡片无标题行，此处同款：
+	-- 仅效果正文（先前误用百科页 LOC_GREATPERSON_ACTION_USAGE_FOUND_RELIGION「在圣地或巨石阵上激活」
+	-- 属激活地点说明非卡片文本，用户裁决内容须与卡片完全一致）
 	if gp.GreatPersonClassType == "GREAT_PERSON_CLASS_PROPHET" then
-		if tSections.sPassiveBody ~= nil then
-			tSections.sPassiveBody = tSections.sPassiveBody.."[NEWLINE]"..Locale.Lookup("LOC_GREATPERSON_ACTION_USAGE_FOUND_RELIGION");
-		else
-			tSections.sPassiveHeader = tSections.sPassiveHeader or "[ICON_Bolt]"..Locale.Lookup("LOC_GREATPERSON_PASSIVE_NAME_DEFAULT");
-			tSections.sPassiveBody = Locale.Lookup("LOC_GREATPERSON_ACTION_USAGE_FOUND_RELIGION");
-		end
+		tSections.sActionBody = Locale.Lookup("LOC_GREATPERSON_ACTION_EFFECT_FOUND_RELIGION");
 	end
 
 	-- 巨作块：GreatWorks.GreatPersonIndividualType——孙子兵法/作家诗人画家音乐家的全部内容
@@ -812,50 +810,51 @@ function MPT_FillGPEraTooltip( kPerson:table )
 
 		local function MPT_FillEraTipBlock( tSections:table, bRecruited:boolean )
 			local block:table = MPT_EraTipBlockIM:GetInstance();
-			-- 内栈行 IM 按块懒建（实例复用时持久，同原版 AddRecruit 的 instance["m_IM"] 模式）
-			if block["m_NameIM"] == nil then
-				block["m_NameIM"] = InstanceManager:new("MPT_GPEraNameInstance", "NameText", block.BlockStack);
-				block["m_DescIM"] = InstanceManager:new("MPT_GPEraDescInstance", "DescText", block.BlockStack);
-				block["m_BodyIM"] = InstanceManager:new("MPT_GPEraBodyInstance", "BodyText", block.BlockStack);
-				-- 灰罩尺寸随内栈实测同步（跨帧文本布局自愈，同条目24 收口思路）
+			-- 内栈行 IM 每次填充全新创建（条目31修复四：不同类型 IM 各自回收，复用位置与本次
+			-- 填充顺序不对应是行序错乱根因；追加式新行按填充顺序入栈，旧行随旧 IM 隐藏不占空间）
+			local nameIM:table = InstanceManager:new("MPT_GPEraNameInstance", "NameText", block.BlockStack);
+			local descIM:table = InstanceManager:new("MPT_GPEraDescInstance", "DescText", block.BlockStack);
+			local bodyIM:table = InstanceManager:new("MPT_GPEraBodyInstance", "BodyText", block.BlockStack);
+			-- 灰罩尺寸随内栈实测同步（跨帧文本布局自愈，同条目24 收口思路；每块注册一次）
+			if block["m_bShadeHooked"] == nil then
+				block["m_bShadeHooked"] = true;
 				block.BlockStack:RegisterSizeChanged(function()
 					local _, h:number = block.BlockStack:GetSizeVal();
-					block.BlockShade:SetSizeVal(268, h);
+					block.BlockShade:SetSizeVal(276, h + 8);
 				end);
 			end
-			block["m_NameIM"]:ResetInstances();
-			block["m_DescIM"]:ResetInstances();
-			block["m_BodyIM"]:ResetInstances();
 
 			local sName:string = tSections.sName;
 			if bRecruited then
 				sName = sName .. " - " .. Locale.Lookup("LOC_MPT_BGP_RECRUITED");
 			end
-			block["m_NameIM"]:GetInstance().NameText:SetText( sName );
+			nameIM:GetInstance().NameText:SetText( sName );
 
 			if tSections.sActionHeader ~= nil then
-				block["m_DescIM"]:GetInstance().DescText:SetText( tSections.sActionHeader );
+				descIM:GetInstance().DescText:SetText( tSections.sActionHeader );
 				if tSections.sActionBody ~= nil then
-					block["m_BodyIM"]:GetInstance().BodyText:SetText( tSections.sActionBody );
+					bodyIM:GetInstance().BodyText:SetText( tSections.sActionBody );
 				end
 			end
 			if tSections.sPassiveHeader ~= nil then
-				block["m_DescIM"]:GetInstance().DescText:SetText( tSections.sPassiveHeader );
+				descIM:GetInstance().DescText:SetText( tSections.sPassiveHeader );
 				if tSections.sPassiveBody ~= nil then
-					block["m_BodyIM"]:GetInstance().BodyText:SetText( tSections.sPassiveBody );
+					bodyIM:GetInstance().BodyText:SetText( tSections.sPassiveBody );
 				end
 			end
 			if tSections.tWorks ~= nil then
-				block["m_DescIM"]:GetInstance().DescText:SetText( table.concat(tSections.tWorks, "[NEWLINE]") );
+				descIM:GetInstance().DescText:SetText( table.concat(tSections.tWorks, "[NEWLINE]") );
 				if tSections.sWorkUsage ~= nil then
-					block["m_BodyIM"]:GetInstance().BodyText:SetText( tSections.sWorkUsage );
+					bodyIM:GetInstance().BodyText:SetText( tSections.sWorkUsage );
 				end
 			end
 
-			-- 已招募：整块覆盖半透明灰罩（尺寸由 RegisterSizeChanged 按内栈实测同步）
+			-- 已招募：整块覆盖半透明灰罩（填充当帧先 CalculateSize 即时同步 + 回调跨帧自愈；
+			-- 尺寸 276×h+8 并外扩 4px：略大于文本区域完整覆盖，条目31修复五）
 			block.BlockShade:SetHide(not bRecruited);
+			block.BlockStack:CalculateSize();
 			local _, h:number = block.BlockStack:GetSizeVal();
-			block.BlockShade:SetSizeVal(268, h);
+			block.BlockShade:SetSizeVal(276, h + 8);
 		end
 
 		local bFirst:boolean = true;

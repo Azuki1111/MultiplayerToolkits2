@@ -253,7 +253,7 @@
 	<Instance Name="MPT_GPEraBlockInstance">
 		<Container	ID="BlockRoot"			Size="268,auto">
 			<Stack	ID="BlockStack"			StackGrowth="Down" StackPadding="4" Anchor="L,T"/>
-			<Box	ID="BlockShade"			Size="268,1" Color="70,70,70,120" Hidden="1"/>
+			<Box	ID="BlockShade"			Size="276,1" Color="70,70,70,120" Offset="-4,-4" Hidden="1"/>
 		</Container>
 	</Instance>
 	<!-- 正文行（DawnText 缩进 12px、下移 6px：与「激活效果/被动技能」标题行拉开行距） -->
