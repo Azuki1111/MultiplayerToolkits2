@@ -10,7 +10,7 @@
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
 	('LOC_MPT_NEW_HOTKEYS_NAME',							'zh_Hans_CN',	'[COLOR:ResGoldLabelCS]更多快捷键[ENDCOLOR]'),
-	('LOC_MPT_NEW_HOTKEYS_DESC',							'zh_Hans_CN',	'启用后本条目的单位快捷键可用：掠夺/升级/晋升/取消等 11 个单位命令热键与随机晋升[newline][newline]自动招募伟人、强制结束回合、地图钉与城市远程攻击不受此开关影响'),
+	('LOC_MPT_NEW_HOTKEYS_DESC',							'zh_Hans_CN',	'启用后本条目的单位快捷键可用：掠夺/升级/晋升/取消等 13 个单位命令热键与随机晋升[newline][newline]自动招募伟人、强制结束回合、地图钉与城市远程攻击不受此开关影响'),
 	('LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_NAME',			'zh_Hans_CN',	'掠夺'),
 	('LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_DESC',			'zh_Hans_CN',	'掠夺或修理单元格'),
 	('LOC_FAST_PROMOTE_NAME',								'zh_Hans_CN',	'随机升级'),
@@ -30,4 +30,8 @@ VALUES
 	('LOC_MPT_NHK_PLUNDER_ROUTE_NAME',						'zh_Hans_CN',	'掠夺贸易路线'),
 	('LOC_MPT_NHK_PLUNDER_ROUTE_DESC',						'zh_Hans_CN',	'掠夺贸易路线'),
 	('LOC_MPT_NHK_FORMATION_NAME',							'zh_Hans_CN',	'绑定或解绑单位'),
-	('LOC_MPT_NHK_FORMATION_DESC',							'zh_Hans_CN',	'绑定或解绑单位（编队/解编）');
+	('LOC_MPT_NHK_FORMATION_DESC',							'zh_Hans_CN',	'绑定或解绑单位（编队/解编）'),
+	('LOC_MPT_NHK_REMOVE_FEATURE_NAME',						'zh_Hans_CN',	'删除地貌'),
+	('LOC_MPT_NHK_REMOVE_FEATURE_DESC',						'zh_Hans_CN',	'移除格位上的地貌（砍伐森林、疏浚沼泽等）并获得对应产出'),
+	('LOC_MPT_NHK_HARVEST_NAME',							'zh_Hans_CN',	'收获资源'),
+	('LOC_MPT_NHK_HARVEST_DESC',							'zh_Hans_CN',	'收获格位上的可收获资源（鹿、石头等）并获得对应产出');

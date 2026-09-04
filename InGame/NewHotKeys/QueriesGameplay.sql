@@ -1,6 +1,7 @@
 -- ============================================================================
 -- 条目28：更多快捷键（NHK）引擎绑定层——移植 1.65 NHK/SQL/QueriesGameplay.sql（4 行）
---   + CHS-PVP（工坊 3037861572）Core/Main/QueriesGameplay.sql（12 行），去重合并为 12 行。
+--   + CHS-PVP（工坊 3037861572）Core/Main/QueriesGameplay.sql（12 行），去重合并为 12 行；
+--   条目28扩展（用户裁决）+2：删除地貌 / 收获资源，共 14 行。
 -- 作用：把游戏库 UnitOperations / UnitCommands 表中原本 HotkeyId 为 NULL（无快捷键）的
 --   单位操作/命令指向 InputActions 已注册的动作，引擎 ActionPanel/WorldInput 自动把
 --   按键翻译成单位命令，多数动作无需 Lua。
@@ -18,6 +19,10 @@ UPDATE "UnitOperations" SET "HotkeyId" = "ExtraHotkeysPillageOrRepair" WHERE "Ho
 UPDATE "UnitOperations" SET "HotkeyId" = "ExtraHotkeysPillageRoadOrRepair" WHERE "HotkeyId" IS NULL AND ("OperationType" = "UNITOPERATION_PILLAGE_ROUTE" OR "OperationType" = "UNITOPERATION_REPAIR_ROUTE" OR "OperationType" = "UNITOPERATION_MAKE_TRADE_ROUTE");
 -- 传送进城/重新基地 = Shift+R（CHS）
 UPDATE "UnitOperations" SET "HotkeyId" = "ExtraHotkeysTeleportToCity" WHERE "HotkeyId" IS NULL AND ("OperationType" = "UNITOPERATION_TELEPORT_TO_CITY" OR "OperationType" = "UNITOPERATION_REBASE");
+-- 删除地貌（砍伐森林/疏浚沼泽等移除地貌并获得产出）= Shift+V（条目28扩展，用户裁决；Shift+V 伐助记，原版零占用）
+UPDATE "UnitOperations" SET "HotkeyId" = "ExtraHotkeysRemoveFeature" WHERE "HotkeyId" IS NULL AND "OperationType" = "UNITOPERATION_REMOVE_FEATURE";
+-- 收获资源（鹿/石头等可收获资源并获得产出）= Shift+B（条目28扩展，用户裁决；B 紧邻 V 砍/收并排，原版零占用）
+UPDATE "UnitOperations" SET "HotkeyId" = "ExtraHotkeysHarvestResource" WHERE "HotkeyId" IS NULL AND "OperationType" = "UNITOPERATION_HARVEST_RESOURCE";
 -- 掠夺贸易路线 = Ctrl+Shift+R（CHS）
 UPDATE "UnitCommands" SET "HotkeyId" = "ExtraHotkeysPlunderTradeRoute" WHERE "HotkeyId" IS NULL AND "CommandType" = "UNITCOMMAND_PLUNDER_TRADE_ROUTE";
 -- 升级/激活伟人 = Shift+E（1.65 键位；含 CHS 超集 ACTIVATE_GREAT_PERSON）
