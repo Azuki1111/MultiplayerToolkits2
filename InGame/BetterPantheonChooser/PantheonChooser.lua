@@ -6,8 +6,10 @@
 --   ①名册全量列出 + 被抢信条置灰：原版只列「当前可选」信条，联机中他人先选走的完全不可见；
 --     现全量列出万神殿信条，已入某万神殿/宗教的置灰禁用，且他人成立万神殿瞬间（Events.PantheonFounded）
 --     实时禁用对应按钮——正选中的信条被抢则取消选中并收缩回未选状态。
---   ②「万神殿不排队」（高级选项 NO_WAIT_PANTHEON，沿用 1.65 原 key，默认关）：信仰一够即自动弹出
---     本面板，不等引擎按玩家顺序放行（原版 LaunchBar OnOpenReligion 以 CanCreatePantheon() 排队门控）。
+--   ②「万神殿不排队」（高级选项 NO_WAIT_PANTHEON，沿用 1.65 原 key，默认关）：信仰一够立即从
+--     通知栏弹「可以创立万神殿」提醒，点击打开本面板（条目32优化，用户裁决废止自动弹面板——
+--     改从 NotificationPanel 提醒，见同目录 NotificationPanel_MPT_Pantheon.lua）；本文件仅保留
+--     宗教按钮点击时的直接重定向（点击属显式意图，绕过原版 LaunchBar 的 CanCreatePantheon() 排队门控）。
 -- 相对 1.65 三处修复/规约：
 --   ①MPT_OnPantheonFounded 补实例缓存 nil 守卫（面板从未打开时事件先到，1.65 直接索引缓存表会报错）；
 --   ②万神殿底价 GetMinimumFaithNextPantheon 改判定时实时查询（1.65 在文件载入时快照——联机中他人
@@ -30,8 +32,9 @@ local DATA_FIELD_BELIEF_INDEX:string = "DataField_BeliefIndex";
 
 -- ============================================================================
 -- 条目32：万神殿不排队开关（高级选项 NO_WAIT_PANTHEON，沿用 1.65 原 key，默认关；
--- 仅门控「自动弹面板」，名册全量+被抢置灰恒启用）与信条按钮实例缓存（row → instance，
--- 供 MPT_OnPantheonFounded 实时禁用，每次 Realize 全量重建）。
+-- 仅门控「不排队」——条目32优化后本文件仅宗教按钮重定向，信仰够的通知提醒见同目录
+-- NotificationPanel_MPT_Pantheon.lua；名册全量+被抢置灰恒启用）与信条按钮实例缓存
+-- （row → instance，供 MPT_OnPantheonFounded 实时禁用，每次 Realize 全量重建）。
 -- 旧代码：无（1.65 的 iPantheonFaith 载入时快照已废，改 MPT_CheckPantheon 判定时实时查询）
 -- ----
 local MPT_NoWaitPantheonInUse:boolean = GameConfiguration.GetValue("NO_WAIT_PANTHEON");
@@ -243,12 +246,12 @@ function Open()
 end
 
 -- ============================================================================
--- 条目32：万神殿不排队——信仰一到下一座万神殿底价即自动弹出本面板，不等引擎按玩家顺序放行
--- （原版 LaunchBar OnOpenReligion 以 CanCreatePantheon() 排队门控，多人在后位须干等）。
--- 触发源：Events.FaithChanged（信仰变动）+ LuaEvents.LaunchBar_OpenReligionPanel（点宗教按钮重定向）。
--- 首次自动打开后注销 FaithChanged 不再自动弹（保留宗教按钮重定向）；本地已成立万神殿后注销全部。
--- 1.65 修复：底价改判定时实时查询——1.65 在文件载入时快照 GetMinimumFaithNextPantheon，
--- 联机中他人陆续成立万神殿会抬高底价，快照失真导致信仰不足也误弹面板。
+-- 条目32：万神殿不排队——条目32优化后仅剩宗教按钮点击重定向：信仰够时点宗教按钮直接
+-- 打开本面板（点击属显式意图，绕过引擎排队门控）；信仰够的「通知提醒」见同目录
+-- NotificationPanel_MPT_Pantheon.lua（自动弹面板已按用户裁决废止）。
+-- 触发源：仅 LuaEvents.LaunchBar_OpenReligionPanel；本地已成立万神殿后注销。
+-- 1.65 修复保留：底价改判定时实时查询——1.65 在文件载入时快照 GetMinimumFaithNextPantheon，
+-- 联机中他人陆续成立万神殿会抬高底价，快照失真导致信仰不足也误重定向。
 function MPT_CheckPantheon()
 	local localPlayer:number = Game.GetLocalPlayer();
 	if localPlayer < 0 then
@@ -259,15 +262,13 @@ function MPT_CheckPantheon()
 		return;
 	end
 	if playerReligion:GetPantheon() >= 0 then
-		-- 已成立万神殿：注销全部触发源
+		-- 已成立万神殿：注销触发源
 		LuaEvents.LaunchBar_OpenReligionPanel.Remove( MPT_CheckPantheon );
-		Events.FaithChanged.Remove( MPT_CheckPantheon );
 		return;
 	end
 	if playerReligion:GetFaithBalance() >= Game.GetReligion():GetMinimumFaithNextPantheon() then
 		LuaEvents.LaunchBar_CloseReligionPanel();
 		LuaEvents.LaunchBar_OpenPantheonChooser();
-		Events.FaithChanged.Remove( MPT_CheckPantheon );		-- 首次自动打开后不再自动弹（宗教按钮重定向保留）
 	end
 end
 -- ----
@@ -303,9 +304,9 @@ function OnShutdown()
 	LuaEvents.LaunchBar_ClosePantheonChooser.Remove( Close );
 
 	-- ============================================================================
-	-- 条目32：注销名册实时禁用与万神殿不排队处理器（1.65 三处泄漏未注销）
+	-- 条目32：注销名册实时禁用与宗教按钮重定向处理器（1.65 泄漏未注销；
+	-- FaithChanged 订阅已随条目32优化废止——通知提醒改在 NotificationPanel 上下文）
 	Events.PantheonFounded.Remove( MPT_OnPantheonFounded );
-	Events.FaithChanged.Remove( MPT_CheckPantheon );
 	LuaEvents.LaunchBar_OpenReligionPanel.Remove( MPT_CheckPantheon );
 	-- ----
 end
@@ -335,11 +336,10 @@ function LateInitialize()
 	Controls.PantheonChooserSlideAnim:RegisterEndCallback( OnAnimEnd );
 
 	-- ============================================================================
-	-- 条目32：他人成立万神殿 → 实时禁用被抢信条；「万神殿不排队」开启时挂 FaithChanged（信仰够
-	-- 自动弹面板）与宗教按钮点击（打开宗教面板时重定向到万神殿面板）双触发源
+	-- 条目32：他人成立万神殿 → 实时禁用被抢信条；「万神殿不排队」开启时挂宗教按钮点击
+	-- 重定向（信仰够的自动评估已随条目32优化移出——通知提醒见 NotificationPanel_MPT_Pantheon.lua）
 	Events.PantheonFounded.Add( MPT_OnPantheonFounded );
 	if MPT_NoWaitPantheonInUse then
-		Events.FaithChanged.Add( MPT_CheckPantheon );
 		LuaEvents.LaunchBar_OpenReligionPanel.Add( MPT_CheckPantheon );
 	end
 	-- ----

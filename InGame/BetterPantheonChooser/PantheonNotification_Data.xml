@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目32优化：万神殿信仰够通知类型——「万神殿不排队」开启时信仰一够即从通知栏提醒
+	「可以创立万神殿」（点击打开选择面板），替代原自动弹面板。结构照抄条目26 GPR 先例：
+	ExpiresEndOfTurn=True 当回合末自动消失（杜绝持久通知残留）；SeverityType=MID 常规重要度；
+	AutoNotify=False 只进通知栏不弹引擎原生提示。Message/Summary 由 Lua 发送侧携带，
+	通知实例由 UI 侧 NotificationManager.SendNotification 本地发送（联机各端各自弹） -->
+<GameInfo>
+	<Types>
+		<Row Type="NOTIFICATION_MPT_PANTHEON_FAITH_READY" Kind="KIND_NOTIFICATION"/>
+	</Types>
+	<Notifications>
+		<Row NotificationType="NOTIFICATION_MPT_PANTHEON_FAITH_READY" SeverityType="MID" ExpiresEndOfTurn="True" AutoNotify="False" />
+	</Notifications>
+</GameInfo>
