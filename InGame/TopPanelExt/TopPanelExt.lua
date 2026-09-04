@@ -139,6 +139,7 @@ function RefreshFood()
     Food_Info.TotalFood = Locale.ToNumber(pTotalFood, "#####.#");
 
     m_FoodYieldButton.YieldIconString:SetText("[ICON_FoodLarge]")
+    m_FoodYieldButton.YieldIconString:SetOffsetY(4)
     m_FoodYieldButton.YieldPerTurn:SetColorByName("ResFoodLabelCS")
     m_FoodYieldButton.YieldPerTurn:SetText(Locale.ToNumber(pTotalFoodSurplus, "+#####.#;-#####.#"))
     m_FoodYieldButton.YieldBalance:SetText(Locale.ToNumber(pTotalFood, "#####.#"));

@@ -9,7 +9,6 @@
 ╚═╝     ╚═╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝       ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚══════╝
 =========================================================================================================================================================
 -->
-<!-- 联机工具箱 2.0 前端（Multiplayer Toolkits 2.0 FrontEnd）：融合联机工具箱与 MPH 前端功能，作者 号码菌Synora -->
 <!-- LoadOrder 规约：1-99 配置 | 100-999 文本 | 1000-9999 UI替换 | 10000+ 覆盖型替换 | 99999+ 强制后置 -->
 <Mod id="00000000-7369-4685-ab5f-bf77bc22b54e" version="1">
 	<Properties>
@@ -28,32 +27,32 @@
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
 		<Text id="LOC_MPT_FE_NAME">
-			<en_US>[ICON_ADDITIONALCONTENT]Multiplayer Toolkits [COLOR:ResGoldLabelCS]2.0.0 FrontEnd[ENDCOLOR]</en_US>
-			<zh_Hans_CN>[ICON_ADDITIONALCONTENT]联机工具箱 [COLOR:ResGoldLabelCS]2.0.0 前端[ENDCOLOR]</zh_Hans_CN>
+			<en_US>[ICON_ADDITIONALCONTENT]Multiplayer Toolkits [COLOR:ResGoldLabelCS]2.0.0[ENDCOLOR]</en_US>
+			<zh_Hans_CN>[ICON_ADDITIONALCONTENT]联机工具箱 [COLOR:ResGoldLabelCS]2.0.0[ENDCOLOR]</zh_Hans_CN>
 		</Text>
 		<Text id="LOC_MPT_FE_DESCRIPTION">
-			<en_US>[ICON_Bolt][COLOR:ResGoldLabelCS]Multiplayer Toolkits 2.0 FrontEnd[ENDCOLOR]
+			<en_US>[ICON_Bolt][COLOR:ResGoldLabelCS]Multiplayer Toolkits 2.0.0[ENDCOLOR]
 			[NEWLINE][NEWLINE][icon_Exclamation]FrontEnd features
 			[NEWLINE][NEWLINE][icon_You]Staging Room enhancements
 			[NEWLINE][icon_You]Mod version consistency check
 			[NEWLINE][icon_You]Game setup presets for MP</en_US>
-			<zh_Hans_CN>[ICON_Bolt][COLOR:ResGoldLabelCS]联机工具箱 2.0 前端[ENDCOLOR]
+			<zh_Hans_CN>[ICON_Bolt][COLOR:ResGoldLabelCS]联机工具箱 2.0.0[ENDCOLOR]
 			[NEWLINE][NEWLINE][icon_Exclamation]前端功能
 			[NEWLINE][NEWLINE][icon_You]准备房间增强
 			[NEWLINE][icon_You]模组版本一致性校验
 			[NEWLINE][icon_You]联机常用游戏设置预设</zh_Hans_CN>
 		</Text>
 		<Text id="LOC_MPT_FE_TEASER">
-			<en_US>[size_32][COLOR:ResGoldLabelCS]Multiplayer Toolkits FrontEnd[ENDCOLOR]</en_US>
-			<zh_Hans_CN>[size_32][COLOR:ResGoldLabelCS]联机工具箱 前端[ENDCOLOR]</zh_Hans_CN>
+			<en_US>[size_32][COLOR:ResGoldLabelCS]Multiplayer Toolkits[ENDCOLOR]</en_US>
+			<zh_Hans_CN>[size_32][COLOR:ResGoldLabelCS]联机工具箱[ENDCOLOR]</zh_Hans_CN>
 		</Text>
 		<Text id="LOC_MPT_FE_AUTHORS">
 			<en_US>[COLOR:ResGoldLabelCS]Synora[ENDCOLOR]</en_US>
 			<zh_Hans_CN>[COLOR:ResGoldLabelCS]号码菌[ENDCOLOR]</zh_Hans_CN>
 		</Text>
 		<Text id="LOC_MPT_FE_THANKS">
-			<en_US>Mod check / BP features adapted from Multiplayer Helper (MPH) by Cisco, D. &amp; Jack The Narrator, MIT License © 2024 BetterBalancedGame. Features also reference Team PVP Tools 1.67.</en_US>
-			<zh_Hans_CN>模组校验 / BP 功能改编自 Multiplayer Helper (MPH)，作者 Cisco, D. 与 Jack The Narrator，MIT 协议 © 2024 BetterBalancedGame。部分功能参考联机工具箱 1.67。</zh_Hans_CN>
+			<en_US>Mod check / BP features adapted from Multiplayer Helper (MPH) by Cisco, D. &amp; Jack The Narrator, MIT License © 2024 BetterBalancedGame.</en_US>
+			<zh_Hans_CN>模组校验 / BP 功能改编自 Multiplayer Helper (MPH)，作者 Cisco, D. 与 Jack The Narrator，MIT 协议 © 2024 BetterBalancedGame。</zh_Hans_CN>
 		</Text>
 	</LocalizedText>
 	<!-- 条目10：交易限制与外交限制（移植 1.67 DDV）条件注册（本 mod 首个 ActionCriteria 用例） -->
