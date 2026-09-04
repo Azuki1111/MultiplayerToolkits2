@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目32：万神殿不排队参数——高级选项「万神殿不排队」布尔开关（默认关）。
+	ParameterId/ConfigurationId 沿用 1.65 BPC 原 key NO_WAIT_PANTHEON（同装幂等共享）；
+	纯本地 UI 行为（信仰够自动弹万神殿面板），不影响全房同步，故不走 criteria 零加载、
+	由 PantheonChooser.lua 运行时 GameConfiguration.GetValue 读取门控。
+	字段结构照抄条目16/28/31（AdvancedOptions 组，开局后不可改），SortIndex 2906 紧随条目31 的 2905 -->
+<GameInfo>
+	<Parameters>
+		<Row ParameterId="NO_WAIT_PANTHEON" Name="LOC_NO_WAIT_PANTHEON_NAME" Description="LOC_NO_WAIT_PANTHEON_DESC" Domain="bool" DefaultValue="0" ConfigurationGroup="Game" ConfigurationId="NO_WAIT_PANTHEON" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2906" />
+	</Parameters>
+</GameInfo>
