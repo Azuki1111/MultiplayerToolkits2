@@ -12,7 +12,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 虚构示例：游戏内文本占位（无任何引用）
 ('LOC_MPT_FE_DUMMY_TEXT', 'en_US', 'Dummy text from Multiplayer Toolkits 2.0 FrontEnd'),
 -- 条目3.2：快捷打开/关闭AI按钮
-('LOC_MPT_FE_AI_SLOTS_NAME', 'en_US', 'AI Slots'),
+('LOC_MPT_FE_AI_SLOTS_NAME', 'en_US', 'Player Slots'),
 ('LOC_MPT_FE_AI_SLOTS_TOOLTIP', 'en_US', 'Left click: close all empty and AI slots[NEWLINE]Right click: open all slots (removes existing AI)'),
 -- 条目3.3：快捷分队按钮（队伍列表头）
 ('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'en_US', 'Left click: random balanced teams[NEWLINE]Right click: sequential A-B-A-B teams[NEWLINE]Host only');

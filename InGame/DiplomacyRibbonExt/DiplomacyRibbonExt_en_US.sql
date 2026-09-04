@@ -1,20 +1,23 @@
 -- ============================================================================
 -- 条目24：外交丝带扩展（DPR）英文文本——tag 与中文版一一对应（同 1.67 原 tag）。
+-- 文本优化：以中文为基准重译参数名——1.67 沿用的 'Hide Stats Evolved' 是源 mod
+--   自身名称，与中文「外交能见度」语义脱节（且 Default/Public 档位并非隐藏统计），
+--   英文改按中文基准译为 Diplomacy Visibility；括号前补空格对齐英文排版。
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
-	('LOC_SETTINGS_DIPLOMACYRIBBON_NAME',	'en_US',	'Hide Stats Evolved'),
-	('LOC_SETTINGS_DIPLOMACYRIBBON_DESC',	'en_US',	'Set up Hide Stats Evolved'),
-	('LOC_SETTINGS_DIPLOMACYRIBBON_NORM_NAME',	'en_US',	'Standard(Recommend)'),
-	('LOC_SETTINGS_DIPLOMACYRIBBON_NORM_DESC',	'en_US',	'Standard Rules[NEWLINE][NEWLINE][icon_You]Does not show the military strength, total population, total productivity, and total food of players who are not on your team'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_NAME',	'en_US',	'Diplomacy Visibility'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_DESC',	'en_US',	'Set diplomacy information visibility'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_NORM_NAME',	'en_US',	'Standard (Recommended)'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_NORM_DESC',	'en_US',	'Standard rules[NEWLINE][NEWLINE][icon_You]Does not show the military strength, total population, total productivity, and total food of players who are not on your team'),
 	('LOC_SETTINGS_DIPLOMACYRIBBON_DEFAULT_NAME',	'en_US',	'Default'),
-	('LOC_SETTINGS_DIPLOMACYRIBBON_DEFAULT_DESC',	'en_US',	'Based on Standard (Recommend), but also shows the military strength of all players[NEWLINE][NEWLINE][icon_You]Still hides the total population, total productivity, and total food of players who are not on your team'),
-	('LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_NAME',	'en_US',	'Hide Stats Evolved Mode([COLOR:ResGoldLabelCS]Team[ENDCOLOR])'),
-	('LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_DESC',	'en_US',	'Hide Stats Evolved Mode[NEWLINE][NEWLINE][icon_You]Team members share information with each other, and other players need a higher visibility level to view it'),
-	('LOC_SETTINGS_DIPLOMACYRIBBON_PUBLIC_NAME',	'en_US',	'Public(Fully Visible)'),
-	('LOC_SETTINGS_DIPLOMACYRIBBON_PUBLIC_DESC',	'en_US',	'All players'' information is public[NEWLINE][NEWLINE][icon_You]Open cautiously, suitable for PVE games'),
-	('LOC_DPR_TECHCIVIS_NAME',	'en_US',	'[COLOR:ResGoldLabelCS]Show/hide researching progress[ENDCOLOR]'),
-	('LOC_DPR_TECHCIVIS_DESC',	'en_US',	'Shows the Tech Civic Progress of other players'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_DEFAULT_DESC',	'en_US',	'Based on Standard (Recommended), but also shows the military strength of all players[NEWLINE][NEWLINE][icon_You]Still hides the total population, total productivity, and total food of players who are not on your team'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_NAME',	'en_US',	'Diplomacy Visibility Mode ([COLOR:ResGoldLabelCS]Team[ENDCOLOR])'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_VISIBILITY_TEAM_DESC',	'en_US',	'Diplomacy Visibility Mode[NEWLINE][NEWLINE][icon_You]Team members share information with each other, and other players need a higher visibility level to view it'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_PUBLIC_NAME',	'en_US',	'Public (Fully Visible)'),
+	('LOC_SETTINGS_DIPLOMACYRIBBON_PUBLIC_DESC',	'en_US',	'All players'' information is public[NEWLINE][NEWLINE][icon_You]Enable with caution, suitable for PVE games'),
+	('LOC_DPR_TECHCIVIS_NAME',	'en_US',	'[COLOR:ResGoldLabelCS]Show/Hide Research Progress[ENDCOLOR]'),
+	('LOC_DPR_TECHCIVIS_DESC',	'en_US',	'Shows the progress of the techs and civics other players are researching'),
 	('LOC_DPR_TOTALYIELD_NAME',	'en_US',	'[COLOR:ResGoldLabelCS]Toggle the stats display[ENDCOLOR]'),
 	('LOC_DPR_TOTALYIELD_DESC',	'en_US',	'Toggle between general stats and other stats'),
 	('LOC_DPR_TOTAL_POPULATION',	'en_US',	'Total population'),

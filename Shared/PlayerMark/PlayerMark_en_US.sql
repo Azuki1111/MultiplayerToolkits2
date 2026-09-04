@@ -6,7 +6,7 @@
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- Entry button / panel title
 ('LOC_MPT_PLAYERMARK_NAME', 'en_US', 'Player Marks'),
-('LOC_MPT_PLAYERMARK_TOOLTIP', 'en_US', 'Open the player mark manager (local player records: friend / normal / blacklist marks and notes)'),
+('LOC_MPT_PLAYERMARK_TOOLTIP', 'en_US', 'Open the player mark manager'),
 ('LOC_MPT_PLAYERMARK_TITLE', 'en_US', 'Player Mark Manager'),
 -- Search box (placeholder / tooltip)
 ('LOC_MPT_PLAYERMARK_SEARCH_NAME', 'en_US', 'Search name or ID'),
@@ -24,7 +24,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_SORT_TT', 'en_US', 'Sort by last modified date; click to switch ascending / descending'),
 -- Add button and popup
 ('LOC_MPT_PLAYERMARK_ADD', 'en_US', 'Add Player'),
-('LOC_MPT_PLAYERMARK_MARK_THIS_TT', 'en_US', 'Click to add this player to Player Marks (auto-fills network ID and nickname)'),
+('LOC_MPT_PLAYERMARK_MARK_THIS_TT', 'en_US', 'Click to add this player to Player Marks'),
 ('LOC_MPT_PLAYERMARK_POPUP_TITLE', 'en_US', 'Add Player'),
 ('LOC_MPT_PLAYERMARK_POPUP_ID_TT', 'en_US', 'Player network identifier: 17 digits for Steam, 32 characters for Epic'),
 ('LOC_MPT_PLAYERMARK_POPUP_NAME_TT', 'en_US', 'Nickname for your notes, display only, editable anytime'),
@@ -41,14 +41,14 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_PLAYERMARK_STEAM_PROFILE', 'en_US', 'Steam Profile'),
 ('LOC_MPT_PLAYERMARK_STEAM_PROFILE_TT', 'en_US', "Open this player's Steam profile (only available for Steam players with 17-digit numeric ID)"),
 ('LOC_MPT_PLAYERMARK_DELETE', 'en_US', 'Delete Player'),
-('LOC_MPT_PLAYERMARK_DELETE_TT', 'en_US', 'Permanently delete all records of this player (takes effect immediately, cannot be undone)'),
+('LOC_MPT_PLAYERMARK_DELETE_TT', 'en_US', 'Permanently delete all records of this player'),
 ('LOC_MPT_PLAYERMARK_ADD_DETAIL', 'en_US', 'Add'),
-('LOC_MPT_PLAYERMARK_DETAIL_INPUT_TT', 'en_US', 'Type a new detailed note, then press Enter or click "Add" (applied after Save)'),
-('LOC_MPT_PLAYERMARK_DETAIL_DELETE_TT', 'en_US', 'Delete this note (applied after Save; Cancel restores)'),
+('LOC_MPT_PLAYERMARK_DETAIL_INPUT_TT', 'en_US', 'Type a new detailed note, then press Enter or click "Add"'),
+('LOC_MPT_PLAYERMARK_DETAIL_DELETE_TT', 'en_US', 'Delete this note'),
 -- Tag selector button tooltips
-('LOC_MPT_PLAYERMARK_TAG_FRIEND_TT', 'en_US', 'Mark as friend (green)'),
-('LOC_MPT_PLAYERMARK_TAG_NORMAL_TT', 'en_US', 'Mark as normal (yellow)'),
-('LOC_MPT_PLAYERMARK_TAG_BLACK_TT', 'en_US', 'Mark as blacklist (red)'),
+('LOC_MPT_PLAYERMARK_TAG_FRIEND_TT', 'en_US', 'Mark as friend'),
+('LOC_MPT_PLAYERMARK_TAG_NORMAL_TT', 'en_US', 'Mark as normal'),
+('LOC_MPT_PLAYERMARK_TAG_BLACK_TT', 'en_US', 'Mark as blacklist'),
 -- Empty states
 ('LOC_MPT_PLAYERMARK_EMPTY_LIST', 'en_US', 'No player records yet[NEWLINE]Click "Add Player" below to create one'),
 ('LOC_MPT_PLAYERMARK_EMPTY_SELECT', 'en_US', 'Select a player in the list on the left[NEWLINE]to view or edit their info'),

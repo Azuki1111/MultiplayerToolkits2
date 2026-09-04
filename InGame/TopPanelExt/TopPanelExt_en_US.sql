@@ -6,9 +6,9 @@
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 	('LOC_MPT_TPE_LUXURY_RESOURCES_PRE', 'en_US', '[ICON_RESOURCE_TOYS] Number of Luxury Resources Owned: ('),
 	('LOC_MPT_TPE_LUXURY_RESOURCES_SUF', 'en_US', ' type)'),
-	('LOC_MPT_TPE_MORE_LUXURY_NAME', 'en_US', '[NEWLINE][NEWLINE]Own Extra Luxury Resources[NEWLINE]'),
+	('LOC_MPT_TPE_MORE_LUXURY_NAME', 'en_US', '[NEWLINE][NEWLINE]Your extra luxury resources[NEWLINE]'),
 	('LOC_MPT_TPE_TEAM_MORE_LUXURY_NAME', 'en_US', '[NEWLINE][NEWLINE]Surplus luxury resources of other players'),
-	('LOC_MPT_TPE_TEAM_MORE_STRATEGIC_NAME', 'en_US', '[NEWLINE][NEWLINE]Team Strategic Resources'),
+	('LOC_MPT_TPE_TEAM_MORE_STRATEGIC_NAME', 'en_US', '[NEWLINE]Strategic resources available from teammates[NEWLINE]'),
 	('LOC_MPT_TPE_TOOLTIP_PRODUCTION_HEADER_PRE', 'en_US', '+'),
 	('LOC_MPT_TPE_TOOLTIP_PRODUCTION_HEADER_SUF', 'en_US', ' [Icon_ProductionLarge] Production'),
 	('LOC_MPT_TPE_TOOLTIP_FOOD_HEADER_PRE', 'en_US', '+'),

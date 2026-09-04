@@ -6,7 +6,7 @@
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
 	('LOC_MPT_NEW_HOTKEYS_NAME',							'en_US',	'[COLOR:ResGoldLabelCS]More Hotkeys[ENDCOLOR]'),
-	('LOC_MPT_NEW_HOTKEYS_DESC',							'en_US',	'Enables the unit hotkeys in this mod: 13 unit command hotkeys such as Pillage/Upgrade/Promote/Cancel (incl. CHS-PVP extensions) and random promotion[newline][newline]Auto recruit great person, forced turn end, map pins and city ranged attack are not affected by this option'),
+	('LOC_MPT_NEW_HOTKEYS_DESC',							'en_US',	'Enables the unit hotkeys in this mod: 13 unit command hotkeys such as Pillage/Upgrade/Promote/Cancel, and random promotion[newline][newline]Auto recruit great person, forced turn end, map pins and city ranged attack are not affected by this option'),
 	('LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_NAME',			'en_US',	'Pillage'),
 	('LOC_TPT_UNITCOMMAND_PROMOTE_OR_REPAIR_DESC',			'en_US',	'Pillage or repair a tile'),
 	('LOC_FAST_PROMOTE_NAME',								'en_US',	'Random Promotion'),
@@ -28,6 +28,6 @@ VALUES
 	('LOC_MPT_NHK_FORMATION_NAME',							'en_US',	'Enter/Exit Formation'),
 	('LOC_MPT_NHK_FORMATION_DESC',							'en_US',	'Bind or unbind units (form or dissolve a formation)'),
 	('LOC_MPT_NHK_REMOVE_FEATURE_NAME',						'en_US',	'Remove Feature'),
-	('LOC_MPT_NHK_REMOVE_FEATURE_DESC',						'en_US',	'Remove the feature on this tile (chop forest, drain marsh, etc.) for its yields'),
+	('LOC_MPT_NHK_REMOVE_FEATURE_DESC',						'en_US',	'Remove the feature on this tile'),
 	('LOC_MPT_NHK_HARVEST_NAME',							'en_US',	'Harvest Resource'),
-	('LOC_MPT_NHK_HARVEST_DESC',							'en_US',	'Harvest the harvestable resource on this tile (deer, stone, etc.) for its yields');
+	('LOC_MPT_NHK_HARVEST_DESC',							'en_US',	'Harvest the harvestable resource on this tile');

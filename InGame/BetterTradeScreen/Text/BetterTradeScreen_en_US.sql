@@ -2,6 +2,10 @@
 -- 条目22：商路界面增强（BTS）文本（en_US 英文）
 -- 移植 1.67 BTS/Text/BTS_Text_EN.xml（XML → SQL 本地化管线，项目规约）；
 -- 裁剪范围与中文文件相同（自动化 4 tag + BTS 设置面板 8 tag），见中文文件头注释。
+-- 文本优化：TURNS_REMAINING_HELP_TOOLTIP 修病句（[ICON_Turn] 两侧缺空格）；
+--   补 TURNS_REMAINING_ALT2_HELP_TOOLTIP 英文行（中文文件持有而英文缺，Lua 暂未
+--   引用的备用 tag，补齐保持两语言 tag 一一对应；4 个 OVERVIEW_*_AZ/ZA 分组 tag
+--   维持英文独有回落现状，见中文文件头注释）。
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
@@ -24,8 +28,9 @@ VALUES
 	('LOC_TRADE_OVERVIEW_DESTINATION_ZA',	'en_US',	'Destination Z-A'),
 	('LOC_TRADE_EXPAND_ALL_BUTTON_TEXT',	'en_US',	'Exp:'),
 	('LOC_TRADE_COLLAPSE_ALL_BUTTON_TEXT',	'en_US',	'Col:'),
-	('LOC_TRADE_TURNS_REMAINING_HELP_TOOLTIP',	'en_US',	'Total amount of[ICON_Turn]to complete this trade route'),
+	('LOC_TRADE_TURNS_REMAINING_HELP_TOOLTIP',	'en_US',	'Total [ICON_Turn] turns needed to complete this trade route'),
 	('LOC_TRADE_TURNS_REMAINING_ALT_HELP_TOOLTIP',	'en_US',	'This route will take {1_TurnsRemaining}[Icon_Turn] to complete.'),
+	('LOC_TRADE_TURNS_REMAINING_ALT2_HELP_TOOLTIP',	'en_US',	'This route will complete within {1_TurnsRemaining}[Icon_Turn]'),
 	('LOC_TRADE_TURNS_REMAINING_TOOLTIP_BREAKER',	'en_US',	'----------------------------'),
 	('LOC_TRADE_TURNS_REMAINING_ROUTE_LENGTH_TOOLTIP',	'en_US',	'Trade Route[ICON_Movement]: {1_TripsToDestination}'),
 	('LOC_TRADE_TURNS_REMAINING_TRIPS_COUNT_TOOLTIP',	'en_US',	'Trips to destination: {1_TripsToDestination}'),

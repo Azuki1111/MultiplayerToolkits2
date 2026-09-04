@@ -6,7 +6,7 @@
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_MODCHECK_RECHECK_NAME', 'en_US', 'Recheck'),
 ('LOC_MPT_MODCHECK_RECHECK_TT', 'en_US', 'Force all players to report the versions of the registered mods again (host only)'),
-('LOC_MPT_MODCHECK_POPUP_TITLE', 'en_US', 'MOD VERSION MISMATCH'),
+('LOC_MPT_MODCHECK_POPUP_TITLE', 'en_US', 'Mod Version Mismatch'),
 ('LOC_MPT_MODCHECK_POPUP_TEXT', 'en_US', 'Version check failed for the selected mods:'),
 ('LOC_MPT_MODCHECK_POPUP_RECHECK', 'en_US', 'Back and Recheck'),
 ('LOC_MPT_MODCHECK_POPUP_SKIP', 'en_US', 'Skip Check'),
