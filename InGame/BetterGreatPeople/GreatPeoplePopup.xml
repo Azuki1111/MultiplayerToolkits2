@@ -248,9 +248,17 @@
 	<Instance Name="MPT_GPEraDescInstance">
 		<Label		ID="DescText"				Style="DawnText" WrapWidth="256" Offset="12,0"/>
 	</Instance>
-	<!-- 名册行（DawnText 亮字于暗底，条目24 行描述同款样式） -->
-	<Instance Name="MPT_GPEraRowInstance">
-		<Label		ID="RowText"				Style="DawnText" WrapWidth="268"/>
+	<!-- 条目31扩展三：个体块容器——内栈流式排版，半透明灰罩为绝对覆盖层（已招募个体整块
+		覆盖；Hidden 不参与容器测高，显示时由 Lua 按内栈实测 SetSizeVal 同步） -->
+	<Instance Name="MPT_GPEraBlockInstance">
+		<Container	ID="BlockRoot"			Size="268,auto">
+			<Stack	ID="BlockStack"			StackGrowth="Down" StackPadding="4" Anchor="L,T"/>
+			<Box	ID="BlockShade"			Size="268,1" Color="70,70,70,120" Hidden="1"/>
+		</Container>
+	</Instance>
+	<!-- 正文行（DawnText 缩进 12px、下移 6px：与「激活效果/被动技能」标题行拉开行距） -->
+	<Instance Name="MPT_GPEraBodyInstance">
+		<Label		ID="BodyText"				Style="DawnText" WrapWidth="256" Offset="12,6"/>
 	</Instance>
 	<!-- 栈尾透明撑高块（条目24 同款：固定高无需文本布局，吸收末行跨帧测高缺口） -->
 	<Instance Name="MPT_GPEraSpacerInstance">

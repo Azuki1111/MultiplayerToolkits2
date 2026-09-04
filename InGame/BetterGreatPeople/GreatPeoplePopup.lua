@@ -608,29 +608,26 @@ end
 -- =======================================================================================
 local MPT_EraTipControls	:table = {};
 local MPT_EraTipHeaderIM	:table = nil;
-local MPT_EraTipNameIM		:table = nil;	-- 未招募个体名行（条目31扩展）
-local MPT_EraTipDescIM		:table = nil;	-- 个体效果描述行（条目31扩展）
-local MPT_EraTipRowIM		:table = nil;	-- 已招募灰字名行
+local MPT_EraTipBlockIM		:table = nil;	-- 个体块容器（内栈 + 半透明灰罩，条目31扩展三）
+
 local MPT_EraTipSpacerIM	:table = nil;
 local MPT_EraTipCurrent		:string = nil;	-- 去重键「ClassID|EraID」（条目31修复）
 local MPT_EraTipSectionsCache:table = {};	-- 个体效果文本缓存（条目31扩展：GameInfo 静态数据按个体缓存）
 
 -- 懒初始化（首次悬停时模板必已随本上下文 XML 注册；nil 防御——未生效时静默回退无 tooltip）
 function MPT_EnsureEraTooltip()
-	if MPT_EraTipRowIM == nil then
+	if MPT_EraTipBlockIM == nil then
 		TTManager:GetTypeControlTable("MPT_GPEraTooltip", MPT_EraTipControls);
 		if MPT_EraTipControls.GPStack ~= nil then
 			MPT_EraTipHeaderIM = InstanceManager:new("MPT_GPEraHeaderInstance", "HeaderRoot", MPT_EraTipControls.GPStack);
-			MPT_EraTipNameIM = InstanceManager:new("MPT_GPEraNameInstance", "NameText", MPT_EraTipControls.GPStack);
-			MPT_EraTipDescIM = InstanceManager:new("MPT_GPEraDescInstance", "DescText", MPT_EraTipControls.GPStack);
-			MPT_EraTipRowIM = InstanceManager:new("MPT_GPEraRowInstance", "RowText", MPT_EraTipControls.GPStack);
+			MPT_EraTipBlockIM = InstanceManager:new("MPT_GPEraBlockInstance", "BlockRoot", MPT_EraTipControls.GPStack);
 			MPT_EraTipSpacerIM = InstanceManager:new("MPT_GPEraSpacerInstance", "SpacerRoot", MPT_EraTipControls.GPStack);
 			-- 文本布局跨帧完成（条目24 同款）：栈尺寸实际变化时引擎回调再收口一次；
 			-- Shrink 内有同值幂等守卫不会循环
 			MPT_EraTipControls.GPStack:RegisterSizeChanged(function() MPT_ShrinkEraTooltip(); end);
 		end
 	end
-	return MPT_EraTipRowIM ~= nil;
+	return MPT_EraTipBlockIM ~= nil;
 end
 
 -- 高度收口：按行栈实测 + 上下 InnerPadding 12×2（宽度恒 300）
@@ -676,6 +673,12 @@ end
 --	经 GetModifierText(ModifierId, "Summary") 渲染为自然语言（GameEffectsText 原版共享脚本，
 --	无 GameEffects DLL 时回退 ModifierStrings 表）；Override 字段与先知特例同百科页处理。
 --	GameInfo 静态数据，按个体 Type 缓存。返回 {sName=, tLines={效果行...}}
+-- ==== 条目31扩展三（结构化）：返回 {sName, sActionHeader, sActionBody, sPassiveHeader,
+--	sPassiveBody, tWorks, sWorkUsage}——①动作块条件放宽至 ActionNameTextOverride（孙子类
+--	0 次数隐退，与原版卡片 ActionNameText ~= "" 口径一致；0 次数不带「（N 次数）」后缀）
+--	②巨作块（GreatWorks.GreatPersonIndividualType：孙子兵法/作家诗人画家作品，大作家类
+--	全靠此块；官方百科页 great_works 同源）③数据口径仍 = 百科页：主动/被动 Modifier 摘要 +
+--	Override 本地化 + 先知特例；GameInfo 静态数据按个体 Type 缓存
 function MPT_GetEraTipSections( sIndividualType:string )
 	local tCache:table = MPT_EraTipSectionsCache[sIndividualType];
 	if tCache ~= nil then
@@ -683,13 +686,13 @@ function MPT_GetEraTipSections( sIndividualType:string )
 	end
 	local gp:table = GameInfo.GreatPersonIndividuals[sIndividualType];
 	if gp == nil then
-		local tEmpty:table = { sName = sIndividualType, tLines = {} };
+		local tEmpty:table = { sName = sIndividualType };
 		MPT_EraTipSectionsCache[sIndividualType] = tEmpty;
 		return tEmpty;
 	end
-	local tSections:table = { sName = Locale.Lookup(gp.Name), tLines = {} };
+	local tSections:table = { sName = Locale.Lookup(gp.Name), sActionHeader = nil, sActionBody = nil, sPassiveHeader = nil, sPassiveBody = nil, tWorks = nil, sWorkUsage = nil };
 
-	-- 主动权能：ActionModifiers 摘要（有次数或有 Override 才算存在）
+	-- 主动权能：ActionModifiers 摘要（有次数/有名字覆盖/有摘要任一即存在；0 次数不带次数后缀）
 	local tActive:table = {};
 	for row in GameInfo.GreatPersonIndividualActionModifiers() do
 		if row.GreatPersonIndividualType == sIndividualType then
@@ -699,18 +702,19 @@ function MPT_GetEraTipSections( sIndividualType:string )
 			end
 		end
 	end
-	if (gp.ActionCharges > 0) and (#tActive > 0 or gp.ActionEffectTextOverride ~= nil) then
-		table.insert(tSections.tLines, "[ICON_BulletGlow]"..Locale.Lookup("LOC_UI_PEDIA_GREATPERSON_ACTION", gp.ActionNameTextOverride or "LOC_GREATPERSON_ACTION_NAME_DEFAULT", gp.ActionCharges));
-		-- ==== 条目31修复三：ActionEffectTextOverride 数据列存的是 LOC tag 原文（官方数据实证：
-		--	GreatPeople_Engineers.xml James of St. George/Watt 等），渲染必须 Locale.Lookup
-		--	（官方百科页 AddHeaderBody→AddParagraph 同款本地化）；无 Override 才用 Modifier 摘要
+	if (gp.ActionCharges > 0 or gp.ActionNameTextOverride ~= nil or #tActive > 0) then
+		if (gp.ActionCharges > 0) then
+			tSections.sActionHeader = "[ICON_Bolt]"..Locale.Lookup("LOC_UI_PEDIA_GREATPERSON_ACTION", gp.ActionNameTextOverride or "LOC_GREATPERSON_ACTION_NAME_DEFAULT", gp.ActionCharges);
+		else
+			tSections.sActionHeader = "[ICON_Bolt]"..Locale.Lookup(gp.ActionNameTextOverride or "LOC_GREATPERSON_ACTION_NAME_DEFAULT");
+		end
+		-- Override 数据列存 LOC tag 原文（官方数据实证：GreatPeople_Engineers.xml 詹姆斯/瓦特），渲染必须 Locale.Lookup（官方百科页 AddHeaderBody 同款）
 		local sBody:string = gp.ActionEffectTextOverride;
 		if sBody ~= nil then
-			sBody = Locale.Lookup(sBody);
-		else
-			sBody = table.concat(tActive, "[NEWLINE]");
+			tSections.sActionBody = Locale.Lookup(sBody);
+		elseif #tActive > 0 then
+			tSections.sActionBody = table.concat(tActive, "[NEWLINE]");
 		end
-		table.insert(tSections.tLines, sBody);
 	end
 
 	-- 被动能力：BirthModifiers 摘要
@@ -724,20 +728,37 @@ function MPT_GetEraTipSections( sIndividualType:string )
 		end
 	end
 	if (#tPassive > 0 or gp.BirthEffectTextOverride ~= nil) then
-		table.insert(tSections.tLines, "[ICON_Bolt]"..Locale.Lookup(gp.BirthNameTextOverride or "LOC_GREATPERSON_PASSIVE_NAME_DEFAULT"));
-		-- ==== 条目31修复三：BirthEffectTextOverride 同为 LOC tag 列，同款本地化
+		tSections.sPassiveHeader = "[ICON_Bolt]"..Locale.Lookup(gp.BirthNameTextOverride or "LOC_GREATPERSON_PASSIVE_NAME_DEFAULT");
 		local sBody:string = gp.BirthEffectTextOverride;
 		if sBody ~= nil then
-			sBody = Locale.Lookup(sBody);
-		else
-			sBody = table.concat(tPassive, "[NEWLINE]");
+			tSections.sPassiveBody = Locale.Lookup(sBody);
+		elseif #tPassive > 0 then
+			tSections.sPassiveBody = table.concat(tPassive, "[NEWLINE]");
 		end
-		table.insert(tSections.tLines, sBody);
 	end
 
-	-- 先知特例（原版百科页同款：无 Modifier，固定创立宗教说明）
+	-- 先知特例（原版百科页同款：无 Modifier，固定创立宗教说明）——并入被动体
 	if gp.GreatPersonClassType == "GREAT_PERSON_CLASS_PROPHET" then
-		table.insert(tSections.tLines, Locale.Lookup("LOC_GREATPERSON_ACTION_USAGE_FOUND_RELIGION"));
+		if tSections.sPassiveBody ~= nil then
+			tSections.sPassiveBody = tSections.sPassiveBody.."[NEWLINE]"..Locale.Lookup("LOC_GREATPERSON_ACTION_USAGE_FOUND_RELIGION");
+		else
+			tSections.sPassiveHeader = tSections.sPassiveHeader or "[ICON_Bolt]"..Locale.Lookup("LOC_GREATPERSON_PASSIVE_NAME_DEFAULT");
+			tSections.sPassiveBody = Locale.Lookup("LOC_GREATPERSON_ACTION_USAGE_FOUND_RELIGION");
+		end
+	end
+
+	-- 巨作块：GreatWorks.GreatPersonIndividualType——孙子兵法/作家诗人画家音乐家的全部内容
+	-- 都在此表（官方百科页 great_works 同源）；作品列表 + 创作说明
+	for row in GameInfo.GreatWorks() do
+		if row.GreatPersonIndividualType == sIndividualType then
+			if tSections.tWorks == nil then
+				tSections.tWorks = {};
+			end
+			table.insert(tSections.tWorks, "[ICON_Bullet]"..Locale.Lookup(row.Name));
+		end
+	end
+	if tSections.tWorks ~= nil then
+		tSections.sWorkUsage = Locale.Lookup("LOC_GREATPERSON_ACTION_USAGE_CREATE_GREAT_WORK");
 	end
 
 	MPT_EraTipSectionsCache[sIndividualType] = tSections;
@@ -767,50 +788,94 @@ function MPT_FillGPEraTooltip( kPerson:table )
 	if MPT_EraTipCurrent ~= sKey then
 		MPT_EraTipCurrent = sKey;
 		MPT_EraTipHeaderIM:ResetInstances();
-		MPT_EraTipNameIM:ResetInstances();
-		MPT_EraTipDescIM:ResetInstances();
-		MPT_EraTipRowIM:ResetInstances();
+		MPT_EraTipBlockIM:ResetInstances();
 		MPT_EraTipSpacerIM:ResetInstances();	-- 撑高块同样回收（漏 Reset = 每次回调 +8px）
 
 		-- 区头：类别 - 时代
 		local kHeader:table = MPT_EraTipHeaderIM:GetInstance();
 		kHeader.HeaderText:SetText( Locale.Lookup(classData.Name) .. " - " .. Locale.Lookup(eraData.Name) );
 
-		-- 同类别同时代全部伟人；未招募（名行 + 效果行）排前、已招募灰字置后（组内保持 GameInfo 顺序）
+		-- ==== 条目31扩展三：个体块容器渲染——未招募在前、已招募在后（组内保持 GameInfo 顺序）；
+		--	已招募 = 名字接「 - 已招募」+ 效果信息不省略 + 整块覆盖半透明灰罩（用户裁决）
 		local tAvailable:table = {};
 		local tRecruited:table = {};
 		for gp in GameInfo.GreatPersonIndividuals() do
 			if gp.GreatPersonClassType == sGPClass and gp.EraType == sEraType then
 				local tSections:table = MPT_GetEraTipSections(gp.GreatPersonIndividualType);
 				if MPT_IsGreatPersonRecruited(gp.Index) then
-					table.insert(tRecruited, "[COLOR_Grey]"..tSections.sName.." - "..Locale.Lookup("LOC_TECH_KEY_UNAVAILABLE").."[ENDCOLOR]");
+					table.insert(tRecruited, tSections);
 				else
 					table.insert(tAvailable, tSections);
 				end
 			end
 		end
-		-- ==== 条目31扩展：未招募个体 = 名字行 + 效果行（主动权能/被动能力摘要，即卡片效果区同源文本）；
-		--	个体块之间插透明条加大间隔（条目31扩展二）
+
+		local function MPT_FillEraTipBlock( tSections:table, bRecruited:boolean )
+			local block:table = MPT_EraTipBlockIM:GetInstance();
+			-- 内栈行 IM 按块懒建（实例复用时持久，同原版 AddRecruit 的 instance["m_IM"] 模式）
+			if block["m_NameIM"] == nil then
+				block["m_NameIM"] = InstanceManager:new("MPT_GPEraNameInstance", "NameText", block.BlockStack);
+				block["m_DescIM"] = InstanceManager:new("MPT_GPEraDescInstance", "DescText", block.BlockStack);
+				block["m_BodyIM"] = InstanceManager:new("MPT_GPEraBodyInstance", "BodyText", block.BlockStack);
+				-- 灰罩尺寸随内栈实测同步（跨帧文本布局自愈，同条目24 收口思路）
+				block.BlockStack:RegisterSizeChanged(function()
+					local _, h:number = block.BlockStack:GetSizeVal();
+					block.BlockShade:SetSizeVal(268, h);
+				end);
+			end
+			block["m_NameIM"]:ResetInstances();
+			block["m_DescIM"]:ResetInstances();
+			block["m_BodyIM"]:ResetInstances();
+
+			local sName:string = tSections.sName;
+			if bRecruited then
+				sName = sName .. " - " .. Locale.Lookup("LOC_MPT_BGP_RECRUITED");
+			end
+			block["m_NameIM"]:GetInstance().NameText:SetText( sName );
+
+			if tSections.sActionHeader ~= nil then
+				block["m_DescIM"]:GetInstance().DescText:SetText( tSections.sActionHeader );
+				if tSections.sActionBody ~= nil then
+					block["m_BodyIM"]:GetInstance().BodyText:SetText( tSections.sActionBody );
+				end
+			end
+			if tSections.sPassiveHeader ~= nil then
+				block["m_DescIM"]:GetInstance().DescText:SetText( tSections.sPassiveHeader );
+				if tSections.sPassiveBody ~= nil then
+					block["m_BodyIM"]:GetInstance().BodyText:SetText( tSections.sPassiveBody );
+				end
+			end
+			if tSections.tWorks ~= nil then
+				block["m_DescIM"]:GetInstance().DescText:SetText( table.concat(tSections.tWorks, "[NEWLINE]") );
+				if tSections.sWorkUsage ~= nil then
+					block["m_BodyIM"]:GetInstance().BodyText:SetText( tSections.sWorkUsage );
+				end
+			end
+
+			-- 已招募：整块覆盖半透明灰罩（尺寸由 RegisterSizeChanged 按内栈实测同步）
+			block.BlockShade:SetHide(not bRecruited);
+			local _, h:number = block.BlockStack:GetSizeVal();
+			block.BlockShade:SetSizeVal(268, h);
+		end
+
 		local bFirst:boolean = true;
 		for _, tSections in ipairs(tAvailable) do
+			if not bFirst then
+				MPT_EraTipSpacerIM:GetInstance();	-- 个体块间隔透明条（XML 实例，高 30）
+			end
+			bFirst = false;
+			MPT_FillEraTipBlock(tSections, false);
+		end
+		for _, tSections in ipairs(tRecruited) do
 			if not bFirst then
 				MPT_EraTipSpacerIM:GetInstance();
 			end
 			bFirst = false;
-			MPT_EraTipNameIM:GetInstance().NameText:SetText( tSections.sName );
-			if #tSections.tLines > 0 then
-				MPT_EraTipDescIM:GetInstance().DescText:SetText( table.concat(tSections.tLines, "[NEWLINE]") );
-			end
-		end
-		if #tRecruited > 0 and not bFirst then
-			MPT_EraTipSpacerIM:GetInstance();	-- 未招募块与灰字名行之间同款间隔
-		end
-		for _, sText in ipairs(tRecruited) do
-			MPT_EraTipRowIM:GetInstance().RowText:SetText( sText );
+			MPT_FillEraTipBlock(tSections, true);
 		end
 		MPT_EraTipSpacerIM:GetInstance();	-- 栈尾透明撑高块（条目24 同款，吸收末行跨帧测高缺口）
 	end
-	MPT_ShrinkEraTooltip();
+	MPT_ShrinkEraTooltip();	MPT_ShrinkEraTooltip();
 end
 -- ---- 条目31
 
