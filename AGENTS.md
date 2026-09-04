@@ -32,7 +32,7 @@
 | `FrontEnd/UI/AdvancedSetup/AdvancedSetup.lua` | 单人高级设置替换：minPlayers 2→1、允许移除全部 AI、1 人开局 |
 | `Shared/` | 双环境共享：`MPT_Serialize.lua` 序列化；`MPT_DataStorage.lua` 统一多表本地读写（`MPT_Storage_LoadAll/GetTable/SaveTables` 三 API，单一 ModGroup 组名承载、组内按表名分键、调用方零 merge）。**前端实际承载 = StagingRoom.lua 末尾「条目4.3预备」内联副本（引擎 include 缺陷，见技能库 empty-context.md），两副本改动必须双向同步**。`PlayerMark/` 为标记共享数据（当前仅前端消费） |
 | `FrontEnd/Text/` | 通用本地化文本（每语言一个文件） |
-| `FrontEnd/Changelog/`、`FrontEnd/Ads/` | 条目3.5 更新公告（`MPT_Changelog` 表）/ 条目3.6 广告轮播（`MPT_Ads` 表 + DDS），各带专属文本 |
+| `FrontEnd/Changelog/`、`FrontEnd/Ads/` | 条目3.5 更新公告（`MPT_Changelog` 表）/ 条目3.6 广告轮播（`MPT_Ads` 表 + DDS），各带专属文本；**条目3.6扩展：表无条目 = 广告面板整体默认隐藏（含「最新动态」按钮）；表先 DROP 再建（SQL 文件即唯一事实，删行/清空立即生效）；`ToolTipImage` 列 = 纯图片悬停提示（优先于 ToolTipTag 文本；ToolTipType `MPT_AdImageTooltip` 定义在 StagingRoom.xml，条目4.6 贴图预览同机制：StretchMode=Auto 真实像素 + TTManager 控件表 + 超屏等比缩小，单例每次悬停重设纹理）；`Tools/MPT_AdsSync.py` 扫 FrontEnd/Ads/*.dds 按后缀配对（`Xxx_AD.dds`=主图 / `Xxx_ToolTip.dds`=悬停图）：表中没有的主图行增量追加（已有 TextureName 跳过不覆盖手工修改）+ 全部 dds 幂等登记 modinfo 两处 |
 | `FrontEnd/ModCheck/`、`FrontEnd/ModList/` | 条目4.1 模组校验（`MPT_ModCheck` 注册表，mod 自我登记 modId）/ 条目4.2 非官方模组清单（数据走运行时 Modding API），各带专属文本 |
 | `Shared/PlayerMark/` | 条目4.4/4.8 玩家标记：专属文本 + `TPT_PlayerData` 数据表（`PlayerMark_Data.sql`）+ 3 张标记 DDS |
 | `FrontEnd/IconViewer/`、`FrontEnd/TextureViewer/` | 条目4.5 图标查看器（`MPT_IconCollection` 5056 图标）/ 条目4.6 贴图查看器（`MPT_TextureCollection` 5017 行），各带专属文本 |

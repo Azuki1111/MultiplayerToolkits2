@@ -3906,6 +3906,10 @@ end
 -- 广告轮播（条目3.6，移植原版主菜单 ChallengeCarousel 并重命名/裁剪）
 -- 用法：广告条目由 MPT_Ads 表驱动（FrontEnd/Ads/Ads_Data.sql），按 rowid 顺序展示、
 --       按本机日期过滤 StartDate/EndDate；自动轮播 + 左右箭头手动翻页 + 底部指示点。
+--       表内无可展示条目时整个广告面板默认隐藏（含「最新动态」唤起按钮）。
+--       悬停提示三态：ToolTipImage 纯图片 Tooltip（自定义 MPT_AdImageTooltip，
+--       定义见 StagingRoom.xml，条目4.6 贴图预览同款机制）> ToolTipTag 文本 > 无；
+--       批量添加贴图用 python Tools/MPT_AdsSync.py（扫描配对 _AD/_ToolTip 命名）。
 -- 移植说明：首尾各复制一条实例实现无缝循环滚动（原版 CarouselEntry 机制）；
 --          点击条目在 Url 非空时经 Steam.ActivateGameOverlayToUrl 打开网页
 --          （BSR / 原版 Mods.lua 同款用法），Url 为空则点击无动作。
@@ -3915,12 +3919,18 @@ end
 local AD_DISPLAY_DURATION_MS : number = 5000;
 local AD_ANIM_DURATION_MS : number = 400;
 
+-- 纯图片 Tooltip 防溢出：屏幕四边预留（Tooltip 相对鼠标指针有偏移余量，条目4.6 同值）
+local AD_TT_SCREEN_MARGIN : number = 40;
+
 local m_adEntryIM = InstanceManager:new("AdEntryInstance", "AdEntryRoot", Controls.AdStack);
 local m_adIndicatorIM = InstanceManager:new("AdIndicatorInstance", "AdIndicatorRoot", Controls.AdIndicatorStack);
-local g_adEntries : table = {};			-- 过滤后的广告行 { {TextureName=..., ToolTipTag=..., Url=...}, ... }
+local m_adImageTooltip = {};			-- 纯图片 Tooltip 控件表（MPT_AdImageTooltip，下行取控件表；条目4.6 同机制）
+local g_adEntries : table = {};			-- 过滤后的广告行 { {TextureName=..., ToolTipTag=..., ToolTipImage=..., Url=...}, ... }
 local m_adCurrentEntry : number = 1;	-- 当前条目下标（1..#g_adEntries；首尾复制实例不计入）
 local m_adSlideTimerMS : number = 0;	-- 当前条目已展示时长
 local m_adAnim : table = { active = false, time = 0, startValue = 0, destinationValue = 0, destinationIndex = 0 };	-- 翻页补间状态
+
+TTManager:GetTypeControlTable("MPT_AdImageTooltip", m_adImageTooltip);
 
 -------------------------------------------------
 -- AdGetOffsetValue
@@ -4009,6 +4019,27 @@ function OnAdEntryClick( entryIndex )
 end
 
 -------------------------------------------------
+-- AdFillImageTooltip( texName )
+-- 填充广告纯图片 Tooltip（MPT_AdImageTooltip 全局单例控件表，每次悬停先重设纹理防残留）。
+-- TTImage 为 StretchMode=Auto 不设 Size：SetTexture 后控件尺寸即贴图真实像素
+-- （条目4.6 贴图预览同款机制）；超出屏幕可用区域时等比缩小防溢出（只缩小不放大）。
+-------------------------------------------------
+function AdFillImageTooltip( texName )
+	m_adImageTooltip.TTImage:SetTexture(texName);
+	local pixelW : number = m_adImageTooltip.TTImage:GetSizeX();
+	local pixelH : number = m_adImageTooltip.TTImage:GetSizeY();
+	if pixelW ~= nil and pixelH ~= nil and pixelW > 0 and pixelH > 0 then
+		local screenW, screenH : number = UIManager:GetScreenSizeVal();
+		local scale : number = math.min(math.max(screenW - AD_TT_SCREEN_MARGIN, 1) / pixelW,
+			math.max(screenH - AD_TT_SCREEN_MARGIN, 1) / pixelH, 1);
+		if scale < 1 then
+			-- 两数值设尺寸用 SetSizeVal（ControlBase::SetSize 只收 1 参，条目4.6 同坑规避）
+			m_adImageTooltip.TTImage:SetSizeVal(math.floor(pixelW * scale), math.floor(pixelH * scale));
+		end
+	end
+end
+
+-------------------------------------------------
 -- OnAdCloseClick
 -- 关闭按钮回调：隐藏轮播容器并显示「最新动态」唤起按钮（仅本次进入有效，重进准备房间由 RestoreAdCarousel 恢复）。
 -------------------------------------------------
@@ -4030,11 +4061,15 @@ end
 
 -------------------------------------------------
 -- RestoreAdCarousel
--- 重进准备房间时恢复广告面板（OnShow 调用；无可展示条目时保持隐藏）。
+-- 重进准备房间时恢复广告面板（OnShow 调用）；无可展示条目时轮播容器与
+-- 「最新动态」按钮均保持隐藏（表为空 = 广告面板整体默认隐藏，条目3.6）。
 -------------------------------------------------
 function RestoreAdCarousel()
 	if #g_adEntries > 0 then
 		Controls.AdCarouselContainer:SetHide(false);
+		Controls.AdShowButton:SetHide(true);
+	else
+		Controls.AdCarouselContainer:SetHide(true);
 		Controls.AdShowButton:SetHide(true);
 	end
 end
@@ -4046,13 +4081,13 @@ end
 --          无可展示条目时隐藏整个轮播容器。
 -------------------------------------------------
 function BuildAdCarousel()
-	local adRows = DB.ConfigurationQuery("SELECT TextureName, StartDate, EndDate, ToolTipTag, Url FROM MPT_Ads ORDER BY rowid ASC");
+	local adRows = DB.ConfigurationQuery("SELECT TextureName, StartDate, EndDate, ToolTipTag, ToolTipImage, Url FROM MPT_Ads ORDER BY rowid ASC");
 	g_adEntries = {};
 	if adRows ~= nil then
 		local today : string = os.date("%Y-%m-%d");
 		for i, row in ipairs(adRows) do
 			if (row.StartDate == "" or today >= row.StartDate) and (row.EndDate == "" or today <= row.EndDate) then
-				table.insert(g_adEntries, { TextureName = row.TextureName, ToolTipTag = row.ToolTipTag, Url = row.Url });
+				table.insert(g_adEntries, { TextureName = row.TextureName, ToolTipTag = row.ToolTipTag, ToolTipImage = row.ToolTipImage, Url = row.Url });
 			end
 		end
 	end
@@ -4061,7 +4096,9 @@ function BuildAdCarousel()
 
 	local entryCount : number = #g_adEntries;
 	if entryCount == 0 then
+		-- 无可展示条目：轮播容器与「最新动态」按钮一并隐藏（广告面板整体默认隐藏）
 		Controls.AdCarouselContainer:SetHide(true);
+		Controls.AdShowButton:SetHide(true);
 		return;
 	end
 
@@ -4078,7 +4115,14 @@ function BuildAdCarousel()
 		local entryInstance = m_adEntryIM:GetInstance();
 		-- 贴图设在 Image 子控件上：Button 无基础 Texture 时不创建贴图槽，直接 SetTexture 静默无效
 		entryInstance.AdEntryImage:SetTexture(adEntry.TextureName);
-		if adEntry.ToolTipTag ~= "" then
+		-- 悬停提示三态：ToolTipImage 纯图片 Tooltip > ToolTipTag 文本 > 无
+		--（图片类型与字符串是两套独立状态，设字符串前先 SetToolTipType(nil) 清残留——IM 复用实例可能携带旧类型）
+		if adEntry.ToolTipImage ~= nil and adEntry.ToolTipImage ~= "" then
+			local tooltipImage : string = adEntry.ToolTipImage;	-- 局部快照：避免闭包共享循环变量
+			entryInstance.AdEntryButton:SetToolTipType("MPT_AdImageTooltip");
+			entryInstance.AdEntryButton:SetToolTipCallback(function() AdFillImageTooltip(tooltipImage); end);
+		elseif adEntry.ToolTipTag ~= nil and adEntry.ToolTipTag ~= "" then
+			entryInstance.AdEntryButton:SetToolTipType(nil);
 			entryInstance.AdEntryButton:SetToolTipString(Locale.Lookup(adEntry.ToolTipTag));
 		end
 		entryInstance.AdEntryButton:SetVoid1(entryIndex);
