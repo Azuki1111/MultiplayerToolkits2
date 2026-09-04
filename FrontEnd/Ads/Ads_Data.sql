@@ -21,9 +21,7 @@
 --      （表里已有的 TextureName 一律跳过，不覆盖手工修改）；
 --   3. 手工添加时：MultiplayerToolkits.modinfo 两处登记该贴图（ToolTipImage
 --      贴图同样要登记）——FE_Import_Ads action 内加 <File>FrontEnd/Ads/xxx.dds</File>
---      （入 VFS），末尾 <Files> 列表加同一行（保证打包）；再在下方 VALUES 追加一行：
---      TextureName / ToolTipImage 与文件名逐字一致，
---      StartDate / EndDate 留空 = 不限日期，ToolTipTag / Url 留空 = 无提示 / 点击无动作；
+--      （入 VFS），末尾 <Files> 列表加同一行（保证打包）；再取消下方示例注释并修改；
 --   4. ToolTipTag 非空时，在同目录各语言文件补充同 Tag 文本。
 -- 表结构每次加载先 DROP 再建：本表数据以本文件为唯一事实，从文件中移除的行
 -- （含整表清空 = 面板默认隐藏）在下次启动立即生效，无残留。
@@ -38,8 +36,6 @@ CREATE TABLE IF NOT EXISTS MPT_Ads (
     Url          TEXT NOT NULL DEFAULT '', -- 点击打开的网页链接（Steam Overlay），'' 表示点击无动作
     PRIMARY KEY (TextureName, StartDate)
 );
-INSERT OR REPLACE INTO MPT_Ads (TextureName, StartDate, EndDate, ToolTipTag, ToolTipImage, Url) VALUES
--- 乔尔 FFA 大乱斗（两条轮换展示，Url 暂空 = 点击无动作，可按需补充）
-('QiaoEr_FFA.dds', '2026-08-09', '', 'LOC_MPT_AD_QIAOER_FFA_TT', '', 'https://steamcommunity.com/profiles/76561198147378701/'),
-('QiaoEr_FFA2.dds', '2026-08-09', '', 'LOC_MPT_AD_QIAOER_FFA_TT', '', 'https://steamcommunity.com/profiles/76561198147378701/myworkshopfiles/'),
-('XiXueGuiTest1_.dds', '', '', '', '', '');
+-- ↓ 添加广告示例（取消注释并按需修改；批量添加直接用 python Tools/MPT_AdsSync.py）：
+-- INSERT OR REPLACE INTO MPT_Ads (TextureName, StartDate, EndDate, ToolTipTag, ToolTipImage, Url) VALUES
+-- ('Demo_AD.dds', '2026-08-09', '', 'LOC_MPT_AD_DEMO_TT', 'Demo_ToolTip.dds', 'https://steamcommunity.com/...');

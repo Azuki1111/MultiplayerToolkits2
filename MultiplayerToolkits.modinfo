@@ -10,7 +10,7 @@
 =========================================================================================================================================================
 -->
 <!-- LoadOrder 规约：1-99 配置 | 100-999 文本 | 1000-9999 UI替换 | 10000+ 覆盖型替换 | 99999+ 强制后置 -->
-<Mod id="00000000-7369-4685-ab5f-bf77bc22b54e" version="1">
+<Mod id="00000000-7369-4685-ab5f-bf77bc22b54e" version="119">
 	<Properties>
 		<Name>LOC_MPT_FE_NAME</Name>
 		<Description>LOC_MPT_FE_DESCRIPTION</Description>
@@ -204,9 +204,6 @@
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>FrontEnd/Ads/QiaoEr_FFA.dds</File>
-			<File>FrontEnd/Ads/QiaoEr_FFA2.dds</File>
-			<File>FrontEnd/Ads/XiXueGuiTest1_.dds</File>
 		</ImportFiles>
 		<!-- 条目2：灾害强度下限 0 到 -1（完全无灾害），强制后置防覆盖 -->
 		<UpdateDatabase id="FE_Config_DD">
@@ -1218,9 +1215,6 @@
 		<File>FrontEnd/Ads/Ads_Data.sql</File>
 		<File>FrontEnd/Ads/Ads_zh_Hans_CN.sql</File>
 		<File>FrontEnd/Ads/Ads_en_US.sql</File>
-		<File>FrontEnd/Ads/QiaoEr_FFA.dds</File>
-		<File>FrontEnd/Ads/QiaoEr_FFA2.dds</File>
-		<File>FrontEnd/Ads/XiXueGuiTest1_.dds</File>
 		<File>FrontEnd/ModCheck/ModCheck_zh_Hans_CN.sql</File>
 		<File>FrontEnd/ModCheck/ModCheck_en_US.sql</File>
 		<File>FrontEnd/ModCheck/ModCheck_Data.sql</File>

@@ -4,5 +4,4 @@
 --       Tag 由 Ads_Data.sql 的 ToolTipTag 列引用，新增广告在两语言文件各加一行。
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
-('LOC_MPT_AD_QIAOER_FFA_TT', 'en_US', 'QiaoEr FFA'),
 ('LOC_MPT_AD_BUTTON_NAME', 'en_US', 'Latest News');
