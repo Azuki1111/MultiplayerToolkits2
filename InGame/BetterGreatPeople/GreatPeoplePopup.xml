@@ -254,14 +254,14 @@
 				<Label	ID="WorksText"				Style="DawnText" WrapWidth="260" Offset="12,0"/>
 				<Label	ID="WorkUsageText"			Style="DawnText" WrapWidth="260" Offset="12,6"/>
 			</Stack>
-			<Box	ID="BlockShade"			Size="276,1" Color="70,70,70,120" Offset="-4,-4" Hidden="1"/>
+			<Box	ID="BlockShade"			Size="300,1" Color="0,0,0,100" Offset="0,-4" Hidden="1"/>
 		</Container>
 	</Instance>
 	<!-- 个体间分隔 bar（条目31扩展四修订：按用户指正改用 Controls_Separator 纹理本体，
 		贴图高度 4px；容器高 24 = 上下各 10px 空隙居中） -->
 	<Instance Name="MPT_GPEraBarInstance">
 		<Container	ID="BarRoot"				Size="260,24">
-			<Image		ID="BarImage"				Texture="Controls_Separator" Size="parent,4" Anchor="L,C"/>
+			<Image		ID="BarImage"		Texture="Controls_Div6"	Size="parent,2" Offset="6,0" Anchor="L,C"/>
 		</Container>
 	</Instance>
 	<!-- 栈尾透明撑高块（条目24 同款：固定高无需文本布局，吸收末行跨帧测高缺口） -->
