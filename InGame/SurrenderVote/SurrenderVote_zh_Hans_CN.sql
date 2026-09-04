@@ -20,7 +20,7 @@ VALUES
 	-- 重新开始投票（条目8续2）文本
 	('LOC_MPT_RESTART_TITLE',		'zh_Hans_CN',	'重新开始投票'),
 	('LOC_MPT_RESTART_PASSED',		'zh_Hans_CN',	'重新开始已通过，游戏即将重启'),
-	('LOC_MPT_RESTART_TT_DEFAULT',	'zh_Hans_CN',	'发起重新开始投票（投票过半后重启，地图相同）'),
+	('LOC_MPT_RESTART_TT_DEFAULT',	'zh_Hans_CN',	'发起重新开始投票'),
 	('LOC_MPT_RESTART_TT_OBSERVER',	'zh_Hans_CN',	'观察者不能发起重新开始投票'),
 	('LOC_MPT_RESTART_TT_DEAD',		'zh_Hans_CN',	'已败亡，不能发起重新开始投票'),
 	('LOC_MPT_RESTART_TT_SINGLE',	'zh_Hans_CN',	'单人局不能发起重新开始投票'),

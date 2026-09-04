@@ -32,6 +32,6 @@ VALUES
 	('LOC_MPT_NHK_FORMATION_NAME',							'zh_Hans_CN',	'绑定或解绑单位'),
 	('LOC_MPT_NHK_FORMATION_DESC',							'zh_Hans_CN',	'绑定或解绑单位（编队/解编）'),
 	('LOC_MPT_NHK_REMOVE_FEATURE_NAME',						'zh_Hans_CN',	'删除地貌'),
-	('LOC_MPT_NHK_REMOVE_FEATURE_DESC',						'zh_Hans_CN',	'移除格位上的地貌（砍伐森林、疏浚沼泽等）并获得对应产出'),
+	('LOC_MPT_NHK_REMOVE_FEATURE_DESC',						'zh_Hans_CN',	'移除格位上的地貌'),
 	('LOC_MPT_NHK_HARVEST_NAME',							'zh_Hans_CN',	'收获资源'),
-	('LOC_MPT_NHK_HARVEST_DESC',							'zh_Hans_CN',	'收获格位上的可收获资源（鹿、石头等）并获得对应产出');
+	('LOC_MPT_NHK_HARVEST_DESC',							'zh_Hans_CN',	'收获格位上的可收获资源');

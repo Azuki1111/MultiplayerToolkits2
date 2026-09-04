@@ -14,4 +14,4 @@ VALUES
 	-- 条目34：反作弊监测面板打开按钮（点击经 LuaEvents.MPT_HashCheck_Toggle 打开/关闭面板，见 InGame/HashCheck/；
 	-- 高级选项 MPT_HASH_CHECK 未勾选时按钮整个隐藏）
 	('LOC_MPT_QUICK_HASHCHECK',	'zh_Hans_CN',	'反作弊监测'),
-	('LOC_MPT_QUICK_HASHCHECK_TT',	'zh_Hans_CN',	'打开反作弊监测面板（查看各玩家文件一致性）');
+	('LOC_MPT_QUICK_HASHCHECK_TT',	'zh_Hans_CN',	'打开反作弊监测面板');
