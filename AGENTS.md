@@ -40,7 +40,7 @@
 | `InGame/GreatPersonNames/` | 条目6 伟人名字更新（1.65 GPN）：魔女环境检测后写入纪念名字，LoadOrder 5000000 压后覆盖，非魔女环境保护原版 |
 | `InGame/EndGameMenu/` | 条目7 战败后观战按钮（1.65 EGM）：整文件同名覆盖 + 通配 include 注入；修复战败画面反复弹出（SetHide 致原版防重入守卫失效） |
 | `InGame/WorldTracker/` | 条目8 快捷操作面板：空 Context + ChangeParent 挂 WorldTracker.PanelStack，展开区「投降」「重新开始」「玩家标记」「设置」「反作弊监测」（条目34，未勾选 MPT_HASH_CHECK 时运行时隐藏、展开高度回落四按钮态）+ 投票区；「重新开始」响应 TODO |
-| `InGame/SurrenderVote/` | 条目8续 团队投降投票（Gameplay 侧）：AddGameplayScripts 注册，EXECUTE_SCRIPT 收 UI 指令，票数 ≥ 半数 → 该队城市全部叛变自由城（自定义战败：只写 Game:SetProperty，不动引擎判负）；每时代每队一次 |
+| `InGame/SurrenderVote/` | 条目8续 团队投降投票（Gameplay 侧）：AddGameplayScripts 注册，EXECUTE_SCRIPT 收 UI 指令，票数严格大于半数（agreeCount*2 > totalCount，条目8续修复由 ≥ 半数收紧，偶数人恰半不再通过）→ 该队城市全部叛变自由城（自定义战败：只写 Game:SetProperty，不动引擎判负）；每时代每队一次 |
 | `InGame/TopPanelExt/` | 条目9 顶部面板扩展（1.65 TPE）：ReplaceUIScript 覆盖，追加食物/生产力/人口/奢侈品统计与战略资源队友清单 |
 | `InGame/DealRestriction/` | 条目10 交易与外交限制（1.65 DDV 整模块）：交易四模式/无友谊默认开/和解三模式；`MPT_TradeRules.lua` 统一解析器（条目9/10 两上下文 include 共用）；SQL 经 ActionCriteria（ConfigurationValueMatches）条件执行 = 本 mod criteria 首例；参数与 DealView 导入无条件注册（条目10/28调整用户裁决：不再考虑与 MPH 兼容，原 Disable_MPH 让位门控废止） |
 | `InGame/PlayerMark/` | 条目11 游戏内玩家标记面板：include Shared/MPT_DataStorage.lua 与前端同一份存档互通；QuickPanel 按钮打开 |

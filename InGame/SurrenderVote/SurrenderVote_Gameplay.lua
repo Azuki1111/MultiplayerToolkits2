@@ -8,7 +8,7 @@
 --
 -- 流程：
 --   type="start"  ：校验（本时代本队未发起过）→ Game:SetProperty 置发起标志
---   type="vote"   ：校验（已发起、投票者同队未投过）→ 记票 → 达 >= 半数
+--   type="vote"   ：校验（已发起、投票者同队未投过）→ 记票 → 达严格大于半数
 --                   → 执行 MPT_SurrenderExecute（该队城市叛变自由城 + 标记判负）
 --
 -- 频率限制：每个游戏时代每队仅可发起一次投票（SetProperty 记录，跨端同步+持久化）。
@@ -304,8 +304,9 @@ function OnMPT_SurrenderVoteGameEvent(localPlayerID, params)
 		Game:SetProperty(MPT_VotesKey(teamID), tostring(agreeCount) .. "/" .. tostring(totalCount));
 		print("[MPT_SurrenderVote] Player " .. tostring(voter) .. " voted agree=" .. tostring(params.agree) .. " (" .. agreeCount .. "/" .. totalCount .. ")");
 
-		-- 过半判定：agreeCount >= totalCount/2 且至少 1 票
-		if totalCount > 0 and agreeCount >= totalCount / 2 then
+		-- 过半判定：严格大于半数（agreeCount*2 > totalCount，整数乘法避免浮点除）且至少 1 票
+		-- （条目8续修复：原 >= totalCount/2 在偶数人队恰半即过——2人队1票/4人队2票即投降，与本意「大于一半」不符）
+		if totalCount > 0 and agreeCount * 2 > totalCount then
 			MPT_SurrenderExecute(teamID);
 			return;
 		end
@@ -476,8 +477,9 @@ function OnMPT_RestartVoteGameEvent(localPlayerID, params)
 		Game:SetProperty(MPT_RestartVotesKey(), tostring(agreeCount) .. "/" .. tostring(totalCount));
 		print("[MPT_RestartVote] Player " .. tostring(voter) .. " voted agree=" .. tostring(params.agree) .. " (" .. agreeCount .. "/" .. totalCount .. ")");
 
-		-- 过半判定：agreeCount >= totalCount/2 且至少 1 票
-		if totalCount > 0 and agreeCount >= totalCount / 2 then
+		-- 过半判定：严格大于半数（agreeCount*2 > totalCount，整数乘法避免浮点除）且至少 1 票
+		-- （条目8续修复：原 >= totalCount/2 在偶数人局恰半即过——6人局3票即重开，与本意「大于一半」不符）
+		if totalCount > 0 and agreeCount * 2 > totalCount then
 			Game:SetProperty(MPT_RestartPassedKey(), 1);
 			print("[MPT_RestartVote] Vote PASSED! Host will restart the game.");
 			return;
