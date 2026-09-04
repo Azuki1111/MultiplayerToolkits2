@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>111</Version>
+		<Version>112</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -1118,7 +1118,7 @@
 			</Properties>
 			<File>InGame/SaveSettler/SaveSettler.sql</File>
 		</UpdateDatabase>
-		<!-- 条目33：拯救开拓者 Gameplay 侧（OnUnitRetreated 撤退回城：城市≤2 扣2人口 / ≥3 移除；criteria 门控不勾选零加载） -->
+		<!-- 条目33：拯救开拓者 Gameplay 侧（OnUnitRetreated 撤退回城：所在城市扣2人口，条目33调整废止≥3移除分支；criteria 门控不勾选零加载） -->
 		<AddGameplayScripts id="IG_SaveSettler_Gameplay" criteria="MPT_SAVE_SETTLER">
 			<Properties>
 				<LoadOrder>900</LoadOrder>
