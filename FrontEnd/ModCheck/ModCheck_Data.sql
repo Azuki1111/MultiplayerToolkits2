@@ -12,4 +12,6 @@ CREATE TABLE IF NOT EXISTS MPT_ModCheck (
 	ModId TEXT PRIMARY KEY
 );
 INSERT OR REPLACE INTO MPT_ModCheck (ModId) VALUES
-('00000000-7369-4685-ab5f-bf77bc22b54e');
+('c88cba8b-8311-4d35-90c3-51a4a5d66542'),		-- BBM：Better Balanced Map 1.39.5
+('cb84075d-5007-4207-b662-c35a5f7be260'),		-- BBG：Better Balanced Game 7.5.0
+('00000000-7369-4685-ab5f-bf77bc22b54e');		-- 自身：联机工具箱2.0.0
