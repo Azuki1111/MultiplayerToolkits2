@@ -240,25 +240,26 @@
 			<Label	ID="HeaderText"		Style="FontFlair14" FontStyle="glow" ColorSet="ShellHeader" SmallCaps="18" SmallCapsType="EveryWord" Anchor="C,C" Align="Center" Offset="0,1" WrapWidth="268"/>
 		</Grid>
 	</Instance>
-	<!-- 条目31扩展：未招募个体名行（FontFlair14 亮字）与效果描述行（DawnText 缩进 12px，
-		文本 = 卡片效果区同源摘要，主动权能/被动能力各成段） -->
-	<Instance Name="MPT_GPEraNameInstance">
-		<Label		ID="NameText"				Style="FontFlair14" FontStyle="Shadow" ColorSet="ShellHeader" SmallCaps="18" SmallCapsType="EveryWord" WrapWidth="268"/>
-	</Instance>
-	<Instance Name="MPT_GPEraDescInstance">
-		<Label		ID="DescText"				Style="DawnText" WrapWidth="256" Offset="12,0"/>
-	</Instance>
-	<!-- 条目31扩展三：个体块容器——内栈流式排版，半透明灰罩为绝对覆盖层（已招募个体整块
-		覆盖；Hidden 不参与容器测高，显示时由 Lua 按内栈实测 SetSizeVal 同步） -->
+	<!-- 条目31重构：个体块 = 单实例固定 7 行 label（名字/动作标题/动作正文/被动标题/
+		被动正文/巨作列表/巨作说明）+ 半透明灰罩——固定结构杜绝行序错乱与实例累积，
+		每次填充仅 SetText/SetHide（空段隐藏），复用零错位 -->
 	<Instance Name="MPT_GPEraBlockInstance">
-		<Container	ID="BlockRoot"			Size="268,auto">
-			<Stack	ID="BlockStack"			StackGrowth="Down" StackPadding="4" Anchor="L,T"/>
+		<Container	ID="BlockRoot"			Size="276,auto">
+			<Stack	ID="BlockStack"			StackGrowth="Down" StackPadding="4" Anchor="L,T">
+				<Label	ID="NameText"				Style="FontFlair14" FontStyle="Shadow" ColorSet="ShellHeader" SmallCaps="18" SmallCapsType="EveryWord" WrapWidth="268"/>
+				<Label	ID="ActionHeaderText"		Style="DawnText" WrapWidth="260" Offset="12,0"/>
+				<Label	ID="ActionBodyText"			Style="DawnText" WrapWidth="260" Offset="12,6"/>
+				<Label	ID="PassiveHeaderText"		Style="DawnText" WrapWidth="260" Offset="12,0"/>
+				<Label	ID="PassiveBodyText"			Style="DawnText" WrapWidth="260" Offset="12,6"/>
+				<Label	ID="WorksText"				Style="DawnText" WrapWidth="260" Offset="12,0"/>
+				<Label	ID="WorkUsageText"			Style="DawnText" WrapWidth="260" Offset="12,6"/>
+			</Stack>
 			<Box	ID="BlockShade"			Size="276,1" Color="70,70,70,120" Offset="-4,-4" Hidden="1"/>
 		</Container>
 	</Instance>
-	<!-- 正文行（DawnText 缩进 12px、下移 6px：与「激活效果/被动技能」标题行拉开行距） -->
-	<Instance Name="MPT_GPEraBodyInstance">
-		<Label		ID="BodyText"				Style="DawnText" WrapWidth="256" Offset="12,6"/>
+	<!-- 个体间分隔 bar -->
+	<Instance Name="MPT_GPEraBarInstance">
+		<Box			ID="BarRoot"				Size="260,2" Color="199,187,157,50"/>
 	</Instance>
 	<!-- 栈尾透明撑高块（条目24 同款：固定高无需文本布局，吸收末行跨帧测高缺口） -->
 	<Instance Name="MPT_GPEraSpacerInstance">

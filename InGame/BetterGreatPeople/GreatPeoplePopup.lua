@@ -608,7 +608,8 @@ end
 -- =======================================================================================
 local MPT_EraTipControls	:table = {};
 local MPT_EraTipHeaderIM	:table = nil;
-local MPT_EraTipBlockIM		:table = nil;	-- 个体块容器（内栈 + 半透明灰罩，条目31扩展三）
+local MPT_EraTipBlockIM		:table = nil;	-- 个体块（单实例固定 7 行 label + 灰罩，条目31重构）
+local MPT_EraTipBarIM		:table = nil;	-- 个体间分隔 bar（条目31重构）
 
 local MPT_EraTipSpacerIM	:table = nil;
 local MPT_EraTipCurrent		:string = nil;	-- 去重键「ClassID|EraID」（条目31修复）
@@ -621,6 +622,7 @@ function MPT_EnsureEraTooltip()
 		if MPT_EraTipControls.GPStack ~= nil then
 			MPT_EraTipHeaderIM = InstanceManager:new("MPT_GPEraHeaderInstance", "HeaderRoot", MPT_EraTipControls.GPStack);
 			MPT_EraTipBlockIM = InstanceManager:new("MPT_GPEraBlockInstance", "BlockRoot", MPT_EraTipControls.GPStack);
+			MPT_EraTipBarIM = InstanceManager:new("MPT_GPEraBarInstance", "BarRoot", MPT_EraTipControls.GPStack);
 			MPT_EraTipSpacerIM = InstanceManager:new("MPT_GPEraSpacerInstance", "SpacerRoot", MPT_EraTipControls.GPStack);
 			-- 文本布局跨帧完成（条目24 同款）：栈尺寸实际变化时引擎回调再收口一次；
 			-- Shrink 内有同值幂等守卫不会循环
@@ -787,14 +789,17 @@ function MPT_FillGPEraTooltip( kPerson:table )
 		MPT_EraTipCurrent = sKey;
 		MPT_EraTipHeaderIM:ResetInstances();
 		MPT_EraTipBlockIM:ResetInstances();
-		MPT_EraTipSpacerIM:ResetInstances();	-- 撑高块同样回收（漏 Reset = 每次回调 +8px）
+		MPT_EraTipBarIM:ResetInstances();
+		MPT_EraTipSpacerIM:ResetInstances();
 
 		-- 区头：类别 - 时代
 		local kHeader:table = MPT_EraTipHeaderIM:GetInstance();
 		kHeader.HeaderText:SetText( Locale.Lookup(classData.Name) .. " - " .. Locale.Lookup(eraData.Name) );
 
-		-- ==== 条目31扩展三：个体块容器渲染——未招募在前、已招募在后（组内保持 GameInfo 顺序）；
-		--	已招募 = 名字接「 - 已招募」+ 效果信息不省略 + 整块覆盖半透明灰罩（用户裁决）
+		-- ==== 条目31重构：个体块 = 单实例固定 7 行 label + 灰罩，仅 SetText/SetHide——固定结构
+		-- 复用零错位零累积（此前动态 IM 注入/重建在回调反复触发下累积或错位，两轮实测推翻）。
+		-- 未招募在前、已招募在后（组内保持 GameInfo 顺序）；已招募 = 名字接「 - 已招募」+
+		-- 效果不省略 + 整块灰罩；块间 bar 分隔（用户裁决）
 		local tAvailable:table = {};
 		local tRecruited:table = {};
 		for gp in GameInfo.GreatPersonIndividuals() do
@@ -808,16 +813,15 @@ function MPT_FillGPEraTooltip( kPerson:table )
 			end
 		end
 
+		local function MPT_SetLabel( kLabel:table, sText:string )
+			kLabel:SetText( sText or "" );
+			kLabel:SetHide( sText == nil );
+		end
+
 		local function MPT_FillEraTipBlock( tSections:table, bRecruited:boolean )
 			local block:table = MPT_EraTipBlockIM:GetInstance();
-			-- 内栈行 IM 每次填充全新创建（条目31修复四：不同类型 IM 各自回收，复用位置与本次
-			-- 填充顺序不对应是行序错乱根因；追加式新行按填充顺序入栈，旧行随旧 IM 隐藏不占空间）
-			local nameIM:table = InstanceManager:new("MPT_GPEraNameInstance", "NameText", block.BlockStack);
-			local descIM:table = InstanceManager:new("MPT_GPEraDescInstance", "DescText", block.BlockStack);
-			local bodyIM:table = InstanceManager:new("MPT_GPEraBodyInstance", "BodyText", block.BlockStack);
-			-- 灰罩尺寸随内栈实测同步（跨帧文本布局自愈，同条目24 收口思路；每块注册一次）
-			if block["m_bShadeHooked"] == nil then
-				block["m_bShadeHooked"] = true;
+			if block["m_bHooked"] == nil then
+				block["m_bHooked"] = true;
 				block.BlockStack:RegisterSizeChanged(function()
 					local _, h:number = block.BlockStack:GetSizeVal();
 					block.BlockShade:SetSizeVal(276, h + 8);
@@ -828,53 +832,45 @@ function MPT_FillGPEraTooltip( kPerson:table )
 			if bRecruited then
 				sName = sName .. " - " .. Locale.Lookup("LOC_MPT_BGP_RECRUITED");
 			end
-			nameIM:GetInstance().NameText:SetText( sName );
-
-			if tSections.sActionHeader ~= nil then
-				descIM:GetInstance().DescText:SetText( tSections.sActionHeader );
-				if tSections.sActionBody ~= nil then
-					bodyIM:GetInstance().BodyText:SetText( tSections.sActionBody );
-				end
-			end
-			if tSections.sPassiveHeader ~= nil then
-				descIM:GetInstance().DescText:SetText( tSections.sPassiveHeader );
-				if tSections.sPassiveBody ~= nil then
-					bodyIM:GetInstance().BodyText:SetText( tSections.sPassiveBody );
-				end
-			end
+			block.NameText:SetText( sName );
+			block.NameText:SetHide( false );
+			MPT_SetLabel( block.ActionHeaderText, tSections.sActionHeader );
+			MPT_SetLabel( block.ActionBodyText, tSections.sActionBody );
+			MPT_SetLabel( block.PassiveHeaderText, tSections.sPassiveHeader );
+			MPT_SetLabel( block.PassiveBodyText, tSections.sPassiveBody );
+			local sWorks:string = nil;
 			if tSections.tWorks ~= nil then
-				descIM:GetInstance().DescText:SetText( table.concat(tSections.tWorks, "[NEWLINE]") );
-				if tSections.sWorkUsage ~= nil then
-					bodyIM:GetInstance().BodyText:SetText( tSections.sWorkUsage );
-				end
+				sWorks = table.concat(tSections.tWorks, "[NEWLINE]");
 			end
+			MPT_SetLabel( block.WorksText, sWorks );
+			MPT_SetLabel( block.WorkUsageText, tSections.sWorkUsage );
 
-			-- 已招募：整块覆盖半透明灰罩（填充当帧先 CalculateSize 即时同步 + 回调跨帧自愈；
-			-- 尺寸 276×h+8 并外扩 4px：略大于文本区域完整覆盖，条目31修复五）
-			block.BlockShade:SetHide(not bRecruited);
+			-- 已招募：整块覆盖半透明灰罩（当帧 CalculateSize 即时同步 + RegisterSizeChanged 跨帧自愈；
+			-- 276×h+8 并外扩 4px，略大于文本区域完整覆盖）
+			block.BlockShade:SetHide( not bRecruited );
 			block.BlockStack:CalculateSize();
 			local _, h:number = block.BlockStack:GetSizeVal();
-			block.BlockShade:SetSizeVal(276, h + 8);
+			block.BlockShade:SetSizeVal( 276, h + 8 );
 		end
 
 		local bFirst:boolean = true;
 		for _, tSections in ipairs(tAvailable) do
 			if not bFirst then
-				MPT_EraTipSpacerIM:GetInstance();	-- 个体块间隔透明条（XML 实例，高 30）
+				MPT_EraTipBarIM:GetInstance();	-- 个体间分隔 bar（用户裁决）
 			end
 			bFirst = false;
 			MPT_FillEraTipBlock(tSections, false);
 		end
 		for _, tSections in ipairs(tRecruited) do
 			if not bFirst then
-				MPT_EraTipSpacerIM:GetInstance();
+				MPT_EraTipBarIM:GetInstance();
 			end
 			bFirst = false;
 			MPT_FillEraTipBlock(tSections, true);
 		end
 		MPT_EraTipSpacerIM:GetInstance();	-- 栈尾透明撑高块（条目24 同款，吸收末行跨帧测高缺口）
 	end
-	MPT_ShrinkEraTooltip();	MPT_ShrinkEraTooltip();
+	MPT_ShrinkEraTooltip();
 end
 -- ---- 条目31
 

@@ -23,7 +23,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>107</Version>
+		<Version>109</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息占位，mod 完成时统一完善） -->
 	<LocalizedText>
@@ -410,6 +410,21 @@
 			</Properties>
 			<File>InGame/NoIdleResearch/NoIdleResearch_zh_Hans_CN.sql</File>
 			<File>InGame/NoIdleResearch/NoIdleResearch_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目32：万神殿不排队参数（高级选项布尔 NO_WAIT_PANTHEON，沿用 1.65 BPC 原名，仅 FE 注册） -->
+		<UpdateDatabase id="FE_BPC_Config">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/BetterPantheonChooser/Config_NoWaitPantheon.xml</File>
+		</UpdateDatabase>
+		<!-- 条目32：万神殿不排队文本（仅前端注册——参数复选框仅设置界面消费，条目16/31 同形态） -->
+		<UpdateText id="FE_BPC_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/BetterPantheonChooser/BetterPantheonChooser_zh_Hans_CN.sql</File>
+			<File>InGame/BetterPantheonChooser/BetterPantheonChooser_en_US.sql</File>
 		</UpdateText>
 	</FrontEndActions>
 	<InGameActions>
@@ -1028,7 +1043,7 @@
 		</ImportFiles>
 		<!-- 条目29：伟人界面增强（BGP = Infixo Better Great People + 号码菌改背景，整文件替换原版 GreatPeoplePopup） -->
 		<!-- 条目30：招募历史过滤（移植工坊 3148047463 Real Great People Plus 的 Infixo 过滤器，同目录同两文件零新增注册）——往期招募页头部类别/招募者两个 PullDown + Total 计数标签，ViewPast 双条件过滤，文本全复用原版 tag -->
-		<!-- 条目31：同代伟人名册 Tooltip（学习同源 RGP 数据口径，同目录同两文件零新增注册）——Portrait 悬停 MPT_GPEraTooltip 富 Tooltip（条目24 模式）列同类别同时代全部伟人：未招募正常色排前、已招募灰字「- 不可用」（LOC_TECH_KEY_UNAVAILABLE 原版 tag）置后，已招募=GetPastTimeline 出现过。条目31扩展：名册带效果文本（用户裁决「关键是显示伟人效果」）——数据口径 = RGP 百科页：主动=GreatPersonIndividualActionModifiers、被动=GreatPersonIndividualBirthModifiers，GetModifierText(ModifierId,"Summary")（include GameEffectsText 原版共享脚本）渲染自然语言，Override/ActionCharges/先知特例同百科页处理，GameInfo 静态数据按个体缓存；未招募个体 = 名字行（FontFlair14）+效果行（DawnText 缩进），已招募仍仅灰字名行。条目31修复：Fill 去重（ClassID|EraID，回调悬停期间反复触发不去重=全量重建）+ 撑高块 ResetInstances（漏了=每次回调 +8px 棘轮式增高，用户实测 tooltip 逐渐变长内容沉底）+ ViewCurrent 清键保招募状态新鲜。条目31扩展二：未招募块间插透明条加大间隔、栈尾撑高块 8→12、主动/被动标题行加 [ICON_BulletGlow]/[ICON_Bolt] 前缀（均原版图标 token）。条目31修复二：GetModifierSummaryText 包装——GameEffects 对部分 modifier 回传未解析原始 key（詹姆斯/欧几里得实测），LOC_ 开头则 Locale.Lookup 二次解析（原版 en/zh 均有定义，已核实）仍失败则丢弃；透明条 XML 定义高度 30。条目31扩展三：个体块容器（内栈+半透明灰罩，已招募=名字接「 - 已招募」(LOC_MPT_BGP_RECRUITED 自造 tag)+效果不省略+整块灰罩）；动作块条件放宽至 ActionNameTextOverride（孙子类 0 次数隐退）；巨作块（GreatWorks 表：孙子兵法/作家诗人画家作品）；标题行→正文行距 +6px；隐退图标 BulletGlow→Bolt。条目31修复四：①行序错乱 = 不同类型行 IM 各自回收复用位置与填充顺序不对应，改每次填充全新创建 IM 追加式入栈②灰罩未及时刷新 = 填充当帧即 CalculateSize 同步 + RegisterSizeChanged 跨帧自愈③灰罩覆盖文本且长宽外扩（276×h+8，Offset -4,-4）④先知文本与卡片一致 = 引擎硬编码无数据列，改用 LOC_GREATPERSON_ACTION_EFFECT_FOUND_RELIGION（「创立一个宗教，并以创立宗教的城市作为圣城。」），弃百科页激活地点说明（在圣地或巨石阵上激活）-->条目31修复三：Override 路径未本地化才是原始 tag 真根因——GreatPersonIndividuals.ActionEffectTextOverride/BirthEffectTextOverride 数据列存 LOC tag 原文（GreatPeople_Engineers.xml 詹姆斯/瓦特实证），官方百科页 AddHeaderBody 渲染时过 Locale.Lookup，本地实现补同款本地化（上一修复的 GameEffects 包装保留为 modifier 摘要路径兜底）-->
+		<!-- 条目31：同代伟人名册 Tooltip（学习同源 RGP 数据口径，同目录同两文件零新增注册）——Portrait 悬停 MPT_GPEraTooltip 富 Tooltip（条目24 模式）列同类别同时代全部伟人：未招募正常色排前、已招募灰字「- 不可用」（LOC_TECH_KEY_UNAVAILABLE 原版 tag）置后，已招募=GetPastTimeline 出现过。条目31扩展：名册带效果文本（用户裁决「关键是显示伟人效果」）——数据口径 = RGP 百科页：主动=GreatPersonIndividualActionModifiers、被动=GreatPersonIndividualBirthModifiers，GetModifierText(ModifierId,"Summary")（include GameEffectsText 原版共享脚本）渲染自然语言，Override/ActionCharges/先知特例同百科页处理，GameInfo 静态数据按个体缓存；未招募个体 = 名字行（FontFlair14）+效果行（DawnText 缩进），已招募仍仅灰字名行。条目31修复：Fill 去重（ClassID|EraID，回调悬停期间反复触发不去重=全量重建）+ 撑高块 ResetInstances（漏了=每次回调 +8px 棘轮式增高，用户实测 tooltip 逐渐变长内容沉底）+ ViewCurrent 清键保招募状态新鲜。条目31扩展二：未招募块间插透明条加大间隔、栈尾撑高块 8→12、主动/被动标题行加 [ICON_BulletGlow]/[ICON_Bolt] 前缀（均原版图标 token）。条目31修复二：GetModifierSummaryText 包装——GameEffects 对部分 modifier 回传未解析原始 key（詹姆斯/欧几里得实测），LOC_ 开头则 Locale.Lookup 二次解析（原版 en/zh 均有定义，已核实）仍失败则丢弃；透明条 XML 定义高度 30。条目31扩展三：个体块容器（内栈+半透明灰罩，已招募=名字接「 - 已招募」(LOC_MPT_BGP_RECRUITED 自造 tag)+效果不省略+整块灰罩）；动作块条件放宽至 ActionNameTextOverride（孙子类 0 次数隐退）；巨作块（GreatWorks 表：孙子兵法/作家诗人画家作品）；标题行→正文行距 +6px；隐退图标 BulletGlow→Bolt。条目31修复四：①行序错乱 = 不同类型行 IM 各自回收复用位置与填充顺序不对应，改每次填充全新创建 IM 追加式入栈②灰罩未及时刷新 = 填充当帧即 CalculateSize 同步 + RegisterSizeChanged 跨帧自愈③灰罩覆盖文本且长宽外扩（276×h+8，Offset -4,-4）④先知文本与卡片一致 = 引擎硬编码无数据列，改用 LOC_GREATPERSON_ACTION_EFFECT_FOUND_RELIGION（「创立一个宗教，并以创立宗教的城市作为圣城。」），弃百科页激活地点说明（在圣地或巨石阵上激活）。条目31重构（用户裁决）：个体块改单实例固定 7 行 label + 灰罩（动态 IM 注入/重建在回调反复触发下累积或错位，两轮实测推翻），每次填充仅 SetText/SetHide + 唯一 Block IM ResetInstances；伟人间 bar 分隔线实例 -->条目31修复三：Override 路径未本地化才是原始 tag 真根因——GreatPersonIndividuals.ActionEffectTextOverride/BirthEffectTextOverride 数据列存 LOC tag 原文（GreatPeople_Engineers.xml 詹姆斯/瓦特实证），官方百科页 AddHeaderBody 渲染时过 Locale.Lookup，本地实现补同款本地化（上一修复的 GameEffects 包装保留为 modifier 摘要路径兜底）-->
 		<ReplaceUIScript id="IG_BGP_Replace">
 			<Properties>
 				<LoadOrder>100000</LoadOrder>
@@ -1058,6 +1073,21 @@
 			</Properties>
 			<File>InGame/NoIdleResearch/NoIdleResearch_Gameplay.lua</File>
 		</AddGameplayScripts>
+		<!-- 条目32：万神殿面板增强（BPC，整文件替换原版 Choosers/PantheonChooser：名册全量列出+被抢信条实时置灰；「万神殿不排队」高级选项 NO_WAIT_PANTHEON 门控自动弹面板，LoadOrder 100000 压过 1.65 BPC 同类注册的 10000） -->
+		<ReplaceUIScript id="IG_BPC_Replace">
+			<Properties>
+				<LoadOrder>100000</LoadOrder>
+				<LuaContext>PantheonChooser</LuaContext>
+				<LuaReplace>InGame/BetterPantheonChooser/PantheonChooser.lua</LuaReplace>
+			</Properties>
+		</ReplaceUIScript>
+		<ImportFiles id="IG_BPC_Import">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>InGame/BetterPantheonChooser/PantheonChooser.xml</File>
+			<File>InGame/BetterPantheonChooser/PantheonChooser.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -1218,5 +1248,10 @@
 		<File>InGame/NoIdleResearch/NoIdleResearch_en_US.sql</File>
 		<File>InGame/BetterGreatPeople/GreatPeoplePopup_Text_zh_Hans_CN.sql</File>
 		<File>InGame/BetterGreatPeople/GreatPeoplePopup_Text_en_US.sql</File>
+		<File>InGame/BetterPantheonChooser/PantheonChooser.xml</File>
+		<File>InGame/BetterPantheonChooser/PantheonChooser.lua</File>
+		<File>InGame/BetterPantheonChooser/Config_NoWaitPantheon.xml</File>
+		<File>InGame/BetterPantheonChooser/BetterPantheonChooser_zh_Hans_CN.sql</File>
+		<File>InGame/BetterPantheonChooser/BetterPantheonChooser_en_US.sql</File>
 	</Files>
 </Mod>
