@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 条目33：拯救开拓者参数——高级选项「拯救开拓者」布尔开关（默认关）。
+	勾选后经本 modinfo ActionCriteria MPT_SAVE_SETTLER 门控 InGameActions 的
+	UpdateDatabase（开拓者加撤退列）与 AddGameplayScripts（撤退事件分支），不勾选零加载；
+	Gameplay 规则须全房一致，故走开局参数而非条目12游内设置面板（面板开关写每机本地
+	Configuration 值会引入 OOS 风险）。
+	字段结构照抄条目16/28/31/32（AdvancedOptions 组，开局后不可改），SortIndex 2907 紧随条目32 的 2906 -->
+<GameInfo>
+	<Parameters>
+		<Row ParameterId="MPT_SAVE_SETTLER" Name="LOC_MPT_SAVESETTLER_NAME" Description="LOC_MPT_SAVESETTLER_DESC" Domain="bool" DefaultValue="0" ConfigurationGroup="Game" ConfigurationId="MPT_SAVE_SETTLER" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2907" />
+	</Parameters>
+</GameInfo>
