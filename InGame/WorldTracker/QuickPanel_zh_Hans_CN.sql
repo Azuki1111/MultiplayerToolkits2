@@ -10,4 +10,8 @@ VALUES
 	('LOC_MPT_QUICK_PLAYERMARK',	'zh_Hans_CN',	'玩家标记'),
 	('LOC_MPT_QUICK_PLAYERMARK_TT',	'zh_Hans_CN',	'打开玩家标记管理面板'),
 	-- 条目12：游戏内设置面板打开按钮（点击经 LuaEvents.MPT_SettingsPanel_Toggle 打开/关闭面板，见 InGame/SettingsPanel/）
-	('LOC_MPT_QUICK_SETTINGS',	'zh_Hans_CN',	'设置');
+	('LOC_MPT_QUICK_SETTINGS',	'zh_Hans_CN',	'设置'),
+	-- 条目34：反作弊监测面板打开按钮（点击经 LuaEvents.MPT_HashCheck_Toggle 打开/关闭面板，见 InGame/HashCheck/；
+	-- 高级选项 MPT_HASH_CHECK 未勾选时按钮整个隐藏）
+	('LOC_MPT_QUICK_HASHCHECK',	'zh_Hans_CN',	'反作弊监测'),
+	('LOC_MPT_QUICK_HASHCHECK_TT',	'zh_Hans_CN',	'打开反作弊监测面板（查看各玩家文件一致性）');
