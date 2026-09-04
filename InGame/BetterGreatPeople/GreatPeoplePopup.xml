@@ -257,9 +257,13 @@
 			<Box	ID="BlockShade"			Size="276,1" Color="70,70,70,120" Offset="-4,-4" Hidden="1"/>
 		</Container>
 	</Instance>
-	<!-- 个体间分隔 bar -->
+	<!-- 个体间分隔 bar（条目31扩展四：官方 Separator 样式纹理 Controls_Separator2，
+		容器高 36 = 上下各 10px 空隙 + 16px 纹理带；Controls_Separator 裸名全游戏 XML 零引用
+		直接用会静默空白，故走官方 Separator 样式路径） -->
 	<Instance Name="MPT_GPEraBarInstance">
-		<Box			ID="BarRoot"				Size="260,2" Color="199,187,157,50"/>
+		<Container	ID="BarRoot"				Size="260,36">
+			<Image		ID="BarImage"				Style="Separator" Size="parent,16" Anchor="L,C"/>
+		</Container>
 	</Instance>
 	<!-- 栈尾透明撑高块（条目24 同款：固定高无需文本布局，吸收末行跨帧测高缺口） -->
 	<Instance Name="MPT_GPEraSpacerInstance">
