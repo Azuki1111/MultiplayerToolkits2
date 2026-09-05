@@ -1340,11 +1340,11 @@ function CheckGameAutoStart()
 		-- Hotseat bypasses the countdown system.
 		if not GameConfiguration.IsHotseat() then
 			-- ============================================================================
-			-- 联机工具箱2.0：mod 版本校验未通过时压住启动倒计时并弹窗（条目4.1，仅网络会话房主；「放弃验证」后放行）
-			if startCountdown and Network.IsNetSessionHost() and not g_mpt_checkSkipped and MPT_IsModCheckFailing() then
-				startCountdown = false;
-				MPT_MaybePopupModCheckWarning();
-			end
+			-- 联机工具箱2.0 条目4.1调整：mod 版本不一致不再影响启动（仅整行红底提示 ModCheckWarnBox），压倒计时+弹窗已移除
+			-- if startCountdown and Network.IsNetSessionHost() and not g_mpt_checkSkipped and MPT_IsModCheckFailing() then
+			-- 	startCountdown = false;
+			-- 	MPT_MaybePopupModCheckWarning();
+			-- end
 			-- ----------------------------------------------------------------------------
 			if(startCountdown) then
 				-- Everyone has readied up and we can start.
@@ -4313,24 +4313,14 @@ end
 -- 多人游戏 mod 版本校验（条目4.1）
 -- 校验清单：SQL 注册表 MPT_ModCheck（前端配置库，见 FrontEnd/ModCheck/ModCheck_Data.sql），
 --      各 mod 自行登记 modId（opt-in）；房主广播 注册表∩已启用 的 modId 与版本指纹。
---      「重新校验」按钮强制全员重新回报。校验未通过时房主启动倒计时被压住并弹窗
---      （返回重新验证 / 放弃验证），不一致玩家整行红底（各端本地比对，全员可见）。
+--      「重新校验」按钮强制全员重新回报。条目4.1调整：版本不一致/未回报仅显示整行红底
+--      （ModCheckWarnBox，各端本地比对，全员可见），不压启动倒计时、不弹窗，不影响准备与开局。
 -- 数据通道（PlayerConfigurations:SetValue/GetValue + Network.BroadcastPlayerInfo，参考1.67 BSR Poke_Gold）：
 --   MPT_MC_LIST  房主写："<rev>_<modId1>,<modId2>,..."（注册清单，直接发 modId；实测4000字符无损）
 --   MPT_MC_HOSTV 房主写："<v1>;<v2>;..."（房主各 mod 的 Version 指纹，与清单同序，作为比对基准）
 --   MPT_MC_VERS  非房主写自己："<rev>_<v1>;<v2>;..."（针对清单 rev 的回报；rev 不匹配视为未回报）
 -- 防换槽误报：状态键 = playerID+玩家名，换槽/换人即重置；回报自带 rev，旧清单回报天然失效。
 -- ============================================================================
--- 版本校验本地化文本缓存（条目4.1，预加载避免每次弹窗/构建明细时重复 Lookup）
--- 明细行由「玩家名 + 前缀分隔 + 模组名 + 固定正文」用 .. 拼接，全部为无参数纯文本 tag。
-local ModCheckDetailNoReportStr = Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_NOREPORT");
-local ModCheckDetailMismatchPrefixStr = Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_MISMATCH_PREFIX");
-local ModCheckDetailMismatchSuffixStr = Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_MISMATCH_SUFFIX");
-local ModCheckDetailPendingStr = Locale.Lookup("LOC_MPT_MODCHECK_DETAIL_PENDING");
-local ModCheckPopupTitleStr = Locale.Lookup("LOC_MPT_MODCHECK_POPUP_TITLE");
-local ModCheckPopupTextStr = Locale.Lookup("LOC_MPT_MODCHECK_POPUP_TEXT");
-local ModCheckPopupRecheckStr = Locale.Lookup("LOC_MPT_MODCHECK_POPUP_RECHECK");
-local ModCheckPopupSkipStr = Locale.Lookup("LOC_MPT_MODCHECK_POPUP_SKIP");
 
 local MPT_CHECK = { PENDING = 0, OK = 1, FAILED = 2, HOST = 99 };	-- 校验状态命名常量（替代 MPH 魔法数字）
 local MPT_MC_LIST_KEY : string = "MPT_MC_LIST";
@@ -4342,8 +4332,6 @@ local g_mpt_enabledModMap : table = {};	-- 已启用 mod 映射 [modId]=rawTitle
 local g_mpt_listRev : number = 0;			-- 本机已知的最新清单 rev（房主=已发布值，客户端=读到的值）
 local g_mpt_publishTime : number = 0;		-- 当前清单生效时刻（os.time，超时判定用）
 local g_mpt_knownHostID : number = -1;		-- 已知房主槽位（检测房主迁移）
-g_mpt_checkSkipped = false;	-- 房主已选择「放弃验证」（增员时自动复位；条目4.1修复：新 rev 发布时也复位——放弃仅对当轮验证有效）。不用 local：CheckGameAutoStart（本文件 :1261 前部）引用本变量，Lua local 词法作用域不覆盖声明点之前的函数
-local g_mpt_popupShownRev : number = -1;	-- 已弹过窗的清单 rev（同一 rev 只弹一次）
 local g_mpt_lastTickTime : number = 0;		-- tick 节流（os.time 秒级）
 g_mpt_roomEnterTime = 0;	-- 本房间进入时刻（os.time；沉淀门用，0=未记录时以首个可见 tick 兜底）。条目4.1修复新增，用全局不占寄存器
 g_mpt_reportDueTime = 0;	-- 待执行回报的到期时刻（os.time，0=无待报；按 playerID 抖动摊平全员同 tick 广播）。条目4.1修复新增
@@ -4501,16 +4489,13 @@ end
 -------------------------------------------------
 -- MPT_ResetModCheckSession
 -- 新会话（新房间）重置校验生命周期：rev 归零（触发首次发布）、已知房主复位、
--- 玩家状态表清空（reconcile 重建）、「放弃验证」与弹窗记录复位、
--- 进房沉淀门重新计时、待报/脏标记清零（条目4.1修复新增后三项）。
+-- 玩家状态表清空（reconcile 重建）、进房沉淀门重新计时、待报/脏标记清零。
 -- 调用点：OnShow 检测到 fresh session 时；Lua 状态跨房间存续，不重置则后续房间校验静默失效。
 -------------------------------------------------
 function MPT_ResetModCheckSession()
 	g_mpt_listRev = 0;
 	g_mpt_knownHostID = -1;
 	g_mpt_publishTime = 0;
-	g_mpt_checkSkipped = false;
-	g_mpt_popupShownRev = -1;
 	g_mpt_playerModStatus = {};
 	g_mpt_installedVerCache = nil;	-- 版本缓存一并失效（新会话保险，下次用到时一次枚举重建）
 	g_mpt_roomEnterTime = os.time();	-- 进房沉淀门起点（完整进房稳定后才读 SQL 清单/首发首报）
@@ -4521,13 +4506,13 @@ end
 -------------------------------------------------
 -- MPT_PublishCheckList（房主）
 -- 注册清单（MPT_ModCheck ∩ 已启用）→ modId 清单 + 本地 Version 指纹，rev 自增后经 PlayerConfig value 广播。
--- 调用点：「重新校验」/ 弹窗「返回重新验证」/ 接管房主 / 首次进房（tick 驱动）。
+-- 调用点：「重新校验」按钮 / 接管房主 / 首次进房（tick 驱动）。
 -------------------------------------------------
 function MPT_PublishCheckList()
 	if not Network.IsGameHost() then
 		return;
 	end
-	-- 双保险：隐藏窗口期禁止发布（弹窗「返回重新验证」不经过 tick 门控可直达本函数；
+	-- 双保险：隐藏窗口期禁止发布（「重新校验」按钮不经过 tick 门控可直达本函数；
 	-- 日志实证房间初始化隐藏期 BroadcastPlayerInfo 会推送半初始化槽位配置，触发本地玩家槽位 0→1→2 漂移、旧槽位残留为 AI）
 	if ContextPtr:IsHidden() then
 		return;
@@ -4545,10 +4530,7 @@ function MPT_PublishCheckList()
 	pConfig:SetValue(MPT_MC_HOSTV_KEY, table.concat(verList, ";"));
 	Network.BroadcastPlayerInfo(hostID);
 	g_mpt_publishTime = os.time();
-	g_mpt_checkSkipped = false;	-- 条目4.1修复 A4：新 rev = 新一轮验证，「放弃验证」仅对当轮有效
 	MPT_ResetPlayerStatusForNewRev();
-	-- 条目4.1修复 A1：发布即作废当轮校验结果（全员回 PENDING）；若启动倒计时正在运行（房主倒计时中点了「重新校验」），立即重评估压停
-	CheckGameAutoStart();
 	print("MPT_PublishCheckList rev=", g_mpt_listRev, "mods=", #idList);
 end
 
@@ -4601,14 +4583,13 @@ end
 -- MPT_ReconcilePlayers
 -- 对账玩家状态表（加入/退出/换槽重新计算）：
 --   键 = playerID+玩家名，换槽/换人即重置（防读取旧占槽者残留 value 误报，用户指定）；
---   退出删除；增员复位「放弃验证」；房主自身恒为 HOST。
+--   退出删除；房主自身恒为 HOST。
 --   JoinTime 记录进房/换人时刻（条目4.1修复 C1：超时宽限按各玩家自己的进房时刻起算）；
 --   本机玩家条目新建时经统一回报通道兜底补报（条目4.1修复 A2：断线重连/换槽后 rev 未变，
 --   正常路径只在 rev 变化时回报一次，不补报会被判「未回报」卡死）。
 -------------------------------------------------
 function MPT_ReconcilePlayers()
 	local seen : table = {};
-	local added : boolean = false;
 	local addedLocal : boolean = false;	-- 新增条目是否含本机玩家（条目4.1修复 A2）
 	local localPlayerID : number = Network.GetLocalPlayerID();
 	local playerIDs : table = GameConfiguration.GetMultiplayerPlayerIDs();
@@ -4620,7 +4601,6 @@ function MPT_ReconcilePlayers()
 			local info = g_mpt_playerModStatus[playerID];
 			if info == nil then
 				g_mpt_playerModStatus[playerID] = { Status = MPT_CHECK.PENDING, Name = name, Mismatch = {}, NoReport = false, JoinTime = os.time() };
-				added = true;
 				if playerID == localPlayerID then
 					addedLocal = true;
 				end
@@ -4648,9 +4628,6 @@ function MPT_ReconcilePlayers()
 	end
 	if hostID ~= nil and hostID >= 0 and g_mpt_playerModStatus[hostID] ~= nil then
 		g_mpt_playerModStatus[hostID].Status = MPT_CHECK.HOST;
-	end
-	if added then
-		g_mpt_checkSkipped = false;	-- 新玩家未经验证，不继承「放弃验证」
 	end
 	-- 条目4.1修复 A2：本机条目新建（断线重连/换槽/首次进房）且清单已发布 → 兜底补报
 	-- （抖动 1 秒走统一通道；正常 rev 跟踪路径也会在 rev 变化时请求，通道内取最早到期时刻）
@@ -4733,23 +4710,6 @@ function MPT_EvaluateAll()
 end
 
 -------------------------------------------------
--- MPT_IsModCheckFailing
--- 任一玩家未通过（PENDING/FAILED）即 true；CheckGameAutoStart 钩子据此压倒计时。
--- 清单尚未发布（rev==0，进房首秒窗口期）时不判失败，避免误压倒计时/误弹窗。
--------------------------------------------------
-function MPT_IsModCheckFailing()
-	if g_mpt_listRev == 0 then
-		return false;
-	end
-	for _, info in pairs(g_mpt_playerModStatus) do
-		if info.Status ~= MPT_CHECK.OK and info.Status ~= MPT_CHECK.HOST then
-			return true;
-		end
-	end
-	return false;
-end
-
--------------------------------------------------
 -- MPT_IsCheckActive
 -- 功能总开关：热座/PBC 不启用（value 通道在 PBC 行为未验证），退房后停止。
 -------------------------------------------------
@@ -4763,12 +4723,12 @@ end
 -------------------------------------------------
 -- MPT_ModCheckTick（Events.GameCoreEventPublishComplete，Initialize 注册）
 -- 1s 节流驱动全部校验逻辑：进房沉淀门 → 房主首发/迁移重发清单 → 客户端 rev 跟踪与抖动回报 →
--- reconcile（加入/退出/换槽）→ 本地比对 → 红行 → 到期回报/脏重发 → 状态迁移回调。
+-- reconcile（加入/退出/换槽）→ 本地比对 → 红行 → 到期回报/脏重发。
 -- 统一兜底，不依赖单次事件。条目4.1修复新增：
 --   C2 沉淀门：进房 3 秒内不动作（等前端 Configuration 库切换到本房间启用 mod 集再读 SQL 清单）；
 --   C3 回报经统一通道按 playerID%4 秒抖动摊平，避免 rev 变化时全员同 tick 广播；
---   A1 校验通过/失败迁移时房主端回调 CheckGameAutoStart（倒计时自动恢复/压停）；
 --   A3 本机 mod 下载/更新终态静默 3 秒后房主重发清单 / 客机重报。
+--   （原 A1 启动联动已随条目4.1调整废止：版本不一致仅红行提示，不再压倒计时/弹窗）
 -------------------------------------------------
 function MPT_ModCheckTick()
 	if not MPT_IsCheckActive() then
@@ -4822,9 +4782,6 @@ function MPT_ModCheckTick()
 		MPT_ResetPlayerStatusForNewRev();
 	end
 
-	-- 条目4.1修复 A1：记录比对前状态，尾部迁移时回调（EvaluateAll 只在 tick 改状态，事件驱动的 CheckGameAutoStart 读到的是迁移前状态）
-	local wasFailing : boolean = MPT_IsModCheckFailing();
-
 	MPT_ReconcilePlayers();
 	MPT_EvaluateAll();
 
@@ -4843,60 +4800,6 @@ function MPT_ModCheckTick()
 			MPT_RequestReport(0);
 		end
 	end
-
-	-- 条目4.1修复 A1：校验通过/失败状态迁移 → 房主端重评估启动（全绿自动恢复倒计时；转失败压停并弹窗）
-	if Network.IsGameHost() and wasFailing ~= MPT_IsModCheckFailing() then
-		CheckGameAutoStart();
-	end
-end
-
--------------------------------------------------
--- MPT_BuildFailureDetails
--- 弹窗明细：逐未通过玩家列出原因（未回报/逐 mod 版本不一致/等待中）。
--------------------------------------------------
-function MPT_BuildFailureDetails()
-	local details : table = {};
-	for playerID, info in pairs(g_mpt_playerModStatus) do
-		if info.Status == MPT_CHECK.FAILED then
-			if info.NoReport then
-				table.insert(details, info.Name .. ModCheckDetailNoReportStr);
-			else
-				for _, m in ipairs(info.Mismatch) do
-					table.insert(details, info.Name .. ModCheckDetailMismatchPrefixStr .. MPT_GetModTitle(m.ModId) .. ModCheckDetailMismatchSuffixStr);
-				end
-			end
-		elseif info.Status == MPT_CHECK.PENDING then
-			table.insert(details, info.Name .. ModCheckDetailPendingStr);
-		end
-	end
-	return table.concat(details, "[NEWLINE]");
-end
-
--------------------------------------------------
--- MPT_MaybePopupModCheckWarning
--- 校验未通过时给房主弹窗（同一 rev 只弹一次，防 CheckGameAutoStart 反复触发）：
--- 按钮①「返回重新验证」→ rev 自增强制全员重报；按钮②「放弃验证」→ 放行本次启动。
--------------------------------------------------
-function MPT_MaybePopupModCheckWarning()
-	if g_mpt_popupShownRev == g_mpt_listRev then
-		return;
-	end
-	g_mpt_popupShownRev = g_mpt_listRev;
-	m_kPopupDialog:Close();
-	m_kPopupDialog:AddTitle(Locale.ToUpper(ModCheckPopupTitleStr));
-	m_kPopupDialog:AddText(ModCheckPopupTextStr .. "[NEWLINE]" .. MPT_BuildFailureDetails());
-	m_kPopupDialog:AddButton(ModCheckPopupRecheckStr, MPT_OnPopupRecheck);
-	m_kPopupDialog:AddButton(ModCheckPopupSkipStr, MPT_OnPopupSkip);
-	m_kPopupDialog:Open();
-end
-
-function MPT_OnPopupRecheck()
-	MPT_PublishCheckList();
-end
-
-function MPT_OnPopupSkip()
-	g_mpt_checkSkipped = true;
-	CheckGameAutoStart();	-- 重新评估启动（本次放行）
 end
 
 -------------------------------------------------
