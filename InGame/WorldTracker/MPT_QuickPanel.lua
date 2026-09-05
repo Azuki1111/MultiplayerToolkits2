@@ -639,18 +639,13 @@ local function MPT_QuickToggle()
 		-- 底部分隔线随之下移 108 -> 144
 		-- 条目12：展开区新增「设置」按钮（3 → 4 枚），展开高度 146 -> 182，
 		-- 底部分隔线随之下移 144 -> 180
-		-- 条目34：展开区新增「反作弊监测」按钮（4 → 5 枚）；高级选项 MPT_HASH_CHECK
-		-- 未勾选时该按钮隐藏（条目32 同款运行时 GetValue 门控），高度按可见枚数二选一：
-		-- 5 枚 = 218 / 216，4 枚 = 182 / 180（每枚 32 按钮 + 4 间距 = 36）
+		-- 展开高度固定：头部 25 + 展开区（30 偏移 + 4 ×（32 按钮 + 4 间距））+ 8 尾距 = 182；
 		-- Controls.QuickPanel:SetSizeY(110);
 		-- Controls.QuickPanel:SetSizeY(146);
-		if GameConfiguration.GetValue("MPT_HASH_CHECK") then
-			Controls.QuickPanel:SetSizeY(218);
-			Controls.QuickSepBottom:SetOffsetY(216);
-		else
-			Controls.QuickPanel:SetSizeY(182);
-			Controls.QuickSepBottom:SetOffsetY(180);
-		end
+		Controls.QuickPanel:SetSizeY(182);
+		-- QuickSepBottom 原 XML Offset 0,108（两按钮态），展开时下移：
+		-- Controls.QuickSepBottom:SetOffsetY(144);
+		Controls.QuickSepBottom:SetOffsetY(180);
 		-- ----------------------------------------------------------------------------
 		-- 投票面板独立挂 PanelStack，不参与本面板高度
 		Controls.ExpandStack:SetHide(false);
@@ -820,13 +815,6 @@ local function MPT_QuickInitialize()
 	-- 条目12：设置按钮 → 打开/关闭游戏内设置面板（LuaEvents 跨 Context；面板侧见 InGame/SettingsPanel/MPT_SettingsPanel.lua）
 	Controls.SettingsButton:RegisterCallback(Mouse.eLClick, function() LuaEvents.MPT_SettingsPanel_Toggle(); end);
 	Controls.SettingsButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
-
-	-- 条目34：反作弊监测按钮 → 打开/关闭反作弊监测面板（LuaEvents 跨 Context；面板侧见 InGame/HashCheck/MPT_HashCheckUI.lua）。
-	-- 高级选项 MPT_HASH_CHECK 未勾选时按钮隐藏（条目32 同款运行时 GetValue 门控）——
-	-- 此时面板上下文整个未加载（modinfo criteria 门控零加载），点击也不会有响应
-	Controls.HashCheckButton:RegisterCallback(Mouse.eLClick, function() LuaEvents.MPT_HashCheck_Toggle(); end);
-	Controls.HashCheckButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
-	Controls.HashCheckButton:SetHide(not GameConfiguration.GetValue("MPT_HASH_CHECK"));
 
 	Controls.VoteAgreeButton:RegisterCallback(Mouse.eLClick, function() MPT_QuickVote(true); end);
 	Controls.VoteAgreeButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);

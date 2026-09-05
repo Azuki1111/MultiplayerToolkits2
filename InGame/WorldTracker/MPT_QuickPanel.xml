@@ -4,14 +4,11 @@
 <!-- 空 Context，经 AddUserInterfaces(Context=InGame) 注册；同名 Lua              -->
 <!-- MPT_QuickPanel.lua 自动执行，LoadGameViewStateDone 时把本面板 ChangeParent   -->
 <!-- 挂进原版 /InGame/WorldTracker/PanelStack（仿作弊面板 mod 的挂载方式）。        -->
-<!-- 点击标题 HeaderTitle 展开/收起；展开后显示「投降」「重新开始」「玩家标记」「设置」「反作弊监测」五按钮。  -->
+<!-- 点击标题 HeaderTitle 展开/收起；展开后显示「投降」「重新开始」「玩家标记」「设置」四按钮。  -->
 <!-- 条目11：「玩家标记」按钮打开游戏内玩家标记面板（InGame/PlayerMark/MPT_PlayerMark，     -->
 <!-- 经 LuaEvents.MPT_PlayerMark_Toggle 跨 Context 触发，面板与条目4.4 前端面板同尺寸同存档）。 -->
 <!-- 条目12：「设置」按钮打开游戏内设置面板（InGame/SettingsPanel/MPT_SettingsPanel，   -->
 <!-- 经 LuaEvents.MPT_SettingsPanel_Toggle 跨 Context 触发，移植 1.67 Settings 简化版）。 -->
-<!-- 条目34：「反作弊监测」按钮打开反作弊监测面板（InGame/HashCheck/MPT_HashCheckUI，移植   -->
-<!-- 工坊 3775385784），经 LuaEvents.MPT_HashCheck_Toggle 跨 Context 触发；高级选项           -->
-<!-- MPT_HASH_CHECK 未勾选时按钮隐藏（展开高度回落四按钮态，见 MPT_QuickPanel.lua）。        -->
 <!-- 「投降」为团队投降投票（条目8续）：VoteArea 独立挂 PanelStack（QuickPanel 之下），  -->
 <!-- 仅投票进行中/已通过时显示，不受快捷面板展开/收起影响；                             -->
 <!-- 投票状态经 Game:SetProperty 跨端同步（见 SurrenderVote_Gameplay.lua）            -->
@@ -34,9 +31,6 @@
 					<GridButton ID="PlayerMarkButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_PLAYERMARK" ToolTip="LOC_MPT_QUICK_PLAYERMARK_TT"/>
 					<!-- 条目12：打开游戏内设置面板（LuaEvents.MPT_SettingsPanel_Toggle，见 MPT_QuickPanel.lua；面板见 InGame/SettingsPanel/MPT_SettingsPanel，移植 1.67 Settings 简化版） -->
 					<GridButton ID="SettingsButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_SETTINGS"/>
-					<!-- 条目34：打开反作弊监测面板（LuaEvents.MPT_HashCheck_Toggle，见 MPT_QuickPanel.lua；面板见 InGame/HashCheck/MPT_HashCheckUI，
-						移植工坊 3775385784；高级选项 MPT_HASH_CHECK 未勾选时 Lua 运行时隐藏本按钮，面板上下文整个未加载） -->
-					<GridButton ID="HashCheckButton" Size="286,32" Style="TabButton" Anchor="C,T" FontSize="14" String="LOC_MPT_QUICK_HASHCHECK" ToolTip="LOC_MPT_QUICK_HASHCHECK_TT"/>
 				</Stack>
 			</Container>
 		</Box>
