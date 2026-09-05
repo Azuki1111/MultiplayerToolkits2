@@ -9,7 +9,8 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_FE_CHANGELOG_TOOLTIP', 'en_US', 'View Multiplayer Toolkits update notes'),
 ('LOC_MPT_FE_CHANGELOG_TITLE', 'en_US', 'Update Notes'),
 ('LOC_MPT_FE_CHANGELOG_CURRENT', 'en_US', '(Current)'),
--- 公告内容（2.0.0 / 2026-08-10，对应 Changelog_Data.sql 种子数据）
+-- 公告内容（2.0.1 / 2026-09-05 与 2.0.0 / 2026-08-10，对应 Changelog_Data.sql 种子数据）
+('LOC_MPT_CHANGELOG_2_0_1_1', 'en_US', 'Mod version mismatches no longer affect player readiness or game start; only a red row highlight is shown (the host can force everyone to re-report via Recheck)'),
 ('LOC_MPT_CHANGELOG_2_0_0_1', 'en_US', 'LAN player name length limit raised from 22 to 45'),
 ('LOC_MPT_CHANGELOG_2_0_0_2', 'en_US', 'Room player slots raised to 20, with a new button to open/close all AI slots'),
 ('LOC_MPT_CHANGELOG_2_0_0_3', 'en_US', 'Quick team assignment: left click for random balanced teams, right click for sequential A-B-A-B teams'),
