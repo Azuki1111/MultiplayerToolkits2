@@ -22,7 +22,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>124</Version>
+		<Version>125</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢） -->
 	<LocalizedText>
@@ -987,15 +987,15 @@
 			<Properties>
 				<LoadOrder>100000</LoadOrder>
 				<LuaContext>UnitFlagManager</LuaContext>
-				<LuaReplace>InGame/BER/UnitFlagManager_MPT.lua</LuaReplace>
+				<LuaReplace>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</LuaReplace>
 			</Properties>
 		</ReplaceUIScript>
 		<ImportFiles id="IG_BER_Import">
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>InGame/BER/UnitFlagManager_MPT.lua</File>
-			<File>InGame/BCT/UnitFlagManager_BuilderCharges_MPT.lua</File>
+			<File>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</File>
+			<File>InGame/BuilderChargesDisplay/UnitFlagManager_BuilderCharges_MPT.lua</File>
 		</ImportFiles>
 		<!-- 条目26：通知栏提醒扩展（NDR 交易提醒 + GPR 他人招募伟人通知，通配 include 链式覆写） -->
 		<ImportFiles id="IG_NDR_Import">
@@ -1344,8 +1344,8 @@
 		<File>InGame/DiplomacyRibbonExt/InputActions_DiploRibbon.xml</File>
 		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_zh_Hans_CN.sql</File>
 		<File>InGame/DiplomacyRibbonExt/DiplomacyRibbonExt_en_US.sql</File>
-		<File>InGame/BER/UnitFlagManager_MPT.lua</File>
-		<File>InGame/BCT/UnitFlagManager_BuilderCharges_MPT.lua</File>
+		<File>InGame/GreatGeneralEraReminder/UnitFlagManager_MPT.lua</File>
+		<File>InGame/BuilderChargesDisplay/UnitFlagManager_BuilderCharges_MPT.lua</File>
 		<File>InGame/NotificationDealRemind/NotificationPanel_MPT_DealRemind.lua</File>
 		<File>InGame/NotificationDealRemind/NotificationPanel_MPT_GreatPerson.lua</File>
 		<File>InGame/NotificationDealRemind/GreatPersonRecruited_Data.xml</File>
