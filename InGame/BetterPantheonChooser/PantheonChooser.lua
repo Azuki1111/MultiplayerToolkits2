@@ -21,6 +21,11 @@
 --   问题），命中段浅蓝高亮，无结果显示提示；原生集成（XML 直加搜索框控件 + 本文件过滤重建）
 --   替代源 mod 的 LookUpControl 跨上下文注入 + 镜像列表层方案；选中实例跨过滤重建按 Index
 --   重绑（IM 回收仅隐藏不销毁，旧引用安全）；恒启用（名册体验增强，不挂 NO_WAIT_PANTHEON 开关）。
+-- 条目32扩展修复（用户实测：搜「g」卡片显示原始 LOC tag）：①本地化文本的 [ICON_*] token
+--   含字母（[ICON_GreatPerson]/[ICON_Housing] 尾字母 G）被匹配误命中——匹配用文本先剥 [] token；
+--   ②描述高亮原跑在未本地化 tag 上，命中字母包颜色后 key 本地化失败显示原文（河神
+--   LOC_BELIEF_RIVER_GODDESS... 的 G）——改先 Locale.Lookup 再高亮；③高亮保护 token 区间
+--   不被拆开（MPT_IsInToken，命中落在 [ ] 内跳过继续找）。
 -- ============================================================================
 
 include("InstanceManager");
@@ -81,28 +86,68 @@ function MPT_PantheonSearch_Highlight( sText:string )
 	end
 	local sNeedle:string = MPT_SearchText;
 	local sHaystack:string = string.upper(sText);
+
+	-- 条目32扩展修复：先收集 [ICON_*] 等 [] token 区间——命中落在 token 内不包裹
+	-- （拆开 token 会破坏图标渲染；本地化文本含 [ICON_GreatPerson]/[ICON_Housing] 等，实测踩坑）
+	local tTokenRanges:table = {};
+	local nTokenScan:number = 1;
+	while true do
+		local nOpen:number = string.find(sHaystack, "[", nTokenScan, true);
+		if nOpen == nil then break; end
+		local nClose:number = string.find(sHaystack, "]", nOpen + 1, true);
+		if nClose == nil then break; end
+		table.insert(tTokenRanges, { nOpen, nClose });
+		nTokenScan = nClose + 1;
+	end
+
+	local function MPT_IsInToken( nStart:number, nEnd:number )
+		for _, tRange in ipairs(tTokenRanges) do
+			if (nStart <= tRange[2] and nEnd >= tRange[1]) then
+				return true;
+			end
+		end
+		return false;
+	end
+
 	local tParts:table = {};
-	local nCursor:number = 1;
-	local nStart, nEnd = string.find(sHaystack, sNeedle, nCursor, true);
-	while (nStart ~= nil) do
-		table.insert(tParts, string.sub(sText, nCursor, nStart - 1));
-		table.insert(tParts, "[COLOR_LIGHTBLUE]" .. string.sub(sText, nStart, nEnd) .. "[ENDCOLOR]");
-		nCursor = nEnd + 1;
-		nStart, nEnd = string.find(sHaystack, sNeedle, nCursor, true);
+	local nCursor:number = 1;		-- 已处理未包裹文本的游标
+	local nSearchFrom:number = 1;	-- 下一次查找起点（token 内命中只推进查找不产出）
+	while true do
+		local nStart, nEnd = string.find(sHaystack, sNeedle, nSearchFrom, true);
+		if nStart == nil then break; end
+		if MPT_IsInToken(nStart, nEnd) then
+			nSearchFrom = nStart + 1;
+		else
+			table.insert(tParts, string.sub(sText, nCursor, nStart - 1));
+			table.insert(tParts, "[COLOR_LIGHTBLUE]" .. string.sub(sText, nStart, nEnd) .. "[ENDCOLOR]");
+			nCursor = nEnd + 1;
+			nSearchFrom = nEnd + 1;
+		end
 	end
 	if (nCursor == 1) then
-		return sText;
+		return sText;	-- 无有效命中（或命中全部落在 token 内）返回原文本
 	end
 	table.insert(tParts, string.sub(sText, nCursor));
 	return table.concat(tParts);
+end
+
+-- ============================================================================
+-- 条目32扩展修复：匹配用文本剥离 [] token（%b[] 平衡匹配，模式作用于数据串非用户输入，
+-- 无注入面）——搜「g」不再命中 [ICON_GreatPerson]/[ICON_Housing] 等图标 token 字母
+-- （河神/神圣之光实测误匹配源）；token 内字母对玩家不可见，不应参与匹配。
+function MPT_PantheonSearch_MatchableText( sText:string )
+	if (sText == nil or sText == "") then
+		return "";
+	end
+	return string.gsub(sText, "%b[]", "");
 end
 
 function MPT_MatchesBeliefSearch( kBeliefDef:table )
 	if MPT_SearchText == "" then
 		return true;
 	end
-	local sName:string = string.upper(Locale.Lookup(kBeliefDef.Name) or "");
-	local sDesc:string = string.upper(Locale.Lookup(kBeliefDef.Description) or "");
+	local sName:string = string.upper(MPT_PantheonSearch_MatchableText(Locale.Lookup(kBeliefDef.Name)));
+	local sDesc:string = string.upper(MPT_PantheonSearch_MatchableText(Locale.Lookup(kBeliefDef.Description)));
 	return string.find(sName, MPT_SearchText, 1, true) ~= nil or string.find(sDesc, MPT_SearchText, 1, true) ~= nil;
 end
 
@@ -144,7 +189,7 @@ function Realize()
 			local beliefInst:table = m_pSelectBeliefsIM:GetInstance();
 			beliefInst[DATA_FIELD_BELIEF_INDEX] = row.Index;
 			beliefInst.BeliefLabel:LocalizeAndSetText(MPT_PantheonSearch_Highlight(Locale.ToUpper(row.Name)));
-			beliefInst.BeliefDescription:LocalizeAndSetText(MPT_PantheonSearch_Highlight(row.Description));
+			beliefInst.BeliefDescription:LocalizeAndSetText(MPT_PantheonSearch_Highlight(Locale.Lookup(row.Description) or ""));	-- 条目32扩展修复：先本地化再高亮（在 tag 原串上包颜色会破坏 key 使原文显示，河神实测）
 			SetBeliefIcon(beliefInst.BeliefIcon, row.BeliefType, SIZE_BELIEF_ICON_LARGE);
 			if (m_iSelectedIndex ~= nil and row.Index == m_iSelectedIndex) then
 				m_uiSelectedBeliefInstance = beliefInst;	-- 条目32扩展：选中信条在过滤结果中，重绑实例引用
