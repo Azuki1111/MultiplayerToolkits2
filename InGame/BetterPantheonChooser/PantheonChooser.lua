@@ -22,10 +22,13 @@
 --   替代源 mod 的 LookUpControl 跨上下文注入 + 镜像列表层方案；选中实例跨过滤重建按 Index
 --   重绑（IM 回收仅隐藏不销毁，旧引用安全）；恒启用（名册体验增强，不挂 NO_WAIT_PANTHEON 开关）。
 -- 条目32扩展修复（用户实测：搜「g」卡片显示原始 LOC tag）：①本地化文本的 [ICON_*] token
---   含字母（[ICON_GreatPerson]/[ICON_Housing] 尾字母 G）被匹配误命中——匹配用文本先剥 [] token；
---   ②描述高亮原跑在未本地化 tag 上，命中字母包颜色后 key 本地化失败显示原文（河神
---   LOC_BELIEF_RIVER_GODDESS... 的 G）——改先 Locale.Lookup 再高亮；③高亮保护 token 区间
---   不被拆开（MPT_IsInToken，命中落在 [ ] 内跳过继续找）。
+--   含字母被匹配误命中——匹配用文本剥离格式 token；②描述高亮原跑在未本地化 tag 上，命中字母
+--   包颜色后 key 本地化失败显示原文（河神 LOC_BELIEF_RIVER_GODDESS... 的 G）——改先
+--   Locale.Lookup 再高亮；③高亮保护 token 区间不被拆开。
+-- 条目32扩展修复补充（用户裁决：避免错误删除其他 [] 文本）：token 识别由通用 %b[] 全剥改
+--   白名单分类器 MPT_PantheonSearch_IsMarkupToken——仅 [ICON_*]/[SIZE_N]/[SIZE:N]/[color:…]/
+--   [NEWLINE]/[ENDCOLOR]/[XLOC_*]/[WIP] 排版指令剥离与保护（大小写不敏感），其余 [] 内容
+--   （[i]/[Khmer]/[PlayerName]/[LOC_...] 字面引用等可见文本，数据取证大量存在）保留可搜索可高亮。
 -- ============================================================================
 
 include("InstanceManager");
@@ -80,6 +83,28 @@ local m_uiSelectedBeliefInstance:table = nil;
 -- 任一命中当前关键词即 true；空搜索恒 true（全量显示）
 -- 用法：Realize 过滤条件
 -- ============================================================================
+-- ============================================================================
+-- 条目32扩展修复：格式 token 白名单分类器（匹配剥离与高亮保护共用同一判定）。
+-- 只把确认为排版指令的 [] 内容当 token（大小写不敏感，用户清单 + 文本数据取证）：
+--   [ICON_*]/[Icon_*]（文本数据 7.7 万处）、[SIZE_N]/[SIZE:N]、[color:R,G,B,A]/[COLOR:名]、
+--   [NEWLINE]/[newline]、[ENDCOLOR]、[XLOC_*]（内部占位）；其余 [] 内容（如 [i]/[Khmer]/
+--   [PlayerName]/[LOC_...] 字面引用等可见文本，数据中大量存在）一律不当 token 处理——
+--   避免错误删除/保护其他方括号文本（用户裁决）。
+function MPT_PantheonSearch_IsMarkupToken( sBracketContent:string )
+	if (sBracketContent == nil or sBracketContent == "") then
+		return false;
+	end
+	local sLower:string = string.lower(sBracketContent);
+	if (string.find(sLower, "^icon_", 1) ~= nil or
+		string.find(sLower, "^size[:_]", 1) ~= nil or
+		string.find(sLower, "^color:", 1) ~= nil or
+		string.find(sLower, "^xloc_", 1) ~= nil or
+		sLower == "newline" or sLower == "endcolor" or sLower == "wip") then
+		return true;
+	end
+	return false;
+end
+
 function MPT_PantheonSearch_Highlight( sText:string )
 	if (MPT_SearchText == "" or sText == nil or sText == "") then
 		return sText;
@@ -87,17 +112,23 @@ function MPT_PantheonSearch_Highlight( sText:string )
 	local sNeedle:string = MPT_SearchText;
 	local sHaystack:string = string.upper(sText);
 
-	-- 条目32扩展修复：先收集 [ICON_*] 等 [] token 区间——命中落在 token 内不包裹
-	-- （拆开 token 会破坏图标渲染；本地化文本含 [ICON_GreatPerson]/[ICON_Housing] 等，实测踩坑）
+	-- 条目32扩展修复：先收集 [] token 区间（仅白名单排版指令，见 MPT_PantheonSearch_IsMarkupToken）
+	-- ——命中落在 token 内不包裹（拆开 token 会破坏渲染或按原文显示）；未闭合 [（裸方括号）
+	-- 跳过继续扫，其后 token 仍受保护
 	local tTokenRanges:table = {};
 	local nTokenScan:number = 1;
 	while true do
 		local nOpen:number = string.find(sHaystack, "[", nTokenScan, true);
 		if nOpen == nil then break; end
 		local nClose:number = string.find(sHaystack, "]", nOpen + 1, true);
-		if nClose == nil then break; end
-		table.insert(tTokenRanges, { nOpen, nClose });
-		nTokenScan = nClose + 1;
+		if nClose == nil then
+			nTokenScan = nOpen + 1;
+		else
+			if MPT_PantheonSearch_IsMarkupToken(string.sub(sHaystack, nOpen + 1, nClose - 1)) then
+				table.insert(tTokenRanges, { nOpen, nClose });
+			end
+			nTokenScan = nClose + 1;
+		end
 	end
 
 	local function MPT_IsInToken( nStart:number, nEnd:number )
@@ -132,14 +163,35 @@ function MPT_PantheonSearch_Highlight( sText:string )
 end
 
 -- ============================================================================
--- 条目32扩展修复：匹配用文本剥离 [] token（%b[] 平衡匹配，模式作用于数据串非用户输入，
--- 无注入面）——搜「g」不再命中 [ICON_GreatPerson]/[ICON_Housing] 等图标 token 字母
--- （河神/神圣之光实测误匹配源）；token 内字母对玩家不可见，不应参与匹配。
+-- 条目32扩展修复：匹配用文本仅剥离白名单排版 token（分类器见 MPT_PantheonSearch_IsMarkupToken；
+-- 通用 %b[] 全剥方案废止——文本数据中存在大量非 token 的可见方括号内容如 [i]/[Khmer]/
+-- [PlayerName]/[LOC_...] 字面引用，全剥会错误删除它们）。搜「size/icon/color/255/newline」
+-- 等不再命中 token 内字母（不可见不应参与匹配），可见方括号文本照常可搜索。
+-- 实现在小写副本上扫描（string.lower 仅转 ASCII 字母，字节长度不变，区间下标与原串一致）。
 function MPT_PantheonSearch_MatchableText( sText:string )
 	if (sText == nil or sText == "") then
 		return "";
 	end
-	return string.gsub(sText, "%b[]", "");
+	local sLower:string = string.lower(sText);
+	local tParts:table = {};
+	local nCursor:number = 1;	-- 已保留文本游标
+	local nScan:number = 1;
+	while true do
+		local nOpen:number = string.find(sLower, "[", nScan, true);
+		if nOpen == nil then break; end
+		local nClose:number = string.find(sLower, "]", nOpen + 1, true);
+		local nNextScan:number = nOpen + 1;
+		if nClose ~= nil then
+			if MPT_PantheonSearch_IsMarkupToken(string.sub(sLower, nOpen + 1, nClose - 1)) then
+				table.insert(tParts, string.sub(sLower, nCursor, nOpen - 1));
+				nCursor = nClose + 1;
+				nNextScan = nClose + 1;
+			end
+		end
+		nScan = nNextScan;
+	end
+	table.insert(tParts, string.sub(sLower, nCursor));
+	return table.concat(tParts);
 end
 
 function MPT_MatchesBeliefSearch( kBeliefDef:table )
