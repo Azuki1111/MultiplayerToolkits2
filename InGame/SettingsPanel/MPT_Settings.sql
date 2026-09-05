@@ -27,6 +27,9 @@
 -- 条目29 曾增 BGP 伟人界面增强行，同日修订去除（用户裁决：默认增强即可恒启用
 --   无开关，消费侧 InGame/BetterGreatPeople/GreatPeoplePopup.lua 不再监听
 --   MPT_Settings_Toggle）。
+-- 条目35 增一行：CSB 城墙射击按钮收回（CityStrikeButton_Back 沿用 1.67 原 key，
+--   默认关——默认态按钮挪横幅右侧，勾选收回原版底部中央坐标，
+--   消费侧 InGame/CityBannerEnhance/CityBannerManager_CSB_MPT.lua）。
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS MPT_Settings (
 	ParameterId TEXT NOT NULL,
@@ -45,4 +48,5 @@ VALUES
 		("DiplomacyRibbon_PlayerInfo_CiviName",		"LOC_MPT_SETTINGS_DPR_CNAME_NAME",	"LOC_MPT_SETTINGS_DPR_CNAME_TT",		1),
 		("GreatGeneralEraReminder_Show",			"LOC_MPT_SETTINGS_BER_NAME",		"LOC_MPT_SETTINGS_BER_TT",			1),
 		("NotificationPanel_DealRemind",			"LOC_MPT_SETTINGS_NDR_NAME",		"LOC_MPT_SETTINGS_NDR_TT",			1),
-		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",			1);
+		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",			1),
+		("CityStrikeButton_Back",					"LOC_MPT_SETTINGS_CSB_NAME",		"LOC_MPT_SETTINGS_CSB_TT",			0);

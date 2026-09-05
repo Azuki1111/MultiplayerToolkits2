@@ -20,7 +20,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>140</Version>
+		<Version>141</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢） -->
 	<LocalizedText>
@@ -1316,6 +1316,7 @@
 		<File>InGame/DisableMapPins/MapPinListPanel.xml</File>
 		<File>InGame/InstantFoundCity/UnitPanel_MPT.lua</File>
 		<File>InGame/CityBannerRefresh/CityBannerManager_MPT.lua</File>
+		<File>InGame/CityBannerEnhance/CityBannerManager_CSB_MPT.lua</File>
 		<File>InGame/NotificationClear/NotificationPanel_MPT.lua</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer.xml</File>
 		<File>InGame/SmartTurnTimer/SmartTurnTimer.lua</File>

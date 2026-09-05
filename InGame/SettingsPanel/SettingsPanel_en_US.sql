@@ -19,7 +19,9 @@ VALUES
 	('LOC_MPT_SETTINGS_NDR_NAME',	'en_US',	'Deal Sound Reminder'),
 	('LOC_MPT_SETTINGS_NDR_TT',	'en_US',	'Plays a sound when another player sends you a deal or diplomatic request'),
 	('LOC_MPT_SETTINGS_GPR_NAME',	'en_US',	'Great Person Recruited Notification'),
-	('LOC_MPT_SETTINGS_GPR_TT',	'en_US',	'Sends you a notification when another player recruits a Great Person');
+	('LOC_MPT_SETTINGS_GPR_TT',	'en_US',	'Sends you a notification when another player recruits a Great Person'),
+	('LOC_MPT_SETTINGS_CSB_NAME',	'en_US',	'Restore city ranged strike button position'),
+	('LOC_MPT_SETTINGS_CSB_TT',	'en_US',	'Move the city ranged strike button back to its vanilla position');
 -- The initial item-20 smart timer switch texts (LOC_MPT_SETTINGS_TIMER_ENABLE_*) were
 -- replaced by the 4-mode Game config parameter in the item-20 extension; texts moved to
 -- InGame/SmartTurnTimer/ localized SQL files.
@@ -32,3 +34,4 @@ VALUES
 -- here); GPR switch texts are self-written (source mod 2459772036 has no settings system).
 -- Item 27 WCABSTAIN switch texts were removed along with the feature (user verdict:
 -- the engine gives no way to skip a vote, abstain is not implementable).
+-- Item 35: CSB switch texts follow the 1.67 wording (1.67 shipped zh only; en added here).

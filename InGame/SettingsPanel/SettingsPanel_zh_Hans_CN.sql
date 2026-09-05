@@ -19,7 +19,9 @@ VALUES
 	('LOC_MPT_SETTINGS_NDR_NAME',			'zh_Hans_CN',	'交易声音提醒'),
 	('LOC_MPT_SETTINGS_NDR_TT',				'zh_Hans_CN',	'其他玩家与您进行交易或发出外交请求时会响铃提示'),
 	('LOC_MPT_SETTINGS_GPR_NAME',			'zh_Hans_CN',	'他人招募伟人通知'),
-	('LOC_MPT_SETTINGS_GPR_TT',				'zh_Hans_CN',	'其他玩家招募伟人时向您发送通知');
+	('LOC_MPT_SETTINGS_GPR_TT',				'zh_Hans_CN',	'其他玩家招募伟人时向您发送通知'),
+	('LOC_MPT_SETTINGS_CSB_NAME',			'zh_Hans_CN',	'恢复城市远程攻击按钮位置'),
+	('LOC_MPT_SETTINGS_CSB_TT',				'zh_Hans_CN',	'将城市远程攻击按钮位置恢复到原版状态');
 -- 条目20初版曾在此加智能计时器开关文本（LOC_MPT_SETTINGS_TIMER_ENABLE_*），条目20扩展
 -- 改用四模式 Game 配置参数（文本移至 InGame/SmartTurnTimer/ 双语 SQL），已删除。
 -- 条目22 曾加 BTS 4 选项文本（LOC_MPT_SETTINGS_BTS_*），条目22调整按用户裁决回退
@@ -28,3 +30,4 @@ VALUES
 -- 条目26：NDR 开关文本沿用 1.67 原文案（LOC_TPT_NDR_SOUND_NAME/TT 仅 zh，此处补 en_US）；
 --   GPR 开关文本自拟（源 mod 2459772036 无设置体系）。
 -- 条目27 WCABSTAIN 开关文本已随功能移除（用户裁决：引擎无法跳过投票，弃权不可实现）。
+-- 条目35：CSB 开关文本沿用 1.67 原文案（LOC_TPT_SETTINGS_UI_CSB_DISABLE_NAME/TT 仅 zh，此处补 en_US）。
