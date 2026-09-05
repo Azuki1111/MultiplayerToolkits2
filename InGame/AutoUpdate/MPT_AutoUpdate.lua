@@ -1,15 +1,24 @@
 -- ============================================================================
 -- 条目13：游戏内自动更新（移植 1.67 Update/UI/AutoUpdate.lua 纯逻辑部分，变量名 TPT→MPT 优化）
 -- ============================================================================
+-- 【条目13调整（用户裁决）：更新功能整体禁用，仅保留 EnsureSelf——见 Initialize 内注释与下方机理】
+-- 禁用机理（2026-09-05 实测取证）：本 mod 带工坊订阅 3795550166 且本地开发版与工坊快照
+-- 永不同步，UpdateSubscription 每次核对都触发 Steam 真实下载替换本 mod 文件（一局实测
+-- 7 次 DownloadItemResult），运行中换血致「开一局退出后再开第二局崩溃」。对照 1.65
+-- AutoUpdate 同款代码从不崩溃 = 其本地与工坊恒等，核对即通过零下载——雷不在 API 调用，
+-- 在「对永远不同步的自己订阅反复触发更新」。恢复方式：取消下方调用行注释（建议同时
+-- 退订工坊 3795550166 或在 UpdateAll 内排除 MPT_MOD_ID 后再恢复）。
+-- ============================================================================
 -- 用法：空 Context 同名 Lua 自动执行（AddUserInterfaces Context=InGame），进游戏即触发一次；
 --      退出到主菜单（Events.ExitToMainMenu）时再触发本 mod 更新检查。
 --   1) MPT_AutoUpdate_UpdateAll()  进游戏时对本局已启用的非官方创意工坊 mod 触发工坊更新检查
 --      （复用条目4.7 优化：单次遍历建 [modId]=SubscriptionId 映射 + nil 防御 + 非官方过滤 +
---      日志留痕，替代 1.67 O(n²) 双重循环）；
+--      日志留痕，替代 1.67 O(n²) 双重循环）【已禁用，见顶部禁用机理】；
 --   2) MPT_AutoUpdate_EnableSelf() 确保本 mod 已启用（按 MPT_MOD_ID 匹配 Handle；本地 mod 无
---      订阅 ID，1.67 按 SubscriptionId 匹配的 EnableMods 不适用）；
+--      订阅 ID，1.67 按 SubscriptionId 匹配的 EnableMods 不适用）【唯一保留】；
 --   3) MPT_AutoUpdate_UpdateSelf() 退出到主菜单时触发本 mod 工坊更新（按 MPT_MOD_ID 匹配安装
---      列表取工坊订阅 ID，本 mod 发布到创意工坊后自动生效，无需改代码；无订阅 ID 则跳过）。
+--      列表取工坊订阅 ID，本 mod 发布到创意工坊后自动生效，无需改代码；无订阅 ID 则跳过）
+--      【已禁用，见顶部禁用机理】。
 -- 不移植：更新内容 Tooltip 展示（Get_TPT_Update_Text/Creat_TPT_Update/OnLoadScreenClose，
 --      本 mod 条目3.5 前端更新公告面板已有，且不覆盖 WorldTracker 标题控件）、
 --      固定订阅列表更新（OnMods 的 UpdateMods(3041524474) 等，1.67 特有配置）。
@@ -114,8 +123,8 @@ end
 -- 初始化（空 Context 同名 Lua 加载即执行，= 进入游戏）
 -- ============================================================================
 local function MPT_AutoUpdate_Initialize()
-	MPT_AutoUpdate_UpdateAll();		-- 1) 更新所有已启用的非官方工坊 mod
-	MPT_AutoUpdate_EnableSelf();	-- 2) 确保本 mod 已启用
-	Events.ExitToMainMenu.Add(MPT_AutoUpdate_UpdateSelf);	-- 3) 退出游戏时更新本 mod
+	-- MPT_AutoUpdate_UpdateAll();		-- 1) 更新所有已启用的非官方工坊 mod【条目13调整禁用：运行中触发工坊下载替换本 mod 文件致第二局崩溃，见顶部禁用机理】
+	MPT_AutoUpdate_EnableSelf();	-- 2) 确保本 mod 已启用（唯一保留）
+	--Events.ExitToMainMenu.Add(MPT_AutoUpdate_UpdateSelf);	-- 3) 退出游戏时更新本 mod【条目13调整禁用：同上】
 end
 MPT_AutoUpdate_Initialize();
