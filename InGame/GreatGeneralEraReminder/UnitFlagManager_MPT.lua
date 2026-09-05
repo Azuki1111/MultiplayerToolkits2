@@ -2,7 +2,7 @@
 -- 条目25：大将军时代提示（BER = Great General Era Reminder，移植联机工具箱 1.67
 --   BER/UnitFlagManager_GreatGeneralEraReminder.lua，工坊 3693899014）
 -- 大将军/海军统帅单位旗帜下沿显示所属时代名横幅；include 链首环叠加同批移植的
---   1.67 BCT 工人劳动力显示（../BCT/UnitFlagManager_BuilderCharges_MPT.lua，
+--   1.67 BCT 工人劳动力显示（../BuilderChargesDisplay/UnitFlagManager_BuilderCharges_MPT.lua，
 --   与 1.67 BER+BCT 同装形态一致，未装 1.67 也自洽）。
 -- 方案留痕（用户裁决）：回归 1.67 原版「复用晋升徽标控件改造」方案并原样保留——
 --   Promotion_Flag 换 ActionPanel_TurnTimerFrame 纹理 + UnitNumPromotions 写时代名 +
@@ -15,9 +15,9 @@
 --   （原版无通配 include 钩子，同条目15/17/21/22/24 模式；LoadOrder 压过 1.67 BER 10001
 --   与 BCT 4000——同装时其两上下文均不再加载，其面板 BER 开关不再联动，开关以本 mod
 --   条目12 面板为准；其 BCT 文件因链只探 MPT 名而不参与，功能由本 mod 同名 MPT 文件供给）。
--- 目录/命名（条目25规范，用户裁决）：拆回 1.67 源结构两目录——本文件 InGame/BER/，
---   BCT 文件 InGame/BCT/UnitFlagManager_BuilderCharges_MPT.lua（链探测名同步 MPT 化，
---   与 1.67 同名文件不同名不冲突）。
+-- 目录/命名（条目25优化，用户裁决）：目录改项目描述性命名——本文件 InGame/GreatGeneralEraReminder/，
+--   BCT 文件 InGame/BuilderChargesDisplay/UnitFlagManager_BuilderCharges_MPT.lua（目录名
+--   不参与加载机制，文件名保持功能性 MPT 名：LuaReplace 名 / include 链探测名，不随目录改）。
 -- 开关：条目12 MPT_Settings 表 GreatGeneralEraReminder_Show（沿用 1.67 原 key，默认开），
 --   LoadScreenClose 面板 ApplyAll 广播送达初值，勾选变化即时广播，单通道
 --   MPT_Settings_Toggle（本 mod 自有事件，不联动 1.67）。

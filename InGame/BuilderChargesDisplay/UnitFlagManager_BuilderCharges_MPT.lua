@@ -3,9 +3,10 @@
 --   BCT/UnitFlagManager_BuilderCharges.lua，工坊 3693899014）——工人/军事工程师
 --   单位旗帜晋升徽标位显示剩余劳动力（UnitNumPromotions 写充能数 + Promotion_Flag
 --   显示），Events.UnitChargesChanged 即时刷新。
--- 注册：ImportFiles(100010) 以 MPT 命名登记（条目25规范，用户裁决：文件 _MPT 后缀、
---   目录对齐 1.67 源结构 BCT/）——UnitFlagManager_MPT.lua（../BER/ 入口）的防御
---   include 链首环按此名探测命中，叠加链序 = 入口（BER 大将军时代改造）→ 本文件
+-- 注册：ImportFiles(100010) 以 MPT 命名登记（条目25规范，用户裁决：文件 _MPT 后缀；
+--   条目25优化目录改描述性命名 BuilderChargesDisplay/）——UnitFlagManager_MPT.lua
+--   （../GreatGeneralEraReminder/ 入口）的防御
+--   include 链首环按此名探测命中，叠加链序 = 入口（大将军时代改造）→ 本文件
 --   → BC → 原版，与 1.67 BER+BCT 同装形态一致（1.67 中 BER 10001 压过 BCT 4000 后
 --   经链叠加）。与 1.67 同装：其 BCT 文件为另一 VFS 名（无 _MPT 后缀），链只探 MPT 名
 --   不参与，无双重叠加。

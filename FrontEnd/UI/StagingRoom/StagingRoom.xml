@@ -677,7 +677,7 @@
 		<Container ID="Root" Size="1016,50" Offset="12,0">
 
 			<!-- 联机工具箱2.0 条目4.1：mod版本校验失败玩家整行红底（铺满条目、置于所有控件底层、不拦截鼠标） -->
-			<Box ID="ModCheckWarnBox" Color="200,30,30,110" Anchor="L,T" Offset="0,0" Size="parent,parent" Hidden="1" ConsumeMouse="0"/>
+			<Box ID="ModCheckWarnBox" Color="255,0,0,40" Anchor="L,T" Offset="-16,0" Size="parent-6,parent" Hidden="1" ConsumeMouse="0"/>
 
 			<!-- Player Name -->
 			<Box ID="PlayerNameBox" Color="0,255,0,0" Anchor="L,C" Offset="-12,0" Size="218,50">
