@@ -20,7 +20,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>139</Version>
+		<Version>140</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢） -->
 	<LocalizedText>
@@ -806,6 +806,13 @@
 				<LoadOrder>1010</LoadOrder>
 			</Properties>
 			<File>InGame/CityBannerRefresh/CityBannerManager_MPT.lua</File>
+		</ImportFiles>
+		<!-- 条目35：城市横幅增强（CSB，城墙射击按钮挪右+设置收回/万神殿信条提示/转信后补显万神殿图标，同条目18 通配链、在其后加载） -->
+		<ImportFiles id="IG_CityBannerEnhance_Import">
+			<Properties>
+				<LoadOrder>1020</LoadOrder>
+			</Properties>
+			<File>InGame/CityBannerEnhance/CityBannerManager_CSB_MPT.lua</File>
 		</ImportFiles>
 		<!-- 条目19：清理通知按钮（NOC，通知栏「垃圾桶」一键清理，链式覆写 + 计数对账单一事实） -->
 		<ImportFiles id="IG_NotificationClear_Import">

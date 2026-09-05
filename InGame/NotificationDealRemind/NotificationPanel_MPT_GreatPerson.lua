@@ -2,7 +2,7 @@
 -- 条目26：他人招募伟人通知（移植工坊 mod 2459772036 Great Person Recruited
 --   Notification，作者 Cptpuk / Yokuyin）——其他玩家招募伟人（伟人单位入场）时，
 --   本地玩家收到一条「XX 招募了 <类别> <名字>」通知，点击跳转伟人界面（Activate
---   复用原版 OnClaimGreatPersonActivate），提示音 ALERT_NEUTRAL。
+--   复用原版 OnClaimGreatPersonActivate），入栏自动展开且完全静默（条目26扩展/调整）。
 -- 注入机制：文件名前缀 NotificationPanel_ 被原版 NotificationPanel.lua 末尾通配
 --   include("NotificationPanel_", true) 拉入同上下文（同条目7/18/19/26 DealRemind 机制）；
 --   modinfo 仅 ImportFiles 导入 VFS，无需 LuaContext 注册。
@@ -23,8 +23,9 @@
 --      直接取 GetDiplomacy，观察者模式（GetLocalPlayer()=-1）下踩空崩脚（本 mod 支持
 --      BSM 观察者局，条目23/24 场景）；观察者按 BSM「一切可见」语义直接显示真名
 --   4. 入栈即自动展开（用户裁决，条目26扩展）：通知入面板时经 handler.Add 包裹调
---      OnMouseEnterNotification 原版悬停路径（同条目26 DealRemind 展开机制），不加
---      提示音——DealRemind 的响铃不引入，保留源 mod AddSound=ALERT_NEUTRAL 到达音
+--      OnMouseEnterNotification 原版悬停路径（同条目26 DealRemind 展开机制）；完全
+--      静默（条目26调整用户裁决）——DealRemind 的响铃与源 mod 的 ALERT_NEUTRAL
+--      到达音均不设，OnMouseEnterNotification 本身零音效
 -- 开关订阅：仅 MPT_Settings_Toggle 单通道（key 为本 mod 自造，1.67 面板无此参数，
 --   TPT 通道无意义；不同于同条目 DealRemind 沿用 1.67 原 key 走双通道）
 -- 与源 mod 同装注意：双方都会包裹 RegisterHandlers（BASE 链兼容）但 UnitAddedToMap
@@ -129,9 +130,10 @@ end
 -- ============================================================================
 -- RegisterHandlers()（原版全局名）：通知处理器注册表构建（原版 LateInitialize 运行时
 --   调用，晚于本文件通配注入 → 包裹版生效）。先 BASE 注册全部原版/官方扩展/其他扩展
---   处理器，再挂本功能的通知类型：MakeDefaultHandlers 提供默认显隐/声音/失效行为，
+--   处理器，再挂本功能的通知类型：MakeDefaultHandlers 提供默认显隐/失效行为，
 --   Activate 复用原版 OnClaimGreatPersonActivate（点击跳转伟人界面，NotificationPanel.lua
---   1347 行，CLAIM_GREAT_PERSON 通知同款）；AddSound 沿用源 mod 的 ALERT_NEUTRAL。
+--   1347 行，CLAIM_GREAT_PERSON 通知同款）。条目26调整（用户裁决）：不设 AddSound
+--   到达音（源 mod 的 ALERT_NEUTRAL 删除），通知入栏完全静默。
 --   条目26扩展（用户裁决）：Add 包裹——BASE 全包裹链（含条目19/DealRemind 覆写）创建
 --   条目后查册并 OnMouseEnterNotification 自动展开（同 DealRemind 展开机制，无提示音；
 --   GP 类型不触发 DealRemind 的外交类型门控故无双展开）
@@ -141,7 +143,7 @@ function RegisterHandlers()
 
 	local kHandlers = MakeDefaultHandlers();
 	g_notificationHandlers[MPT_OtherPlayerRecruitedGPHash] = kHandlers;
-	kHandlers.AddSound = "ALERT_NEUTRAL";
+	-- 条目26调整（用户裁决）：不设 AddSound（源 mod 的 ALERT_NEUTRAL 删除），入栏完全静默
 	kHandlers.Activate = OnClaimGreatPersonActivate;
 
 	if MPT_BASE_NotificationAdd == nil then
