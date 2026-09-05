@@ -22,6 +22,14 @@ include("Civ6Common");
 include("PopupDialog");
 include("ModalScreen_PlayerYieldsHelper");
 include("GameCapabilities");
+-- [MPT 条目21修复] DramaticAges 模式兼容——本文件以 LoadOrder 100000 压掉了官方 GovernmentScreen
+-- 的 LuaReplace 链（Expansion1/Expansion2 overlay 与 Byzantium_Gaul 模式代理对同一 Context 的
+-- LuaReplace），丢失：①XP2 的 IsPolicyAvailable（CanPolicyBeSlotted 时代卡判定——**黑暗/黄金
+-- 时代政策卡仅对应时代可入目录，丢失即全量涌入**，古典时代目录出现大量黑暗卡实证）②XP2 政府
+-- Favor/使者统计文本与世界议会会期 IsReadOnly ③XP1/BG 的黑暗/黄金卡过滤页签、紫/金卡底与
+-- NEW 图标。修复 = 文件尾（Initialize 调用前）按官方 overlay 原文逐函数重放全部链重定义；
+-- 不用 include 链重建（Expansion2→Expansion1→Base）——链上 Base 副本自带的 Initialize 调用与
+-- 事件注册会与本文件版本双跑（两套 chunk-local 状态 + 事件回调双注册）
 
 -- ARISTOS
 local isBRSActive:boolean = true -- Better Report Screen (Infixo)
@@ -2912,6 +2920,148 @@ function Initialize()
 	LuaEvents.Advisor_GovernmentOpenPolicies.Add( OnOpenGovernmentScreenPolicies );
 
 end
+
+-- ============================================================================
+-- [MPT 条目21修复] 官方 LuaReplace 链重定义重建——本文件的 Base 副本函数定义在 include
+-- 链之后，把链上 XP1/XP2 的重定义全部遮蔽，须按官方 overlay 原文逐函数重放（顺序照官方：
+-- XP1 层 → XP2 层 → Byzantium_Gaul 模式黄金层）。XP2_ 前缀保存的是本文件版/链上版的正确
+-- 快照：XP2_PopulateLivePlayerData = 本文件版（含 ARISTOS 数据填充）、XP2_RealizeFilterTabs
+-- = 本文件版（无时代页签，黑暗页签在下文补挂）、XP2_GetPolicyBGTexture = 本文件 Base 版
+-- （普通卡底）
+-- ============================================================================
+
+-- [XP2 overlay] 政策可用性：CanPolicyBeSlotted 为引擎时代卡判定（黑暗/黄金卡仅对应时代
+-- 可入目录）——**丢失即黑暗卡全量涌入古典目录（本 bug 实证）**
+function IsPolicyAvailable( kPlayerCulture:table, policyHash:number )
+	local isPolicyObtainable	:boolean = not kPlayerCulture:IsPolicyBanned( policyHash );
+	local isSlottable			:boolean = kPlayerCulture:CanPolicyBeSlotted( policyHash );
+	local isRelevant			:boolean = not kPlayerCulture:IsPolicyObsolete( policyHash );
+
+	return isPolicyObtainable and isSlottable and isRelevant;
+end
+
+-- [XP2 overlay] 政府统计文本：Favor/使者
+function GetGovernmentStatsText(governmentType:string)
+	local text:string = "";
+	local governmentInfo:table = GameInfo.Governments[governmentType];
+	if (governmentInfo ~= nil) then
+		for governmentXP2Info in GameInfo.Governments_XP2() do
+			if (governmentXP2Info ~= nil and governmentXP2Info.GovernmentType == governmentType) then
+				text = text .. "[ICON_FAVOR]" .. governmentXP2Info.Favor;
+				break;
+			end
+		end
+		text = text .. "[ICON_Envoy]" .. governmentInfo.InfluenceTokensPerThreshold;
+	end
+	return text;
+end
+
+-- [XP2 overlay] 政府统计 tooltip
+function GetGovernmentStatsTooltip(governmentType:string)
+	local text:string = "";
+	local governmentInfo:table = GameInfo.Governments[governmentType];
+	if (governmentInfo ~= nil) then
+		for governmentXP2Info in GameInfo.Governments_XP2() do
+			if (governmentXP2Info ~= nil and governmentXP2Info.GovernmentType == governmentType) then
+				text = text .. Locale.Lookup("LOC_GOVT_FAVOR_PER_TURN", governmentXP2Info.Favor) .. "[NEWLINE][NEWLINE]";
+				break;
+			end
+		end
+		text = text .. Locale.Lookup("LOC_GOVT_INFLUENCE_POINTS_TOWARDS_ENVOYS", governmentInfo.InfluencePointsPerTurn, governmentInfo.InfluencePointsThreshold, governmentInfo.InfluenceTokensPerThreshold);
+	end
+	return text;
+end
+
+-- [XP2 overlay] 世界议会会期界面只读
+function IsReadOnly()
+	local pWorldCongress:table = Game.GetWorldCongress();
+	return pWorldCongress:IsInSession();
+end
+
+-- [XP1 overlay] 黑暗卡过滤器（页签用）
+function FilterDarkPolicies(policy)
+	local policyDef = GameInfo.Policies_XP1[policy.PolicyHash];
+	if policyDef ~= nil and policyDef.RequiresDarkAge then
+		return true;
+	end
+	return false;
+end
+
+-- [XP1 overlay + BG 模式代理] 黑暗/黄金卡页签、卡底色、NEW 图标
+function GetPolicyBGTexture(policyType)
+	local expansionPolicy:table = GameInfo.Policies_XP1[policyType];
+	if expansionPolicy and expansionPolicy.RequiresGoldenAge then
+		return "Governments_GoldenCard";
+	end
+	if expansionPolicy and expansionPolicy.RequiresDarkAge then
+		return "Governments_DarkCard";
+	end
+	return XP2_GetPolicyBGTexture(policyType);
+end
+
+-- ===========================================================================
+function RealizeFilterTabs()
+	XP2_RealizeFilterTabs();
+	CreatePolicyTabButton("LOC_GOVT_FILTER_DARK", FilterDarkPolicies);
+	CreatePolicyTabButton("LOC_GOVT_FILTER_GOLDEN", FilterGoldenPolicies);
+end
+
+-- ============================================================================
+-- [MPT 条目21修复] Byzantium_Gaul DramaticAges 模式代理重建（黄金层，照抄官方
+-- UI/Replacements/GovernmentScreen_Byzantium_Gaul_Expansion2_MODE.lua）——数据驱动
+-- （Policies_XP1 无黄金行时空转），须在 Initialize() 之前重定义以捕获正确的包裹链
+-- ============================================================================
+XP2_GetPolicyBGTexture = GetPolicyBGTexture;
+XP2_PopulateLivePlayerData = PopulateLivePlayerData;
+XP2_RealizeFilterTabs = RealizeFilterTabs;
+
+-- ===========================================================================
+function FilterGoldenPolicies(policy)
+	local policyDef:table = GameInfo.Policies_XP1[policy.PolicyHash];
+	if policyDef ~= nil and policyDef.RequiresGoldenAge then
+		return true;
+	end
+	return false;
+end
+
+-- ===========================================================================
+function GetPolicyBGTexture(policyType)
+	local expansionPolicy:table = GameInfo.Policies_XP1[policyType];
+	if expansionPolicy and expansionPolicy.RequiresGoldenAge then
+		return "Governments_GoldenCard";
+	end
+	return XP2_GetPolicyBGTexture(policyType);
+end
+
+-- ===========================================================================
+function PopulateLivePlayerData( ePlayer:number )
+	if ePlayer == PlayerTypes.NONE then
+		return;
+	end
+
+	XP2_PopulateLivePlayerData(ePlayer);
+
+	if(ePlayer == Game.GetLocalPlayer() and m_kUnlockedPolicies) then
+		local eraTable:table = Game.GetEras();
+		if eraTable:HasDarkAge(ePlayer) and Game.GetCurrentGameTurn() == eraTable:GetCurrentEraStartTurn() then
+			for policyType, isUnlocked in pairs(m_kUnlockedPolicies) do
+				if isUnlocked then
+					local expansionPolicy:table = GameInfo.Policies_XP1[policyType];
+					if expansionPolicy and expansionPolicy.RequiresDarkAge then
+						m_kNewPoliciesThisTurn[policyType] = true;
+					end
+				end
+			end
+		end
+	end
+end
+
+-- ===========================================================================
+function RealizeFilterTabs()
+	XP2_RealizeFilterTabs();
+	CreatePolicyTabButton("LOC_GOVT_FILTER_GOLDEN", FilterGoldenPolicies);
+end
+
 if HasCapability("CAPABILITY_GOVERNMENTS_VIEW") then
 	Initialize();
 end
