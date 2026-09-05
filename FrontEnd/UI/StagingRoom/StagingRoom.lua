@@ -2809,6 +2809,135 @@ function ShowHideChatPanel()
 	--Controls.TwinPanelStack:CalculateSize();
 end
 
+-- ============================================================================
+-- 联机工具箱2.0 条目3.9：领袖选择搜索与排序（移植 BSR/UI/StagingRoom.lua 领袖下拉）
+-- BSR 原实现依赖 Sukritact 全局 Search 库（原版与本 mod 均无此库），匹配逻辑改自写：
+-- 大小写不敏感子串匹配领袖名/文明名（本地化后），命中段 [COLOR_LIGHTBLUE] 高亮；
+-- 空搜索或占位文本 = 全部显示不高亮。
+-- 排序：随机项（RANDOM/RANDOM_POOL1/RANDOM_POOL2）恒置顶，其余按文明名再领袖名
+--       （LOC tag 原串，BSR 保真）升序；UpdateValues 建实例前对 Values 原地排序，
+--       保证「下拉实例顺序 == Values 顺序」——搜索过滤按索引配对依赖此不变式。
+-- 配套 XML：StagingRoom.xml PlayerPullDown 块（按钮/条目两行文本 + 搜索框 SearchEditBox）。
+-- 占位文本复用原版 LOC_MODS_SEARCH_NAME（zh=「搜索」），零新增文本 tag。
+-- ============================================================================
+local MPT_LeaderSearchPlaceholderStr = Locale.Lookup("LOC_MODS_SEARCH_NAME");	-- 搜索框占位文本（原版 Mods 菜单搜索 tag）
+local MPT_LEADER_RANDOM_MAP = { RANDOM = true, RANDOM_POOL1 = true, RANDOM_POOL2 = true };	-- 随机领袖选项集合（排序置顶/文明名行隐藏判定）
+
+-------------------------------------------------
+-- MPT_SortCivsAlphabetically
+-- 领袖选项排序比较器（BSR 同名函数移植，随机集合改用本 mod 常量）：随机项优先；
+-- 其余按 Info.CivilizationName、相同再按 Info.LeaderName 升序（LOC tag 串比较）。
+-- 前置条件：Values 各项 Info 已预填（见 SetupSplitLeaderPulldown 的 UpdateValues）。
+-------------------------------------------------
+function MPT_SortCivsAlphabetically( tA, tB )
+	if not (MPT_LEADER_RANDOM_MAP[tA.Value] == MPT_LEADER_RANDOM_MAP[tB.Value]) then
+		return MPT_LEADER_RANDOM_MAP[tA.Value];
+	end
+	if (MPT_LEADER_RANDOM_MAP[tA.Value] and MPT_LEADER_RANDOM_MAP[tB.Value]) then
+		return tA.Name < tB.Name;
+	end
+	local sA = tA.Info.CivilizationName;
+	local sB = tB.Info.CivilizationName;
+	if sA == sB then
+		return tA.Info.LeaderName < tB.Info.LeaderName;
+	end
+	return sA < sB;
+end
+
+-------------------------------------------------
+-- MPT_LeaderSearch_Highlight
+-- 在 sText 中大小写不敏感查找 sSearch 的全部命中段，逐段以浅蓝色包裹后返回；
+-- 无命中或空搜索返回原文本。string.find plain=true 字面匹配，无模式转义问题；
+-- 匹配边界由同一字节串的 find 得出，UTF-8 多字节序列不会被截断。
+-------------------------------------------------
+function MPT_LeaderSearch_Highlight( sSearch, sText )
+	if (sSearch == nil or sSearch == "" or sText == nil or sText == "") then
+		return sText;
+	end
+	local sNeedle = string.lower(sSearch);
+	local sHaystack = string.lower(sText);
+	local tParts = {};
+	local nCursor = 1;
+	local nStart, nEnd = string.find(sHaystack, sNeedle, nCursor, true);
+	while (nStart ~= nil) do
+		table.insert(tParts, string.sub(sText, nCursor, nStart - 1));
+		table.insert(tParts, "[COLOR_LIGHTBLUE]" .. string.sub(sText, nStart, nEnd) .. "[ENDCOLOR]");
+		nCursor = nEnd + 1;
+		nStart, nEnd = string.find(sHaystack, sNeedle, nCursor, true);
+	end
+	if (nCursor == 1) then
+		return sText;
+	end
+	table.insert(tParts, string.sub(sText, nCursor));
+	return table.concat(tParts);
+end
+
+-------------------------------------------------
+-- MPT_OnLeaderSearchCharCallback
+-- 搜索框文本变化回调（BSR OnSearchCharCallback 改自包含匹配，去 Search 库上下文）：
+-- 下拉实例与 Values 按索引配对（UpdateValues 已同序排序），领袖名/文明名任一命中
+-- 即以高亮文本重写该行，未命中隐藏；空搜索/占位文本 = 全显不高亮。
+-------------------------------------------------
+function MPT_OnLeaderSearchCharCallback( pSearchEditBox, pInstanceManager, pPullDown, iPlayer, pParameters )
+	local sSearch = pSearchEditBox:GetText();
+	local tValues = pParameters.Parameters.PlayerLeader.Values;
+	local iMaxInstances = pInstanceManager.m_NextInstanceIndex - 1;
+	local bApplyFilter = (sSearch ~= nil and #sSearch > 0 and sSearch ~= MPT_LeaderSearchPlaceholderStr);
+
+	for iIndex = 1, iMaxInstances do
+		local tInstance = pInstanceManager.m_Instances[iIndex];
+		local tValue = tValues[iIndex];
+		if (tInstance ~= nil and tValue ~= nil) then
+			if (not bApplyFilter) then
+				MPT_SetUpLeaderInstanceText(tInstance, false, tValue.Value, tValue.Name, Locale.Lookup(tValue.Info.CivilizationName), nil);
+			else
+				local sCivName = Locale.Lookup(tValue.Info.CivilizationName);
+				local sLeaderName = MPT_LeaderSearch_Highlight(sSearch, tValue.Name);
+				local sCivHighlight = MPT_LeaderSearch_Highlight(sSearch, sCivName);
+				if (sLeaderName ~= tValue.Name or sCivHighlight ~= sCivName) then
+					local sError;
+					if (tValue.Invalid) then
+						sError = Locale.Lookup(tValue.InvalidReason or "LOC_SETUP_ERROR_INVALID_OPTION");
+						sError = "[COLOR_RED](" .. sError .. ")[ENDCOLOR]";
+					end
+					MPT_SetUpLeaderInstanceText(tInstance, false, tValue.Value, sLeaderName, sCivHighlight, sError);
+				else
+					MPT_SetUpLeaderInstanceText(tInstance, true);
+				end
+			end
+		end
+	end
+
+	if pPullDown.CalculateInternals then
+		pPullDown:CalculateInternals();
+	elseif pPullDown.CalculateInternalSize then
+		pPullDown:CalculateInternalSize();
+	end
+end
+
+-------------------------------------------------
+-- MPT_SetUpLeaderInstanceText
+-- 领袖条目/按钮两行文本写入（BSR 同名函数移植）：文明名行（随机项隐藏）、领袖名行、
+-- 错误行独立显示；bHide=true 仅隐藏条目按钮。关闭态按钮区与下拉条目区共用同名控件
+-- （ScrollText_CivName/ScrollText/ScrollText_Error，由 XML ButtonData/InstanceData 提供）。
+-------------------------------------------------
+function MPT_SetUpLeaderInstanceText( tInstance, bHide, sType, sLeaderName, sCivName, sError )
+	tInstance.Button:SetHide(bHide);
+	if bHide then return end
+	if tInstance.ScrollText_CivName then
+		tInstance.ScrollText_CivName:SetText(sCivName);
+		tInstance.ScrollText_CivName:SetHide(MPT_LEADER_RANDOM_MAP[sType]);
+	end
+	local pText = tInstance.ScrollText or tInstance.Button;
+	pText:SetText(sLeaderName);
+	if tInstance.ScrollText_Error then
+		tInstance.ScrollText_Error:SetHide(sError == nil);
+		if sError then
+			tInstance.ScrollText_Error:SetText(sError);
+		end
+	end
+end
+
 -------------------------------------------------------------------------------
 -- Setup Player Interface
 -- This gets or creates player parameters for a given player id.
@@ -2868,6 +2997,34 @@ function SetupSplitLeaderPulldown(playerId:number, instance:table, pulldownContr
 	civWarnIcon:SetHide(true);
 	civIconBG:SetHide(true);
 
+	-- ============================================================================
+	-- 联机工具箱2.0 条目3.9：领袖下拉搜索接线（BSR 同款）——
+	-- 点击下拉按钮（展开）时把搜索框复位为占位文本（占位即空的判定见回调）；
+	-- 聚焦时清空占位（触发文本变化回调 → 全显重置）；输入即过滤条目。
+	-- ----------------------------------------------------------------------------
+	local pButton = control:GetButton();
+	pButton:RegisterCallback(
+			Mouse.eLClick,
+			function()
+				instance.SearchEditBox:SetText(MPT_LeaderSearchPlaceholderStr);
+			end
+	);
+
+	instance.SearchEditBox:RegisterHasFocusCallback(function()
+		instance.SearchEditBox:ClearString();
+	end);
+
+	instance.SearchEditBox:RegisterStringChangedCallback(function()
+		MPT_OnLeaderSearchCharCallback(
+				instance.SearchEditBox,
+				instanceManager,
+				control,
+				playerId,
+				parameters
+		);
+	end);
+	-- ----------------------------------------------------------------------------
+
 	table.insert(controls, {
 		UpdateValue = function(v)
 			local button = control:GetButton();
@@ -2877,19 +3034,32 @@ function SetupSplitLeaderPulldown(playerId:number, instance:table, pulldownContr
 				button:ClearCallback(Mouse.eMouseEnter);
 				button:ClearCallback(Mouse.eMouseExit);
 			else
-				local caption = v.Name;
+				-- ============================================================================
+				-- 联机工具箱2.0 条目3.9：按钮文本改两行（文明名+领袖名）+ 错误行独立显示（BSR 同款），
+				-- 随机项隐藏文明名行（判定在 MPT_SetUpLeaderInstanceText 内）；旧单行 caption 废止。
+				-- local caption = v.Name;
+				-- if(v.Invalid) then
+				-- 	local err = v.InvalidReason or "LOC_SETUP_ERROR_INVALID_OPTION";
+				-- 	caption = caption .. "[NEWLINE][COLOR_RED](" .. Locale.Lookup(err) .. ")[ENDCOLOR]";
+				-- end
+				--
+				-- if(scrollText ~= nil) then
+				-- 	scrollText:SetText(caption);
+				-- 	button:LocalizeAndSetText("");
+				-- else
+				-- 	button:SetText(caption);
+				-- end
+				-- ----------------------------------------------------------------------------
+				if (v.Info == nil) then
+					v.Info = GetPlayerInfo(v.Domain, v.Value, playerId);
+				end
+				local sError;
 				if(v.Invalid) then
-					local err = v.InvalidReason or "LOC_SETUP_ERROR_INVALID_OPTION";
-					caption = caption .. "[NEWLINE][COLOR_RED](" .. Locale.Lookup(err) .. ")[ENDCOLOR]";
+					sError = Locale.Lookup(v.InvalidReason or "LOC_SETUP_ERROR_INVALID_OPTION");
+					sError = "[COLOR_RED](" .. sError .. ")[ENDCOLOR]";
 				end
+				MPT_SetUpLeaderInstanceText(instance, false, v.Value, v.Name, Locale.Lookup(v.Info.CivilizationName), sError);
 
-				if(scrollText ~= nil) then
-					scrollText:SetText(caption);
-					button:LocalizeAndSetText("");
-				else
-					button:SetText(caption);
-				end
-				
 				local icons = GetPlayerIcons(v.Domain, v.Value);
 				local playerColor = icons.PlayerColor or "";
 				if(leaderIcon) then
@@ -2961,24 +3131,43 @@ function SetupSplitLeaderPulldown(playerId:number, instance:table, pulldownContr
 				DisplayCivLeaderToolTip(m_currentInfo, tooltipControls, not hasPlacard);
 			end;
 
+			-- ============================================================================
+			-- 联机工具箱2.0 条目3.9：排序 + 预填（移植 BSR UpdateValues）——随机项置顶、其余按
+			-- 文明名/领袖名（LOC tag 串）升序；预填 Info/Icons 供排序比较器与条目创建复用。
+			-- 排序必须先于建实例原地排序：「下拉实例顺序 == Values 顺序」是搜索按索引配对的前提。
+			-- ----------------------------------------------------------------------------
 			for i,v in ipairs(values) do
-				local icons = GetPlayerIcons(v.Domain, v.Value);
-				local playerColor = icons.PlayerColor;
+				if (v.Info == nil) then
+					v.Info = GetPlayerInfo(v.Domain, v.Value);
+				end
+				if (v.Icons == nil) then
+					v.Icons = GetPlayerIcons(v.Domain, v.Value);
+				end
+			end
+			table.sort(values, MPT_SortCivsAlphabetically);
+
+			for i,v in ipairs(values) do
 
 				local entry = instanceManager:GetInstance();
 				
-				local caption = v.Name;
-				if(v.Invalid) then 
-					local err = v.InvalidReason or "LOC_SETUP_ERROR_INVALID_OPTION";
-					caption = caption .. "[NEWLINE][COLOR_RED](" .. Locale.Lookup(err) .. ")[ENDCOLOR]";
-				end
-
-				if(entry.ScrollText ~= nil) then
-					entry.ScrollText:SetText(caption);
-				else
-					entry.Button:SetText(caption);
-				end
-				entry.LeaderIcon:SetIcon(icons.LeaderIcon);
+				-- ============================================================================
+				-- 联机工具箱2.0 条目3.9：条目文本改两行（文明名+领袖名，随机项隐藏文明名行，判定在
+				-- MPT_SetUpLeaderInstanceText 内）；图标改用预填 v.Icons。旧单行 caption 逻辑废止：
+				-- local caption = v.Name;
+				-- if(v.Invalid) then
+				-- 	local err = v.InvalidReason or "LOC_SETUP_ERROR_INVALID_OPTION";
+				-- 	caption = caption .. "[NEWLINE][COLOR_RED](" .. Locale.Lookup(err) .. ")[ENDCOLOR]";
+				-- end
+				--
+				-- if(entry.ScrollText ~= nil) then
+				-- 	entry.ScrollText:SetText(caption);
+				-- else
+				-- 	entry.Button:SetText(caption);
+				-- end
+				-- entry.LeaderIcon:SetIcon(icons.LeaderIcon);
+				-- ----------------------------------------------------------------------------
+				MPT_SetUpLeaderInstanceText(entry, false, v.Value, v.Name, Locale.Lookup(v.Info.CivilizationName), nil);
+				entry.LeaderIcon:SetIcon(v.Icons.LeaderIcon);
 				
 				-- Upvalues
 				local info;
@@ -3006,7 +3195,8 @@ function SetupSplitLeaderPulldown(playerId:number, instance:table, pulldownContr
 					if(info == nil) then info = GetPlayerInfo(domain, value); end
 
 					--  if the user picked random, hide the civ icon again
-					local primaryColor, secondaryColor = UI.GetPlayerColorValues(playerColor, 0);
+					--（条目3.9：旧循环头 playerColor upvalue 已随排序预填改造移除，改取预填 v.Icons）
+					local primaryColor, secondaryColor = UI.GetPlayerColorValues(v.Icons.PlayerColor, 0);
 					 m_teamColors[playerId] = {primaryColor, secondaryColor};
 
                     -- set default alternate color to the primary

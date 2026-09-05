@@ -728,8 +728,15 @@
 			<PullDown ID="ColorPullDown" Offset="277,1" Anchor="L,T" Style="ColorSchemePullDown" ScrollThreshold="350" Size="75,46" AutoSizePopUp="1" SpaceForScroll="1" />
 
 			<!-- Civilization -->
-			<PullDown ID="PlayerPullDown" Offset="349,1" Anchor="L,T" Style="PlayerSelectPullDownMP" ScrollThreshold="350" Size="255,46" AutoSizePopUp="1" SpaceForScroll="1">
-				<!-- This is just a cut/paste of the PlayerSelectPullDown except for the addition of DisabledMouseMoveCallbacks="1".  
+			<!-- ============================================================================
+			联机工具箱2.0 条目3.9：领袖下拉搜索与排序（移植 BSR StagingRoom.xml，Lua 见同条目分区）。
+			①按钮区/条目实例改两行文本：ScrollText_CivName 文明名 + ScrollText 领袖名 + ScrollText_Error 错误行；
+			②下拉区顶部新增搜索框（Controls_Search2 底纹 + SearchEditBox，CallOnChar 逐字过滤）；
+			③Style="PlayerSelectPullDownMP" 由内联 GridData/ScrollPanelData/StackData/InstanceData 替代，
+			原版单行按钮结构（ScrollText Size=170,50 Offset=60）随之废止。
+			============================================================================ -->
+			<PullDown ID="PlayerPullDown" Offset="349,1" Anchor="L,T" ScrollThreshold="350" Size="255,46" AutoSizePopUp="1" SpaceForScroll="1">
+				<!-- This is just a cut/paste of the PlayerSelectPullDown except for the addition of DisabledMouseMoveCallbacks="1".
 					We need the DisabledMouseMoveCallbacks so we can display the leader tooltip for remote clients (who have disabled pulldowns)-->
 				<ButtonData>
 					<GridButton  Size="325,45" Style="TabFont" DisabledMouseMoveCallbacks="1">
@@ -738,9 +745,36 @@
 							<Image Texture="Controls_CircleBacking45" Size="51,51" Anchor="C,C" Offset="0,1"/>
 							<Image ID="LeaderIcon" Texture="Leaders45" Size="45,45" Anchor="C,C"/>
 						</Container>
-                        <ScrollTextField ID="ScrollText" Size="170,50" Offset="60,0" Style="TabFont"  Anchor="L,C"/>
+						<Stack StackGrowth="Bottom" Anchor="L,C" Offset="55,0">
+							<ScrollTextField ID="ScrollText_CivName" Size="200,12" Style="TabFont" String="LOC_MODS_SEARCH_NAME" Anchor="L,C"/>
+							<ScrollTextField ID="ScrollText" Size="160,12" Style="TabFont" String="LOC_MODS_SEARCH_NAME" Anchor="L,C"/>
+							<ScrollTextField ID="ScrollText_Error" Size="160,12" Style="TabFont" String="LOC_MODS_SEARCH_NAME" Anchor="L,C" Hidden="1"/>
+						</Stack>
 					</GridButton>
 				</ButtonData>
+				<GridData Offset="0,45" Texture="Controls_DropdownPanel" InnerPadding="0,12" SliceCorner="10,10" SliceTextureSize="22,22"/>
+				<ScrollPanelData Anchor="C,C" Vertical="1" Size="parent,parent" AutoScrollBar="1" >
+					<ScrollBar Style="Slider_Blue" Anchor="R,C" AnchorSide="O,I"   />
+				</ScrollPanelData>
+				<StackData StackGrowth="Bottom" Anchor="C,T">
+					<Container Size="248,26" Anchor="L,T" Offset="0,0">
+						<Grid Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Size="parent,26" Anchor="L,T" Offset="2,0">
+							<EditBox ID="SearchEditBox" Style="FontNormal14" Anchor="C,C" Offset="24,0" Size="parent,16" MaxLength="30" String="LOC_MODS_SEARCH_NAME" CallOnChar="1" />
+						</Grid>
+					</Container>
+				</StackData>
+				<InstanceData Name="InstanceOne">
+					<GridButton ID="Button" Style="ButtonControl" Anchor="L,T" Size="296,50" Offset="4,0" TextAnchor="L,C" TextOffset="65" WrapWidth="200">
+						<Container Size="62,62" Offset="0,-1" Anchor="L,C">
+							<Image ID="LeaderIcon" Texture="Leaders45" Size="45,45" Anchor="C,C"/>
+						</Container>
+						<Stack StackGrowth="Bottom" Anchor="L,C" Offset="65,0">
+							<ScrollTextField ID="ScrollText_CivName" Size="200,16" Style="TabFont" String="LOC_MODS_SEARCH_NAME" Anchor="L,C"/>
+							<ScrollTextField ID="ScrollText" Size="175,16" Style="TabFont" String="LOC_MODS_SEARCH_NAME" Anchor="L,C"/>
+							<ScrollTextField ID="ScrollText_Error" Size="175,16" Style="TabFont" String="LOC_MODS_SEARCH_NAME" Anchor="L,C" Hidden="1"/>
+						</Stack>
+					</GridButton>
+				</InstanceData>
 			</PullDown>
 
 			<!-- Difficulty -->
