@@ -17,4 +17,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 -- 条目3.3：快捷分队按钮（队伍列表头）
 ('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'en_US', 'Left click: random balanced teams[NEWLINE]Right click: sequential A-B-A-B teams[NEWLINE]Host only'),
 -- 条目36扩展：WorldTracker 头部名（游戏内消费，MPT_AutoUpdate.lua 与 LOC_MPT_FE_VERSION 拼接显示）
-('LOC_MPT_WORLD_TRACKER_HEADER', 'en_US', 'Multiplayer Toolkits');
+('LOC_MPT_WORLD_TRACKER_HEADER', 'en_US', 'Multiplayer Toolkits'),
+-- 条目36扩展：顶栏真人玩家计数（初值为图标占位，进面板即由 Lua 刷新为真人数）
+('LOC_MPT_FE_AMOUNT_NAME', 'en_US', '[icon_Global]'),
+('LOC_MPT_FE_AMOUNT_TOOLTIP', 'en_US', 'Human players in this lobby (including you)');

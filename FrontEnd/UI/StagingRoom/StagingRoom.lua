@@ -7204,3 +7204,41 @@ function MPT_PlayerMark_ApplyStatusLabel(playerID)
 	-- 都未命中：不动（还原由 UpdatePlayerEntry 原生 statusString 逻辑负责）
 end
 end	-- 条目4.8 do 块结束（寄存器上限适配）
+
+
+-- ############################################################################
+-- 条目36扩展：顶栏真人玩家计数（用户指示仿 BSR「Amount」标签并优化）
+-- ============================================================================
+-- 用法：顶栏 Amount 标签实时显示 [icon_Global] 真人数（只显示真人玩家人数，不显示槽位，
+--   用户裁决；真人含自己，1.67 同口径）。
+-- 优化相对 1.67（OnAmountChanged）：①local 函数（1.67 泄漏全局名）；
+--   ②订阅后立即刷新一次（1.67 依赖 XML 静态初值 [Icon_Global]1，无人加入前恒显示 1）；
+--   ③事件在 PlayerInfoChanged 基础上加 MultiplayerPostPlayerDisconnected / GameInfoUpdated
+--   （条目4.9 房间玩家页同款三事件，均本仓已验证存在，逐个 nil 守卫同 4.9 惯例）；
+--   ④SetText 直写（纯图标+数字无本地化，1.67 的 LocalizeAndSetText 属多余本地化扫描）。
+-- ============================================================================
+do
+	-------------------------------------------------
+	-- MPT_UpdatePlayerAmount
+	-- 重数真人并刷新顶栏 Amount 标签为 [icon_Global] 真人数。
+	-- 用法：事件驱动（下方三事件订阅）+ 订阅后立即一次；无状态纯重算，重复触发安全。
+	-------------------------------------------------
+	local function MPT_UpdatePlayerAmount()
+		local humanCount : number = 0;
+		local playerIDs = GameConfiguration.GetMultiplayerPlayerIDs();
+		if playerIDs ~= nil then
+			for _, iPlayerID in ipairs(playerIDs) do
+				local pPlayerConfig = PlayerConfigurations[iPlayerID];
+				if pPlayerConfig ~= nil and pPlayerConfig:IsHuman() then
+					humanCount = humanCount + 1;
+				end
+			end
+		end
+		Controls.Amount:SetText("[icon_Global] " .. humanCount);
+	end
+
+	if Events.PlayerInfoChanged ~= nil then Events.PlayerInfoChanged.Add(MPT_UpdatePlayerAmount); end
+	if Events.MultiplayerPostPlayerDisconnected ~= nil then Events.MultiplayerPostPlayerDisconnected.Add(MPT_UpdatePlayerAmount); end
+	if Events.GameInfoUpdated ~= nil then Events.GameInfoUpdated.Add(MPT_UpdatePlayerAmount); end
+	MPT_UpdatePlayerAmount();
+end	-- 条目36扩展 do 块结束
