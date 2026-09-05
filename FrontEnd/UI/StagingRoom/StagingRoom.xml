@@ -23,6 +23,8 @@
 						<GridButton ID="QuitGameButton" Style="ShellButtonOrnateFlat" Anchor="L,C" Offset="0,0" String="LOC_MULTIPLAYER_QUIT_GAME" Hidden="1"/>
 					</Stack>
 				</Grid>
+				<!-- 联机工具箱2.0：顶栏左上版本显示（仿 BSR Version 标签去掉 tooltip，String 走 ModMeta_Data.sql 的展示版本号 tag） -->
+				<Label ID="Version" Style="FontNormal18" ColorSet="ResGoldLabelCS" Anchor="L,T" Offset="12,-23" String="LOC_MPT_FE_VERSION"/>
 				<Label ID="TitleLabel" Style="ShellHeader" Anchor="C,C" String="{LOC_MULTIPLAYER_STAGING_ROOM:upper}"/>
 			</Container>
 
