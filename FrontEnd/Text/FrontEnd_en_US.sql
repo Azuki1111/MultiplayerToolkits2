@@ -15,4 +15,6 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_FE_AI_SLOTS_NAME', 'en_US', 'Player Slots'),
 ('LOC_MPT_FE_AI_SLOTS_TOOLTIP', 'en_US', 'Left click: close all empty and AI slots[NEWLINE]Right click: open all slots (removes existing AI)'),
 -- 条目3.3：快捷分队按钮（队伍列表头）
-('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'en_US', 'Left click: random balanced teams[NEWLINE]Right click: sequential A-B-A-B teams[NEWLINE]Host only');
+('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'en_US', 'Left click: random balanced teams[NEWLINE]Right click: sequential A-B-A-B teams[NEWLINE]Host only'),
+-- 条目36扩展：WorldTracker 头部名（游戏内消费，MPT_AutoUpdate.lua 与 LOC_MPT_FE_VERSION 拼接显示）
+('LOC_MPT_WORLD_TRACKER_HEADER', 'en_US', 'Multiplayer Toolkits');

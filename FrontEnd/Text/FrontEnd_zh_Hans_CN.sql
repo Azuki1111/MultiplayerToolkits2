@@ -15,4 +15,6 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_FE_AI_SLOTS_NAME', 'zh_Hans_CN', '玩家槽位'),
 ('LOC_MPT_FE_AI_SLOTS_TOOLTIP', 'zh_Hans_CN', '左键：关闭所有空位与玩家槽位[NEWLINE]右键：打开所有槽位（会清除已有AI）'),
 -- 条目3.3：快捷分队按钮（队伍列表头）
-('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'zh_Hans_CN', '左键：随机平衡分队[NEWLINE]右键：按顺序1212分队[NEWLINE]仅房主可用');
+('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'zh_Hans_CN', '左键：随机平衡分队[NEWLINE]右键：按顺序1212分队[NEWLINE]仅房主可用'),
+-- 条目36扩展：WorldTracker 头部名（游戏内消费，MPT_AutoUpdate.lua 与 LOC_MPT_FE_VERSION 拼接显示）
+('LOC_MPT_WORLD_TRACKER_HEADER', 'zh_Hans_CN', '联机工具箱');

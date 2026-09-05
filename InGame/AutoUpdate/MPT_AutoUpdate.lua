@@ -18,10 +18,13 @@
 --      订阅 ID，1.67 按 SubscriptionId 匹配的 EnableMods 不适用）【唯一保留】；
 --   3) MPT_AutoUpdate_UpdateSelf() 退出到主菜单时触发本 mod 工坊更新（按 MPT_MOD_ID 匹配安装
 --      列表取工坊订阅 ID，本 mod 发布到创意工坊后自动生效，无需改代码；无订阅 ID 则跳过）
---      【已禁用，见顶部禁用机理】。
--- 不移植：更新内容 Tooltip 展示（Get_TPT_Update_Text/Creat_TPT_Update/OnLoadScreenClose，
---      本 mod 条目3.5 前端更新公告面板已有，且不覆盖 WorldTracker 标题控件）、
---      固定订阅列表更新（OnMods 的 UpdateMods(3041524474) 等，1.67 特有配置）。
+--      【已禁用，见顶部禁用机理】；
+--   4) MPT_AutoUpdate_OnLoadScreenClose() 进局把 WorldTracker 头部改为「mod 名 + 展示版本」
+--      （条目36扩展）。
+-- 不移植：更新内容 Tooltip 展示（Get_TPT_Update_Text/Creat_TPT_Update，本 mod 条目3.5 前端
+--      更新公告面板已有）、固定订阅列表更新（OnMods 的 UpdateMods(3041524474) 等，1.67 特有配置）。
+-- 条目36扩展（用户指示推翻原「不覆盖 WorldTracker 标题控件」裁决）：OnLoadScreenClose 头部
+--      改写移植为下方 MPT_AutoUpdate_OnLoadScreenClose（仅改文本，不带 1.67 的更新 Tooltip）。
 -- ============================================================================
 
 -- 本 mod 模组 ID（GUID，与 modinfo 一致；启用/更新本 mod 均按此定位，不依赖订阅 ID 常量）
@@ -120,11 +123,41 @@ local function MPT_AutoUpdate_UpdateSelf()
 end
 
 -- ============================================================================
+-- 条目36扩展：WorldTracker 头部显示「本 mod 名 + 展示版本」（用户指示移植 1.67 AutoUpdate
+-- OnLoadScreenClose 同款，推翻本文件原「不覆盖 WorldTracker 标题控件」不移植裁决）
+-- 时机 = Events.LoadScreenClose（游戏 UI 全载入后，1.67 同款时机）；跨上下文
+-- ContextPtr:LookUpControl("/InGame/WorldTracker/WorldTracker") 只读定位原版头部 Label
+-- （Base/Assets/UI/WorldTracker.xml 唯一 Label ID=WorldTracker，String=LOC_WORLD_TRACKER_HEADER）
+-- 后 SetText 改文本——只读跨上下文可达，与条目25 技能库「注入不可行」结论不冲突；
+-- 不带 1.67 的 SetToolTipType/Creat_TPT_Update（用户裁决不要 tooltip）。
+-- 文本：LOC_MPT_WORLD_TRACKER_HEADER（FrontEnd/Text/ 双语通用文本）+ LOC_MPT_FE_VERSION
+-- （ModMeta_Data.sql 展示版本行，IG_ModMeta_Text 已游戏内注册）。
+-- ============================================================================
+local WorldTrackerHeaderStr = Locale.Lookup("LOC_MPT_WORLD_TRACKER_HEADER");	-- 头部名（联机工具箱 / Multiplayer Toolkits）
+local WorldTrackerVersionStr = Locale.Lookup("LOC_MPT_FE_VERSION");		-- 展示版本号（如 2.0.2）
+
+-- ============================================================================
+-- MPT_AutoUpdate_OnLoadScreenClose()
+-- 进局（LoadScreenClose）时把 WorldTracker 头部文本改为「mod 名 + 展示版本」。
+-- 用法：Initialize 内订阅 Events.LoadScreenClose，每局触发一次；控件缺失则 print 跳过。
+-- ============================================================================
+local function MPT_AutoUpdate_OnLoadScreenClose()
+	local worldTracker = ContextPtr:LookUpControl("/InGame/WorldTracker/WorldTracker");
+	if worldTracker == nil then
+		print("MPT 条目36扩展：未找到 /InGame/WorldTracker/WorldTracker 控件，跳过头部版本显示");
+		return;
+	end
+	worldTracker:SetText(WorldTrackerHeaderStr .. " " .. WorldTrackerVersionStr);
+	print("MPT 条目36扩展：WorldTracker 头部已设为「" .. WorldTrackerHeaderStr .. " " .. WorldTrackerVersionStr .. "」");
+end
+
+-- ============================================================================
 -- 初始化（空 Context 同名 Lua 加载即执行，= 进入游戏）
 -- ============================================================================
 local function MPT_AutoUpdate_Initialize()
 	-- MPT_AutoUpdate_UpdateAll();		-- 1) 更新所有已启用的非官方工坊 mod【条目13调整禁用：运行中触发工坊下载替换本 mod 文件致第二局崩溃，见顶部禁用机理】
 	MPT_AutoUpdate_EnableSelf();	-- 2) 确保本 mod 已启用（唯一保留）
 	--Events.ExitToMainMenu.Add(MPT_AutoUpdate_UpdateSelf);	-- 3) 退出游戏时更新本 mod【条目13调整禁用：同上】
+	Events.LoadScreenClose.Add(MPT_AutoUpdate_OnLoadScreenClose);	-- 4) 条目36扩展：WorldTracker 头部显示 mod 名 + 展示版本
 end
 MPT_AutoUpdate_Initialize();
