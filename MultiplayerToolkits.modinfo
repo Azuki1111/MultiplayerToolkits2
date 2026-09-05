@@ -22,7 +22,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>123</Version>
+		<Version>124</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢） -->
 	<LocalizedText>
@@ -1393,6 +1393,6 @@
 		<File>InGame/HashCheck/MPT_HashCheckUI.lua</File>
 		<File>InGame/HashCheck/HashCheck_zh_Hans_CN.sql</File>
 		<File>InGame/HashCheck/HashCheck_en_US.sql</File>
-		<File>InGame/HashCheck/Binaries/Win64/GameCore_XP2_HashCheck_FinalRelease.dll</File>
+		<File>InGame/HashCheck/Binaries/Win64/GameCore_XP2_Mz_FinalRelease.dll</File>
 	</Files>
 </Mod>

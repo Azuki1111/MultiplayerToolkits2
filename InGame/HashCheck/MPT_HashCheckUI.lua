@@ -1,11 +1,13 @@
 -- ============================================================================
--- 条目34：反作弊监测面板（移植工坊 3775385784「反作弊监控 0.2.5」UI/HashCheckInGameUI.lua，
--- 作者 Synora 即本 mod 作者；UI 逻辑原样移植）
+-- 条目34：反作弊监测面板（移植工坊 3775385784「反作弊监控」，条目34扩展起对齐作者本地
+-- 新版 1.0.2「MzPanel」混淆重构版：DLL 换名 GameCore_XP2_Mz、协议全局改 Mzq
+-- （命令 a=Init / b=收远端证明 / c=比对哈希 / d=本机摘要 / e=取对方摘要，成功返回 1）。
+-- 作者 Synora 即本 mod 作者；UI 逻辑等价移植并保持可读命名）
 -- 数据链路：HashCheck_GameCores.sql 把 GS 引擎核心重定向到本 mod 钩子 DLL（criteria
--- MPT_HASH_CHECK 门控）→ DLL 注入 HashCheckDLL 全局并后台聚合哈希本机全部启用文件 →
+-- MPT_HASH_CHECK 门控）→ DLL 注入 Mzq 全局并后台聚合哈希本机全部启用文件 →
 -- 联机经引擎玩家信息通道交换证明 → 本面板按玩家比对显示 一致/不一致/等待数据。
 -- DLL 未加载（未勾选开关 / 无 GS / DllPrefix 被其他钩子 mod 抢占）时优雅降级：
--- HashCheckDLL == nil 守卫 → 全员显示「等待数据...」，面板本身可用。
+-- Mzq == nil 守卫 → 全员显示「等待数据...」，面板本身可用。
 -- 入口改造（用户裁决）：删除原版 LaunchBar 注入（AttachLaunchButton 全套），改由
 -- 条目8 MPT_QuickPanel「反作弊监测」按钮经 LuaEvents.MPT_HashCheck_Toggle 开关。
 -- 注意：GetNetworkIdentifer 为引擎 API 历史拼写（原版 StagingRoom/ChatPanel 同款），不可"纠正"。
@@ -125,8 +127,18 @@ end
 -- 玩家文件状态：无证明 = unknown；DLL 比对通过 = ok；否则 mismatch
 local function GetPlayerCheckStatus(playerID)
 	if not m_ReceivedProof[playerID] then return "unknown" end
-	if HashCheckDLL ~= nil and HashCheckDLL("CheckHash", playerID) then return "ok" end
+	if Mzq ~= nil and Mzq("c", playerID) == 1 then return "ok" end
 	return "mismatch";
+end
+
+-- 不匹配诊断摘要对（1.0.2 新增）：本机 / 对方各文件组 8 位十六进制摘要拼接，
+-- 显示在不一致行 tooltip，供定位是哪个文件组不同；DLL 未加载或取不到返回空串
+local function GetDigestPair(playerID)
+	if Mzq == nil then return "" end
+	local okD, mine = pcall(function() return Mzq("d") end);
+	local okE, theirs = pcall(function() return Mzq("e", playerID) end);
+	if not okD or not okE then return "" end
+	return tostring(mine or "") .. " / " .. tostring(theirs or "");
 end
 
 -- 全量重建玩家列表（PlayerInfoChanged / 回合开始触发，频率低可接受）
@@ -137,18 +149,28 @@ local function RefreshPanel()
 	Controls.NoPlayersLabel:SetHide(#ids > 0);
 	for _, playerID in ipairs(ids) do
 		local inst = m_PlayerListIM:GetInstance();
+		local status = GetPlayerCheckStatus(playerID);
 		inst.LeaderIcon:SetIcon(GetLeaderIconName(playerID));
 		inst.PlayerName:SetText(GetPlayerDisplayName(playerID));
-		local style = STATUS_STYLE[GetPlayerCheckStatus(playerID)];
+		local style = STATUS_STYLE[status];
 		inst.StatusLabel:SetText(style.text);
 		inst.StatusLabel:SetColorByName(style.color);
 		local steamID = GetPlayerSteamID(playerID);
+		local tooltip;
 		if steamID then
 			-- 带参数文本改无参数 tag 缓存 + .. 拼接（项目规约）
-			inst.EntryButton:SetToolTipString("Steam ID: " .. steamID .. "[NEWLINE]" .. HashCheckEntryTTStr);
+			tooltip = "Steam ID: " .. steamID .. "[NEWLINE]" .. HashCheckEntryTTStr;
 		else
-			inst.EntryButton:SetToolTipString(HashCheckEntryTTNoidStr);
+			tooltip = HashCheckEntryTTNoidStr;
 		end
+		-- 不一致行追加 本机 / 对方 摘要对（1.0.2 新增诊断，空值占位 " / " 不显示）
+		if status == "mismatch" then
+			local diag = GetDigestPair(playerID);
+			if diag ~= "" and diag ~= " / " then
+				tooltip = tooltip .. "[NEWLINE]" .. diag;
+			end
+		end
+		inst.EntryButton:SetToolTipString(tooltip);
 		inst.EntryButton:RegisterCallback(Mouse.eLClick, function() CopyPlayerInfo(playerID) end);
 	end
 	Controls.PlayerListStack:CalculateSize();
@@ -172,16 +194,16 @@ end
 
 -- 通知 DLL 进入工作状态（建立 mod 索引并启动后台哈希；DLL 未加载时返回 false 优雅降级）
 local function InitializeDLLState()
-	if HashCheckDLL == nil then return false end
-	local ok, res = pcall(function() return HashCheckDLL("Init") end);
-	return ok and res == true;
+	if Mzq == nil then return false end
+	local ok, res = pcall(function() return Mzq("a") end);
+	return ok and res == 1;
 end
 
 -- 收到远端玩家信息推送 → 存其证明并刷新（本机自己的推送跳过）
 local function ProcessRemoteProof(playerID)
-	if HashCheckDLL == nil then return end
-	local ok, stored = pcall(function() return HashCheckDLL("StoreRemoteProof", playerID) end);
-	if ok and stored == true then
+	if Mzq == nil then return end
+	local ok, stored = pcall(function() return Mzq("b", playerID) end);
+	if ok and stored == 1 then
 		m_ReceivedProof[playerID] = true;
 		RefreshPanel();
 	end
@@ -189,7 +211,7 @@ end
 
 local function OnPlayerInfoChanged(playerID)
 	if not IsMonitoringActive() then return end
-	if HashCheckDLL == nil then return end
+	if Mzq == nil then return end
 	local localPlayerID = GetLocalPlayerID();
 	if localPlayerID ~= nil and playerID == localPlayerID then return end
 	ProcessRemoteProof(playerID);
