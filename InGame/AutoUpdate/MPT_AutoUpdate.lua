@@ -27,8 +27,17 @@
 --      改写移植为下方 MPT_AutoUpdate_OnLoadScreenClose（仅改文本，不带 1.67 的更新 Tooltip）。
 -- ============================================================================
 
--- 本 mod 模组 ID（GUID，与 modinfo 一致；启用/更新本 mod 均按此定位，不依赖订阅 ID 常量）
-local MPT_MOD_ID : string = "00000000-7369-4685-ab5f-bf77bc22b54e";
+-- 本 mod 模组 ID：从 ModMeta_Data.sql 的 LOC_MPT_MOD_ID 文本 tag 查取（条目36扩展收编，
+-- Lua 侧硬编码 GUID 废止 → GUID 单源 = modinfo id 属性 + ModMeta_Data.sql 数据行）。
+-- 文件级查取时机安全（IG_ModMeta_Text LoadOrder 10 先于本上下文加载，1.67 同文件
+-- 文件级 Locale.Lookup 取订阅 ID 先例）；tag 缺失时 Locale.Lookup 回传原 tag 名，
+-- 依 ^LOC_ 前缀识别并置空 → FindSelf 必不匹配，Enable/UpdateSelf 走「未找到」分支
+-- 打印跳过，不影响其余功能。
+local MPT_MOD_ID : string = Locale.Lookup("LOC_MPT_MOD_ID");
+if MPT_MOD_ID == nil or string.find(MPT_MOD_ID, "^LOC_") ~= nil then
+	print("MPT 条目13：LOC_MPT_MOD_ID 文本缺失（ModMeta_Data.sql 未加载？），本 mod 启用/更新定位将跳过");
+	MPT_MOD_ID = "";
+end
 
 -- ============================================================================
 -- MPT_AutoUpdate_FindSelf()
