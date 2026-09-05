@@ -891,6 +891,12 @@ end
 --	与条目31 名册 Tooltip / 条目30 过滤互不影响；伟人页签本身在英雄模式下不变。
 -- =======================================================================================
 function OnMPT_GreatPeopleHeroPanel_SizeChanged( heroStackSizeX:number )
+	-- ==== 条目32修复：切回伟人页签时 ClearHeroes 收缩英雄栈会以 0 宽再触发本事件，
+	-- 不加守卫会把延伸背景压成 1024 而主背景 1926（用户实测「背景缺失」）；
+	-- 镜像巴比伦 ResizeHeroPaneling 的 ≤0 早退守卫
+	if heroStackSizeX == nil or heroStackSizeX <= 0 then
+		return;
+	end
 	local screenWidth:number = math.max(heroStackSizeX, 1024);
 	local screenX:number, _ = UIManager:GetScreenSizeVal();
 	if screenWidth > screenX then
