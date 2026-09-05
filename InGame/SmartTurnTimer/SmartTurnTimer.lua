@@ -75,6 +75,15 @@
 --   掉线 +30/投票 120/p-- 走平衡修正）；手动类触发保持一回合——聊天 p+ 不再回写
 --   基线（1.67「p+ 仅当前回合生效」语义随本扩展取消）、热键直改、暂停菜单/控制台
 --   等外部改动；回合开始初始化写入后同步基线，防止误判自身为手动修改。
+-- 条目20修复3（实际对局实测：回合时间被固定 120 秒，手动修改后又被改回 120）——
+--   1.67 投票保护启发式在 2.0 联机失效：原逻辑「上回合全员结束置标志→回合开始全员
+--   进行中时写 120」依赖 RemotePlayerTurnEnd 先于全局 TurnEnd 到达，实测远程玩家
+--   结束事件晚于 TurnEnd（基线已清零）到达 → 标志每回合被重新置位 → 每回合开始
+--   条件恒真 → 每回合固定写 120 并同步基线（手动保持被同步基线绕过）。重构为引擎
+--   精确信号：订阅 Events.EndTurnBlockingChanged（原版 ActionPanel 同源），仅当本机
+--   回合被「世界议会特别会期」阻塞（EndTurnBlockingTypes.ENDTURN_BLOCKING_WORLD_
+--   CONGRESS_SESSION，GS 新增枚举）时写 120——会期开始即保护、结束即停止，零启发式；
+--   删除 MPT_AllPlayerEndTurn 标志与 OnPlayerTurnBegin 投票分支。
 --   3. 真人统计合并：1.67 在 GetHumanNum / 半数采样 / 回合开始重置 / 投票判定 四处
 --      重复全遍历真人，合并为单一 MPT_Timer_CountHumans()（一次遍历同时返回总数与
 --      已结束数）；首回合初始化人数判定也复用（1.67 该处未排除观察者，此处修正）。
@@ -98,7 +107,8 @@
 --   目标等待中位数 18 秒、一阶滤波 0.5、衰减 0.98、后期修正 0.05、最小回合时间 30 秒、
 --   p+ 加 20 秒（剩余<8 秒时改 +24）、p+++ 本回合无回合时间（下回合恢复 STANDARD）、
 --   p-- 下回合 -15 秒、大文明宣战 +20 秒（3 秒冷却）、剩余<10 秒对城邦宣战 +8 秒、
---   掉线 +30 秒、投票阶段 120 秒、首回合开始时把非标准计时（原版默认无限）替换为
+--   掉线 +30 秒、议会特别会期开始时 120 秒（ENDTURN_BLOCKING_WORLD_CONGRESS_SESSION
+--   阻塞信号，条目20修复3）、首回合开始时把非标准计时（原版默认无限）替换为
 --   标准（SMART 起步 30 秒/TIERED 取曲线回合 1 值，读档已标准则不动，条目20修复2）、
 --   房主监听
 --   仅公共频道（toPlayer == -1）、p+ 每回合一次。
@@ -139,7 +149,6 @@ local MPT_IsMultiplayer		: boolean = GameConfiguration.IsAnyMultiplayer();	-- �
 local MPT_ActionAdd			: boolean = false;	-- p+ 加时指令标志（每回合一次）
 local MPT_ActionNone		: boolean = false;	-- p+++ 无限时间标志
 local MPT_ActionReduce		: boolean = false;	-- p-- 减时指令标志
-local MPT_AllPlayerEndTurn	: boolean = false;	-- 全部真人结束回合标志（排除世界议会投票影响）
 local MPT_FirstTurnInit		: boolean = true;	-- 首回合初始化标志
 local MPT_PreTime			: number = 0;		-- 上次平衡计算的应用时间
 local MPT_PreTimeBase		: number = 0;		-- 基准时间（与当前配置比对，检测外部手段修改）
@@ -276,7 +285,6 @@ local function MPT_Timer_ResetVariables()
 	MPT_ActionReduce = false;
 	MPT_ActionNone = false;
 	MPT_HalfPlayerUseTime = nil;
-	MPT_AllPlayerEndTurn = false;
 	MPT_EraReduce = false;
 	MPT_TurnTimer.ElapsedTime = 0;
 	MPT_TurnTimer.MaxTurnTime = 0;
@@ -563,10 +571,11 @@ end
 
 -- ============================================================================
 -- MPT_Timer_OnPlayerTurnEnd(ePlayer)：本地/远程玩家回合结束（两事件共用，仅 SMART
---   ——半数用时采样与投票标志只服务 PID 平衡/投票 120s）。统计真人结束回合比例
---   ≥0.5 时记录半数玩家用时（PID 反馈量，整回合只记首次）；全部真人结束置投票
---   阶段标志。ePlayer：RemotePlayerTurnEnd 传玩家 ID，LocalPlayerTurnEnd 无参
---   （本地兜底，1.67 同款）。
+--   ——半数用时采样只服务 PID 平衡）。统计真人结束回合比例 ≥0.5 时记录半数玩家用时
+--   （PID 反馈量，整回合只记首次）。ePlayer：RemotePlayerTurnEnd 传玩家 ID，
+--   LocalPlayerTurnEnd 无参（本地兜底，1.67 同款）。
+--   （投票标志已删除——条目20修复3：1.67 的「全员结束回合」启发式在 2.0 联机因远程
+--   玩家回合结束事件晚于全局 TurnEnd 清零到达而被反复误置位，导致每回合开始误写 120）
 -- ============================================================================
 local function MPT_Timer_OnPlayerTurnEnd(ePlayer)
 	if not MPT_IsMultiplayer or MPT_Timer_GetMode() ~= MPT_MODE_SMART then return; end
@@ -585,33 +594,37 @@ local function MPT_Timer_OnPlayerTurnEnd(ePlayer)
 		and ended / total >= 0.5 then
 		MPT_HalfPlayerUseTime = MPT_TurnTimer.ElapsedTime;
 	end
+end
 
-	if ended == total then
-		MPT_AllPlayerEndTurn = true;
-	end
+-- ============================================================================
+-- MPT_Timer_OnEndTurnBlockingChanged(prevType, newType)：议会特别会期保护（条目20
+--   修复3，替代 1.67 投票启发式）——引擎在本机回合被「世界议会特别会期」阻塞
+--   （EndTurnBlockingTypes.ENDTURN_BLOCKING_WORLD_CONGRESS_SESSION，原版 ActionPanel
+--   同源事件/枚举）即会期投票开始，把回合时间固定 120 秒（仅房主写配置；会期结束
+--   阻塞解除不写任何配置，正常平衡自动接管）。
+--   1.67 原启发式（上回合全员结束置标志→本回合全员开始时写 120）在 2.0 联机实测
+--   每回合误触发：RemotePlayerTurnEnd 迟于全局 TurnEnd（基线清零）到达重置标志，
+--   下回合开始条件恒真 → 固定 120 秒且每回合同步基线，手动修改（扩展3）也被打回。
+-- ============================================================================
+local function MPT_Timer_OnEndTurnBlockingChanged(prevType, newType)
+	if not MPT_IsMultiplayer or MPT_Timer_GetMode() ~= MPT_MODE_SMART then return; end
+	if newType ~= EndTurnBlockingTypes.ENDTURN_BLOCKING_WORLD_CONGRESS_SESSION then return; end
+	if Network.GetLocalPlayerID() ~= Network.GetGameHostPlayerID() then return; end
+	if not MPT_Timer_IsCooldownReady("Vote", 3) then return; end
+	GameConfiguration.SetValue("TURN_TIMER_TIME", 120);
+	Network.BroadcastGameConfig();
+	MPT_PreTime = 120;		-- 同步基线（条目20扩展3 口径：脚本自动调节不触发手动保持）
+	MPT_PreTimeBase = 120;
 end
 
 -- ============================================================================
 -- MPT_Timer_OnPlayerTurnBegin(ePlayer)：本地/远程玩家回合开始（两事件共用，仅
---   SMART）。投票阶段（上回合全员结束时置位）：全员都开始新回合后把时间固定
---   120 秒（3 秒冷却、真人>1）；正常回合：全员都在回合中（有玩家取消结束重开）
---   → 清空采样重新记录。
+--   SMART）。全员都在回合中（有玩家取消结束重开）→ 清空采样重新记录。
+--   （投票 120s 已迁移至 MPT_Timer_OnEndTurnBlockingChanged，条目20修复3）
 -- ============================================================================
 local function MPT_Timer_OnPlayerTurnBegin(ePlayer)
 	if not MPT_IsMultiplayer or MPT_Timer_GetMode() ~= MPT_MODE_SMART then return; end
 	ePlayer = ePlayer or Network.GetLocalPlayerID();
-
-	if MPT_AllPlayerEndTurn then	-- 投票阶段
-		if Network.GetLocalPlayerID() == Network.GetGameHostPlayerID() then
-			local total, ended = MPT_Timer_CountHumans();
-			if total > 1 and ended <= 0 and MPT_Timer_IsCooldownReady("Vote", 3) then
-				GameConfiguration.SetValue("TURN_TIMER_TIME", 120);
-				Network.BroadcastGameConfig();
-				MPT_PreTimeBase = 120;
-			end
-		end
-		return;
-	end
 
 	local playerConfig = PlayerConfigurations[ePlayer];
 	if playerConfig == nil or not Players[ePlayer]:IsMajor()
@@ -764,6 +777,7 @@ local function MPT_Timer_LateInitialize()
 	Events.RemotePlayerTurnBegin.Add(MPT_Timer_OnPlayerTurnBegin);
 	Events.InputActionTriggered.Add(MPT_Timer_OnInputActionTriggered);
 	Events.GameConfigChanged.Add(MPT_Timer_OnGameConfigChanged);
+	Events.EndTurnBlockingChanged.Add(MPT_Timer_OnEndTurnBlockingChanged);
 end
 
 -- ============================================================================
