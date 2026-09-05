@@ -443,6 +443,12 @@ function ViewCurrent( data:table )
 -- ==== 条目29（BGP）：底部延伸背景两段随内容同步宽度
 	Controls.WoodPaneling2:SetSizeX( m_screenWidth );
 	Controls.WoodPaneling3:SetSizeX( m_screenWidth );
+	-- ==== 条目32修复：英雄页签往返后强制重申背景完整状态——英雄面板 SizeChanged 广播曾把
+	-- 延伸背景同步为英雄栈宽，伟人页签重建时一并重申主背景高度（520）与延伸背景显隐，
+	-- 覆盖英雄侧任何遗留状态
+	Controls.WoodPaneling:SetSizeY( 520 );
+	Controls.WoodPaneling2:SetHide( false );
+	Controls.WoodPaneling3:SetHide( false );
 -- ---- 条目29
 
 	-- Clamp overall popup size to not be larger than contents (overspills in 4k and eyefinitiy rigs.)
@@ -1046,6 +1052,12 @@ function ViewPast( data:table )
 	Controls.Total:SetText( Locale.Lookup("LOC_HUD_CITY_TOTAL")..": "..tostring(iTotal) );
 -- ---- 条目30
 
+	-- ==== 条目32修复：先前招募页签同样重申背景完整状态（英雄页签往返兜底）
+	Controls.WoodPaneling:SetSizeY( 520 );
+	Controls.WoodPaneling2:SetSizeX( m_screenWidth );
+	Controls.WoodPaneling3:SetSizeX( m_screenWidth );
+	Controls.WoodPaneling2:SetHide( false );
+	Controls.WoodPaneling3:SetHide( false );
 	-- Scaling to screen width required for the previously recruited tab
 	Controls.PopupContainer:SetSizeX( m_screenWidth );
 	Controls.ModalFrame:SetSizeX( m_screenWidth );
