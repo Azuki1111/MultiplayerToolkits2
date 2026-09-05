@@ -875,6 +875,27 @@ end
 -- ---- 条目31
 
 -- =======================================================================================
+--	条目32：官方 DLC 英雄模式兼容（巴比伦包英雄页签）——巴比伦 GreatPeoplePopup_Babylon_Heroes
+--	经通配 include 在本文件之后加载，其 ResizeHeroPaneling 只同步主背景 WoodPaneling 与
+--	PopupContainer/ModalFrame 宽度，条目29 新增的底部延伸背景 WoodPaneling2/3 在英雄页签下
+--	不刷新（页签背景缺口，纯装饰残留）；其加载晚于本文件无法包装函数，故订阅其同款广播事件
+--	LuaEvents.GreatPeopleHeroPanel_SizeChanged 追加同步延伸背景宽度（钳制逻辑镜像其
+--	ResizeHeroPaneling：max(英雄栈宽,1024) 再钳到屏宽）。巴比伦包未装/非英雄模式时事件
+--	不触发，订阅无害。英雄卡由独立 HeroPanel 上下文注入 PeopleScroller，不经 AddRecruit，
+--	与条目31 名册 Tooltip / 条目30 过滤互不影响；伟人页签本身在英雄模式下不变。
+-- =======================================================================================
+function OnMPT_GreatPeopleHeroPanel_SizeChanged( heroStackSizeX:number )
+	local screenWidth:number = math.max(heroStackSizeX, 1024);
+	local screenX:number, _ = UIManager:GetScreenSizeVal();
+	if screenWidth > screenX then
+		screenWidth = screenX;
+	end
+	Controls.WoodPaneling2:SetSizeX( screenWidth );
+	Controls.WoodPaneling3:SetSizeX( screenWidth );
+end
+LuaEvents.GreatPeopleHeroPanel_SizeChanged.Add(OnMPT_GreatPeopleHeroPanel_SizeChanged);
+
+-- =======================================================================================
 --	Layout the data for previously recruited great people.
 -- =======================================================================================
 function ViewPast( data:table )
