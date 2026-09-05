@@ -10,7 +10,7 @@
 =========================================================================================================================================================
 -->
 <!-- LoadOrder 规约：1-99 配置 | 100-999 文本 | 1000-9999 UI替换 | 10000+ 覆盖型替换 | 99999+ 强制后置 -->
-<Mod id="00000000-7369-4685-ab5f-bf77bc22b54e" version="128">
+<Mod id="00000000-7369-4685-ab5f-bf77bc22b54e" version="129">
 	<Properties>
 		<Name>LOC_MPT_FE_NAME</Name>
 		<Description>LOC_MPT_FE_DESCRIPTION</Description>
@@ -22,16 +22,16 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>128</Version>
+		<Version>129</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢） -->
 	<LocalizedText>
 		<Text id="LOC_MPT_FE_NAME">
-			<en_US>[ICON_ADDITIONALCONTENT]Multiplayer Toolkits [COLOR:ResGoldLabelCS]2.0.0[ENDCOLOR]</en_US>
-			<zh_Hans_CN>[ICON_ADDITIONALCONTENT]联机工具箱 [COLOR:ResGoldLabelCS]2.0.0[ENDCOLOR]</zh_Hans_CN>
+			<en_US>[ICON_ADDITIONALCONTENT]Multiplayer Toolkits [COLOR:ResGoldLabelCS]2.0.1[ENDCOLOR]</en_US>
+			<zh_Hans_CN>[ICON_ADDITIONALCONTENT]联机工具箱 [COLOR:ResGoldLabelCS]2.0.1[ENDCOLOR]</zh_Hans_CN>
 		</Text>
 		<Text id="LOC_MPT_FE_DESCRIPTION">
-			<en_US>[ICON_Bolt][COLOR:ResGoldLabelCS]Multiplayer Toolkits 2.0.0[ENDCOLOR]
+			<en_US>[ICON_Bolt][COLOR:ResGoldLabelCS]Multiplayer Toolkits 2.0.1[ENDCOLOR]
 			[NEWLINE][NEWLINE][icon_Exclamation]Lobby features
 			[NEWLINE][icon_You]Staging room enhancements: 20 slots, quick AI slot toggles, balanced random teams, host edits others' teams and leaders
 			[NEWLINE][icon_You]Mod version consistency check, unofficial mod list, workshop mod auto-update
@@ -44,7 +44,7 @@
 			[NEWLINE][icon_You]Trade and diplomacy restrictions, trade route/city-state/great person/pantheon UI enhancements
 			[NEWLINE][icon_You]More hotkeys, notification clear, deal and great person recruit reminders, no map pins, instant city founding
 			[NEWLINE][icon_You]Defeat spectator button, reveal map corners, great general era and builder charge display, save the settler, no idle research</en_US>
-			<zh_Hans_CN>[ICON_Bolt][COLOR:ResGoldLabelCS]联机工具箱 2.0.0[ENDCOLOR]
+			<zh_Hans_CN>[ICON_Bolt][COLOR:ResGoldLabelCS]联机工具箱 2.0.1[ENDCOLOR]
 			[NEWLINE][NEWLINE][icon_Exclamation]联机大厅功能
 			[NEWLINE][icon_You]准备房间增强：槽位上限20、快捷开关AI槽位、随机平衡分队、房主修改他人队伍与领袖
 			[NEWLINE][icon_You]模组版本一致性校验、非官方模组清单、工坊模组自动更新
