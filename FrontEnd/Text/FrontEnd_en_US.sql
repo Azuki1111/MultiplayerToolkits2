@@ -16,17 +16,3 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_FE_AI_SLOTS_TOOLTIP', 'en_US', 'Left click: close all empty and AI slots[NEWLINE]Right click: open all slots (removes existing AI)'),
 -- 条目3.3：快捷分队按钮（队伍列表头）
 ('LOC_MPT_FE_RANDOM_TEAM_TOOLTIP', 'en_US', 'Left click: random balanced teams[NEWLINE]Right click: sequential A-B-A-B teams[NEWLINE]Host only');
-
--- ============================================================================
--- 条目36：modinfo 品牌文本 SQL 化（前端 mod 浏览器：名称/描述/宣传语/作者/致谢）
--- LOC_MPT_FE_NAME 由展示版本号 LOC_MPT_FE_VERSION 拼接（版本行在 ModMeta_Data.sql 早载，
--- 条目36调整：该文件单语言不设多语言，故此处不再按 Language 过滤）；描述不含版本号，每功能一行 [NEWLINE]。
--- ============================================================================
-INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text)
-SELECT 'LOC_MPT_FE_NAME', 'en_US', 'Multiplayer [COLOR:ResGoldLabelCS]Toolkits ' || COALESCE((SELECT Text FROM LocalizedText WHERE Tag = 'LOC_MPT_FE_VERSION'), '') || '[ENDCOLOR]';
-
-INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
-('LOC_MPT_FE_DESCRIPTION', 'en_US', '[ICON_Bolt][COLOR:ResGoldLabelCS]Multiplayer Toolkits[ENDCOLOR][NEWLINE][NEWLINE][icon_Exclamation]Lobby features[NEWLINE][icon_You]Staging room enhancements: 20 slots, quick AI slot toggles, balanced random teams, host edits others'' teams and leaders[NEWLINE][icon_You]Mod version consistency check, unofficial mod list, workshop mod auto-update[NEWLINE][icon_You]Player mark profiles (shared between lobby and game), icon/texture atlas viewers[NEWLINE][icon_You]Update notes and latest news, MP game setup presets, longer player names[NEWLINE][NEWLINE][icon_Exclamation]In-game features[NEWLINE][icon_You]Quick actions panel: team surrender/restart votes, forced end turn, in-game settings[NEWLINE][icon_You]Smart turn timer, real tech/civic progress, policy card yields[NEWLINE][icon_You]Top panel and diplomacy ribbon extensions, teammate resource visibility[NEWLINE][icon_You]Trade and diplomacy restrictions, trade route/city-state/great person/pantheon UI enhancements[NEWLINE][icon_You]More hotkeys, notification clear, deal and great person recruit reminders, no map pins, instant city founding[NEWLINE][icon_You]Defeat spectator button, reveal map corners, great general era and builder charge display, save the settler, no idle research'),
-('LOC_MPT_FE_TEASER', 'en_US', '[size_32][COLOR:ResGoldLabelCS]Multiplayer Toolkits[ENDCOLOR]'),
-('LOC_MPT_FE_AUTHORS', 'en_US', '[COLOR:ResGoldLabelCS]Synora[ENDCOLOR]'),
-('LOC_MPT_FE_THANKS', 'en_US', 'Nwflower，CHS, MPH, PPK, Zpod, 红魔族首席魔法师, 336tarot, Maple_Leaves, BBG');
