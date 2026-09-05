@@ -22,7 +22,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>135</Version>
+		<Version>136</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢） -->
 	<LocalizedText>
@@ -67,8 +67,8 @@
 			<zh_Hans_CN>[COLOR:ResGoldLabelCS]号码菌[ENDCOLOR]</zh_Hans_CN>
 		</Text>
 		<Text id="LOC_MPT_FE_THANKS">
-			<en_US>Mod check / BP features adapted from Multiplayer Helper (MPH) by Cisco, D. &amp; Jack The Narrator, MIT License © 2024 BetterBalancedGame.</en_US>
-			<zh_Hans_CN>模组校验 / BP 功能改编自 Multiplayer Helper (MPH)，作者 Cisco, D. 与 Jack The Narrator，MIT 协议 © 2024 BetterBalancedGame。</zh_Hans_CN>
+			<en_US>Nwflower，CHS, MPH, PPK, Zpod, 红魔族首席魔法师, 336tarot, Maple_Leaves, BBG</en_US>
+			<zh_Hans_CN>千川白浪，CHS, MPH, 皮皮凯, Zpod, 红魔族首席魔法师, 336tarot, 枫叶，BBG</zh_Hans_CN>
 		</Text>
 	</LocalizedText>
 	<!-- 条目10：交易限制与外交限制（移植 1.67 DDV）条件注册（本 mod 首个 ActionCriteria 用例） -->

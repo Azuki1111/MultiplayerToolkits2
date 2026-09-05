@@ -2917,16 +2917,21 @@ end
 
 -------------------------------------------------
 -- MPT_SetUpLeaderInstanceText
--- 领袖条目/按钮两行文本写入（BSR 同名函数移植）：文明名行（随机项隐藏）、领袖名行、
--- 错误行独立显示；bHide=true 仅隐藏条目按钮。关闭态按钮区与下拉条目区共用同名控件
--- （ScrollText_CivName/ScrollText/ScrollText_Error，由 XML ButtonData/InstanceData 提供）。
+-- 领袖下拉条目两行文本写入（BSR 同名函数移植）：文明名行（随机项隐藏）、领袖名行、
+-- 错误行独立显示；bHide=true 仅隐藏条目按钮。仅用于下拉条目实例（InstanceOne，
+-- Button/ScrollText_CivName/ScrollText/Error 由 InstanceData 提供）；关闭态按钮区的
+-- 行实例没有 Button 控件（ButtonData 的 GridButton 无 ID，不进实例扁平化表，条目3.9修复），
+-- 其文本由 UpdateValue 直接写入同名的行级扁平化控件（ScrollText_CivName/ScrollText/Error）。
 -------------------------------------------------
 function MPT_SetUpLeaderInstanceText( tInstance, bHide, sType, sLeaderName, sCivName, sError )
+	if (tInstance.Button == nil) then
+		return;	-- 条目3.9修复：行实例无 Button（见头注），关闭态文本走 UpdateValue 直写
+	end
 	tInstance.Button:SetHide(bHide);
 	if bHide then return end
 	if tInstance.ScrollText_CivName then
 		tInstance.ScrollText_CivName:SetText(sCivName);
-		tInstance.ScrollText_CivName:SetHide(MPT_LEADER_RANDOM_MAP[sType]);
+		tInstance.ScrollText_CivName:SetHide(MPT_LEADER_RANDOM_MAP[sType] == true);
 	end
 	local pText = tInstance.ScrollText or tInstance.Button;
 	pText:SetText(sLeaderName);
@@ -3058,7 +3063,26 @@ function SetupSplitLeaderPulldown(playerId:number, instance:table, pulldownContr
 					sError = Locale.Lookup(v.InvalidReason or "LOC_SETUP_ERROR_INVALID_OPTION");
 					sError = "[COLOR_RED](" .. sError .. ")[ENDCOLOR]";
 				end
-				MPT_SetUpLeaderInstanceText(instance, false, v.Value, v.Name, Locale.Lookup(v.Info.CivilizationName), sError);
+				-- 条目3.9修复：行实例没有 Button 控件（ButtonData 的 GridButton 无 ID 不进扁平化表，
+				-- 传行实例给 MPT_SetUpLeaderInstanceText 会 nil 索引崩溃），关闭态按钮文本直写——
+				-- 文明名行/错误行走行级扁平化控件（与 ScrollText 同源于 ButtonData），领袖名沿用
+				-- 原版 scrollText/button 二路（scrollText 优先，写入时清空按钮文本）。
+				if(instance.ScrollText_CivName ~= nil) then
+					instance.ScrollText_CivName:SetText(Locale.Lookup(v.Info.CivilizationName));
+					instance.ScrollText_CivName:SetHide(MPT_LEADER_RANDOM_MAP[v.Value] == true);
+				end
+				if(scrollText ~= nil) then
+					scrollText:SetText(v.Name);
+					button:LocalizeAndSetText("");
+				else
+					button:SetText(v.Name);
+				end
+				if(instance.ScrollText_Error ~= nil) then
+					instance.ScrollText_Error:SetHide(sError == nil);
+					if(sError ~= nil) then
+						instance.ScrollText_Error:SetText(sError);
+					end
+				end
 
 				local icons = GetPlayerIcons(v.Domain, v.Value);
 				local playerColor = icons.PlayerColor or "";
