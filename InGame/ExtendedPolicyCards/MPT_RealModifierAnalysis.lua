@@ -1817,7 +1817,9 @@ MPT_ImpactHandlers["EFFECT_ADJUST_BUILDING_PRODUCTION"] = function(tMod, tSubjec
 			return rep ~= nil and rep.ReplacesBuildingType == tMod.Arguments.BuildingType;
 		end
 		if tMod.Arguments.DistrictType ~= nil then
-			return def.DistrictType == tMod.Arguments.DistrictType;
+			-- [MPT 条目21修复] Buildings 表的区域列名是 PrereqDistrict（BUILDING_BARRACKS
+			-- PrereqDistrict="DISTRICT_ENCAMPMENT" 实证）——误读 DistrictType 恒 nil 永不匹配
+			return def.PrereqDistrict == tMod.Arguments.DistrictType;
 		end
 		return true;
 	end);
