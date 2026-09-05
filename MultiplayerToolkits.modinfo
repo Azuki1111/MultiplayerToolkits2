@@ -22,7 +22,7 @@
 		<!-- 修改时间元数据（时间戳）；版本校验指纹以 Version 为准 -->
 		<Created>1786874927</Created>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>125</Version>
+		<Version>126</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢） -->
 	<LocalizedText>
@@ -309,9 +309,9 @@
 			<Properties>
 				<LoadOrder>100010</LoadOrder>
 			</Properties>
-			<File>Shared/PlayerMark/AnDe_Desc_Texture.dds</File>
-			<File>Shared/PlayerMark/HuaMing_Desc_Texture.dds</File>
-			<File>Shared/PlayerMark/QingTian_Desc_Texture.dds</File>
+			<File>Shared/PlayerMark/Textures/AnDe_Desc_Texture.dds</File>
+			<File>Shared/PlayerMark/Textures/HuaMing_Desc_Texture.dds</File>
+			<File>Shared/PlayerMark/Textures/QingTian_Desc_Texture.dds</File>
 		</ImportFiles>
 		<!-- 条目4.5：图标查看器数据表 MPT_IconCollection（移植 EasyIconViewer 5056 图标，仅前端配置库） -->
 		<UpdateDatabase id="FE_IconViewer_Data">
@@ -1239,9 +1239,9 @@
 		<File>Shared/PlayerMark/PlayerMark_zh_Hans_CN.sql</File>
 		<File>Shared/PlayerMark/PlayerMark_en_US.sql</File>
 		<File>Shared/PlayerMark/PlayerMark_Data.sql</File>
-		<File>Shared/PlayerMark/AnDe_Desc_Texture.dds</File>
-		<File>Shared/PlayerMark/HuaMing_Desc_Texture.dds</File>
-		<File>Shared/PlayerMark/QingTian_Desc_Texture.dds</File>
+		<File>Shared/PlayerMark/Textures/AnDe_Desc_Texture.dds</File>
+		<File>Shared/PlayerMark/Textures/HuaMing_Desc_Texture.dds</File>
+		<File>Shared/PlayerMark/Textures/QingTian_Desc_Texture.dds</File>
 		<File>FrontEnd/IconViewer/IconViewer_Data.sql</File>
 		<File>FrontEnd/IconViewer/IconViewer_zh_Hans_CN.sql</File>
 		<File>FrontEnd/IconViewer/IconViewer_en_US.sql</File>
