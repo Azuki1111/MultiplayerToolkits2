@@ -16,6 +16,11 @@
 --     陆续成立万神殿会抬高底价，快照失真导致信仰不足也误弹面板）；
 --   ③OnShutdown 补齐 PantheonFounded/FaithChanged/LaunchBar_OpenReligionPanel 注销（1.65 泄漏）；
 --     新增标识符一律 MPT_ 前缀，原版函数名保持原名（整文件替换，按原名解析）。
+-- 条目32扩展：信条搜索框（移植工坊 3499859427 Team PVP 万神殿选择器 By 千川白浪）——顶部
+--   搜索框按信条名/描述关键词过滤名册（大小写不敏感子串，条目3.9 同款 plain 匹配零模式转义
+--   问题），命中段浅蓝高亮，无结果显示提示；原生集成（XML 直加搜索框控件 + 本文件过滤重建）
+--   替代源 mod 的 LookUpControl 跨上下文注入 + 镜像列表层方案；选中实例跨过滤重建按 Index
+--   重绑（IM 回收仅隐藏不销毁，旧引用安全）；恒启用（名册体验增强，不挂 NO_WAIT_PANTHEON 开关）。
 -- ============================================================================
 
 include("InstanceManager");
@@ -40,6 +45,13 @@ local DATA_FIELD_BELIEF_INDEX:string = "DataField_BeliefIndex";
 local MPT_NoWaitPantheonInUse:boolean = GameConfiguration.GetValue("NO_WAIT_PANTHEON");
 local MPT_InstanceButton:table = {};
 
+-- ============================================================================
+-- 条目32扩展：信条搜索状态（当前关键词，string.upper 归一——大小写不敏感匹配；
+-- EditBox 文本变化回调更新并触发 Realize 过滤重建；占位文本为 XML String 属性不预加载）
+-- ----
+local MPT_SearchText:string = "";
+-- ----
+
 -- ===========================================================================
 --	VARIABLES
 -- ===========================================================================
@@ -49,6 +61,50 @@ local m_pSelectBeliefsIM:table = InstanceManager:new("BeliefSlot", "BeliefButton
 local m_pGameReligion:table = Game.GetReligion();
 
 local m_uiSelectedBeliefInstance:table = nil;
+
+-- ============================================================================
+-- 条目32扩展：搜索匹配与高亮（条目3.9 MPT_LeaderSearch_Highlight 同款算法移植）——
+-- plain=true 字面匹配无模式转义问题（源 mod 的 string.find/gsub 裸 pattern 输入
+-- %.( 等魔法字符会崩，本实现修复），匹配边界由同一字节串的 find 得出，UTF-8 多字节
+-- 序列不会被截断；命中段 [COLOR_LIGHTBLUE] 浅蓝包裹，无搜索/无命中返回原文本。
+-- -------------------------------------------------
+-- MPT_PantheonSearch_Highlight( sText : string ) : string——按 MPT_SearchText 高亮
+-- 用法：Realize 内信条名/描述文本写入前包裹
+-- -------------------------------------------------
+-- MPT_MatchesBeliefSearch( kBeliefDef : table ) : boolean——信条名/描述（本地化后）
+-- 任一命中当前关键词即 true；空搜索恒 true（全量显示）
+-- 用法：Realize 过滤条件
+-- ============================================================================
+function MPT_PantheonSearch_Highlight( sText:string )
+	if (MPT_SearchText == "" or sText == nil or sText == "") then
+		return sText;
+	end
+	local sNeedle:string = MPT_SearchText;
+	local sHaystack:string = string.upper(sText);
+	local tParts:table = {};
+	local nCursor:number = 1;
+	local nStart, nEnd = string.find(sHaystack, sNeedle, nCursor, true);
+	while (nStart ~= nil) do
+		table.insert(tParts, string.sub(sText, nCursor, nStart - 1));
+		table.insert(tParts, "[COLOR_LIGHTBLUE]" .. string.sub(sText, nStart, nEnd) .. "[ENDCOLOR]");
+		nCursor = nEnd + 1;
+		nStart, nEnd = string.find(sHaystack, sNeedle, nCursor, true);
+	end
+	if (nCursor == 1) then
+		return sText;
+	end
+	table.insert(tParts, string.sub(sText, nCursor));
+	return table.concat(tParts);
+end
+
+function MPT_MatchesBeliefSearch( kBeliefDef:table )
+	if MPT_SearchText == "" then
+		return true;
+	end
+	local sName:string = string.upper(Locale.Lookup(kBeliefDef.Name) or "");
+	local sDesc:string = string.upper(Locale.Lookup(kBeliefDef.Description) or "");
+	return string.find(sName, MPT_SearchText, 1, true) ~= nil or string.find(sDesc, MPT_SearchText, 1, true) ~= nil;
+end
 
 -- ============================================================================
 -- 条目32：原版 Realize 只列「当前可选」信条（旧代码整块保留）：
@@ -66,25 +122,44 @@ local m_uiSelectedBeliefInstance:table = nil;
 -- end
 -- 现全量列出万神殿信条（MPT_IsBelief 过滤类别），已被选走（已入某万神殿/宗教）的保留占位并
 -- 置灰禁用，同时缓存实例供 MPT_OnPantheonFounded 在他人成立万神殿时实时禁用。
+-- 条目32扩展：过滤条件加 MPT_MatchesBeliefSearch（搜索关键词过滤），文本写入改
+-- MPT_PantheonSearch_Highlight 包裹（命中段高亮）；选中实例跨重建按 Index 重绑——
+-- 搜索过滤后选中信条仍在结果中则恢复选中显示，被过滤掉则保留选中数据（确认按钮仍可用，
+-- 换选时对旧隐藏实例 SetSelected 安全：IM 回收仅隐藏不销毁）；重建后按结果数刷新无匹配提示。
 -- ----
 function Realize()
 
 	-- Update available pantheon beliefs
 	m_pSelectBeliefsIM:ResetInstances();
+
+	-- 条目32扩展：选中实例重绑锚点（重建前记录选中 Index）
+	local m_iSelectedIndex:number = nil;
+	if m_uiSelectedBeliefInstance ~= nil then
+		m_iSelectedIndex = m_uiSelectedBeliefInstance[DATA_FIELD_BELIEF_INDEX];
+	end
+
+	local instanceCount:number = 0;
 	for row in GameInfo.Beliefs() do
-		if MPT_IsBelief(row) then
+		if MPT_IsBelief(row) and MPT_MatchesBeliefSearch(row) then
 			local beliefInst:table = m_pSelectBeliefsIM:GetInstance();
 			beliefInst[DATA_FIELD_BELIEF_INDEX] = row.Index;
-			beliefInst.BeliefLabel:LocalizeAndSetText(Locale.ToUpper(row.Name));
-			beliefInst.BeliefDescription:LocalizeAndSetText(row.Description);
+			beliefInst.BeliefLabel:LocalizeAndSetText(MPT_PantheonSearch_Highlight(Locale.ToUpper(row.Name)));
+			beliefInst.BeliefDescription:LocalizeAndSetText(MPT_PantheonSearch_Highlight(row.Description));
 			SetBeliefIcon(beliefInst.BeliefIcon, row.BeliefType, SIZE_BELIEF_ICON_LARGE);
+			if (m_iSelectedIndex ~= nil and row.Index == m_iSelectedIndex) then
+				m_uiSelectedBeliefInstance = beliefInst;	-- 条目32扩展：选中信条在过滤结果中，重绑实例引用
+			end
 			beliefInst.BeliefButton:SetSelected(beliefInst == m_uiSelectedBeliefInstance);
 			beliefInst.BeliefButton:RegisterCallback( Mouse.eLClick, function() OnBeliefSelected(beliefInst); end );
 			beliefInst.BeliefButton:RegisterCallback( Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end );
 			beliefInst.BeliefButton:SetDisabled( not CanSelectBelief(row) );		-- 条目32：已被他人选走（已入某万神殿/宗教）的信条置灰禁用
 			MPT_InstanceButton[row] = beliefInst;								-- 条目32：缓存实例，供 MPT_OnPantheonFounded 实时禁用
+			instanceCount = instanceCount + 1;
 		end
 	end
+
+	-- 条目32扩展：搜索无结果提示（仅搜索态且零结果显示；清空搜索恢复全量即隐）
+	Controls.MPT_NoMatchLabel:SetHide(not (MPT_SearchText ~= "" and instanceCount == 0));
 
 	RealizeCurrentSelection();
 end
@@ -334,6 +409,22 @@ function LateInitialize()
 	Controls.CancelButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end); 
 
 	Controls.PantheonChooserSlideAnim:RegisterEndCallback( OnAnimEnd );
+
+	-- ============================================================================
+	-- 条目32扩展：信条搜索框接线（控件回调随面板上下文存续无需注销；占位文本显隐同
+	-- 条目4.5 搜索框惯例——聚焦即隐、失焦按内容恢复；文本变化即过滤重建名册）
+	Controls.MPT_SearchEditBox:RegisterStringChangedCallback(function()
+		MPT_SearchText = string.upper(Controls.MPT_SearchEditBox:GetText() or "");
+		Controls.MPT_SearchPlaceholder:SetHide(MPT_SearchText ~= "");
+		Realize();
+	end);
+	Controls.MPT_SearchEditBox:RegisterHasFocusCallback(function()
+		Controls.MPT_SearchPlaceholder:SetHide(true);
+	end);
+	Controls.MPT_SearchEditBox:RegisterLostFocusCallback(function()
+		Controls.MPT_SearchPlaceholder:SetHide((Controls.MPT_SearchEditBox:GetText() or "") ~= "");
+	end);
+	-- ----
 
 	-- ============================================================================
 	-- 条目32：他人成立万神殿 → 实时禁用被抢信条；「万神殿不排队」开启时挂宗教按钮点击

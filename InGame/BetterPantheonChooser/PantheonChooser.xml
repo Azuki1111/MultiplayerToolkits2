@@ -38,6 +38,16 @@
             <Image Texture="Religion_BraceDeco" Anchor="L,C" Offset="-16,0" FlipX="1"/>
             <Grid Anchor="R,C" AnchorSide="O,I" Offset="-5,0" Size="14,parent-4" Texture="Religion_Brace" SliceCorner="0,24" SliceSize="14,120" SliceTextureSize="14,166"/>
             <Image Texture="Religion_BraceDeco" Anchor="R,C" Offset="-16,0"/>
+
+            <!-- 条目32优化：信条搜索框（移植工坊 3499859427 Team PVP 万神殿选择器的搜索功能，
+                 原生集成替代其跨上下文注入+镜像层方案；控件惯例同条目4.5/3.9：Controls_Search2 底纹
+                 + EditBox CallOnChar 逐字过滤 + 灰色占位 Label 按焦点/内容显隐；过滤匹配见 Lua）：
+            -->
+            <Grid ID="MPT_SearchGrid" Texture="Controls_Search2" SliceCorner="30,13" SliceTextureSize="41,26" Anchor="C,B" Offset="0,8" Size="320,26">
+              <EditBox ID="MPT_SearchEditBox" Style="FontNormal16" Anchor="L,C" Offset="24,0" Size="parent-10,16" MaxLength="40" String="" ToolTip="LOC_MPT_PANTHEON_SEARCH_TT" CallOnChar="1"/>
+              <!-- 占位文本（Label 不吃鼠标事件；Lua 按焦点/内容控制显隐，同 4.5 搜索框惯例） -->
+              <Label ID="MPT_SearchPlaceholder" Anchor="L,C" Offset="24,0" Style="FontNormal16" Color="GreatPeopleRow" String="LOC_MPT_PANTHEON_SEARCH_NAME"/>
+            </Grid>
           </Grid>
         </Image>
 
@@ -54,6 +64,8 @@
             <ScrollPanel Anchor="L,T" Offset="10,10" Size="auto,parent-20" AutoSizePadding="2,0" Style="ScrollPanelWithRightBar">
               <Stack ID="BeliftStack" Anchor="C,T" StackGrowth="Right" WrapWidth="parent" WrapGrowth="Down"/>
             </ScrollPanel>
+            <!-- 条目32优化：搜索无结果提示（Lua 按搜索态+实例数显隐；Label 不吃鼠标事件不影响列表区） -->
+            <Label ID="MPT_NoMatchLabel" Anchor="C,C" Style="FontFlair14" Color="GreatPeopleRow" String="LOC_MPT_PANTHEON_SEARCH_NOMATCH" Hidden="1"/>
           </Grid>
         </Grid>
 
