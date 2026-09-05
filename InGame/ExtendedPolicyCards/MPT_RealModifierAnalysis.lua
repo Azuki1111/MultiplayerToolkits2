@@ -1781,37 +1781,52 @@ local function MPT_GetDefEra(def:table)
 	return nil;
 end
 
--- 1/9 组：单位生产力（精确 + 文明替代单位）
+-- 1/9 组：单位生产力（精确 + 文明替代单位；UnitType nil = 全单位兜底）
 MPT_ImpactHandlers["EFFECT_ADJUST_UNIT_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
 	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
 		if sKind ~= "UNIT" then return false; end
+		if tMod.Arguments.UnitType == nil then return true; end
 		if def.UnitType == tMod.Arguments.UnitType then return true; end
 		local rep:table = GameInfo.UnitReplaces[def.UnitType];
 		return rep ~= nil and rep.ReplacesUnitType == tMod.Arguments.UnitType;
 	end);
 end;
--- 兵种+时代生产力（最多使用）：PromotionClass 匹配 + PrereqTech 时代匹配（NO_ERA 不限时代）
+-- 兵种+时代生产力（最多使用，131 modifier 全为此形态）：PromotionClass 匹配 + PrereqTech 时代
+-- 匹配（NO_ERA/nil 不限时代/兵种）
 MPT_ImpactHandlers["EFFECT_ADJUST_UNIT_TAG_ERA_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
 	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
-		if sKind ~= "UNIT" or def.PromotionClass ~= tMod.Arguments.UnitPromotionClass then return false; end
+		if sKind ~= "UNIT" then return false; end
+		if tMod.Arguments.UnitPromotionClass ~= nil and def.PromotionClass ~= tMod.Arguments.UnitPromotionClass then return false; end
 		local sEra:string = tMod.Arguments.EraType;
 		if sEra == nil or sEra == "NO_ERA" then return true; end
-		return MPT_GetDefEra(def) == sEra;
+		-- [MPT 条目21修复] 无 PrereqTech/PrereqCivic 的单位是远古开局单位（勇士/投石手等），
+		-- 时代按 ERA_ANCIENT 兜底——否则斯巴达教育等卡对远古单位永不匹配（实测漏加成）
+		local sDefEra:string = MPT_GetDefEra(def) or "ERA_ANCIENT";
+		return sDefEra == sEra;
 	end);
 end;
--- 建筑生产力（含文明替代建筑）
+-- 建筑生产力：两种参数形态（全游戏 40 modifier 实查）——BuildingType 精确（22，含文明替代）
+-- / DistrictType 该区域全部建筑（12，如经验卡「军营、港口和这些区域中的建筑」）；两者皆 nil
+-- = 全建筑（6，城邦类）。替代建筑在 Buildings 表同区域列，DistrictType 形态天然覆盖
 MPT_ImpactHandlers["EFFECT_ADJUST_BUILDING_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
 	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
 		if sKind ~= "BUILDING" then return false; end
-		if def.BuildingType == tMod.Arguments.BuildingType then return true; end
-		local rep:table = GameInfo.BuildingReplaces[def.BuildingType];
-		return rep ~= nil and rep.ReplacesBuildingType == tMod.Arguments.BuildingType;
+		if tMod.Arguments.BuildingType ~= nil then
+			if def.BuildingType == tMod.Arguments.BuildingType then return true; end
+			local rep:table = GameInfo.BuildingReplaces[def.BuildingType];
+			return rep ~= nil and rep.ReplacesBuildingType == tMod.Arguments.BuildingType;
+		end
+		if tMod.Arguments.DistrictType ~= nil then
+			return def.DistrictType == tMod.Arguments.DistrictType;
+		end
+		return true;
 	end);
 end;
--- 区域生产力（含文明替代区域）
+-- 区域生产力（含文明替代区域；DistrictType nil = 全区域兜底）
 MPT_ImpactHandlers["EFFECT_ADJUST_DISTRICT_PRODUCTION"] = function(tMod, tSubject, sSubjectType)
 	return MPT_ImpactProduction(tMod, tSubject, sSubjectType, function(def, sKind)
 		if sKind ~= "DISTRICT" then return false; end
+		if tMod.Arguments.DistrictType == nil then return true; end
 		if def.DistrictType == tMod.Arguments.DistrictType then return true; end
 		local rep:table = GameInfo.DistrictReplaces[def.DistrictType];
 		return rep ~= nil and rep.ReplacesDistrictType == tMod.Arguments.DistrictType;
