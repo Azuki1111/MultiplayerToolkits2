@@ -4017,7 +4017,9 @@ function UpdateCustomButtonsState()
 	local hideButtons : boolean = not Network.IsGameHost() or GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud();
 	Controls.AISlotsButton:SetHide(hideButtons);
 	Controls.RandomTeamButton:SetHide(hideButtons);
-	Controls.ModRecheckButton:SetHide(hideButtons);
+	-- 联机工具箱2.0 条目4.1修复：mod 版本校验功能暂停（多人倒计时结束崩溃，见条目4.1分区头注），重新校验按钮恒隐藏
+	-- Controls.ModRecheckButton:SetHide(hideButtons);
+	Controls.ModRecheckButton:SetHide(true);
 end
 
 -- ============================================================================
@@ -4524,7 +4526,7 @@ function UpdateNetConnectionIcon(playerID :number, connectIcon, pingLabel)
 end
 
 -- ============================================================================
--- 多人游戏 mod 版本校验（条目4.1）
+-- 多人游戏 mod 版本校验（条目4.1）【功能暂停：条目4.1修复，多人倒计时结束崩溃，见 MPT_IsCheckActive 头注】
 -- 校验清单：SQL 注册表 MPT_ModCheck（前端配置库，见 FrontEnd/ModCheck/ModCheck_Data.sql），
 --      各 mod 自行登记 modId（opt-in）；房主广播 注册表∩已启用 的 modId 与版本指纹。
 --      「重新校验」按钮强制全员重新回报。条目4.1调整：版本不一致/未回报仅显示整行红底
@@ -4723,6 +4725,9 @@ end
 -- 调用点：「重新校验」按钮 / 接管房主 / 首次进房（tick 驱动）。
 -------------------------------------------------
 function MPT_PublishCheckList()
+	if not MPT_IsCheckActive() then
+		return;	-- 条目4.1修复：功能暂停（总开关），拦截「重新校验」按钮等 tick 外直调路径
+	end
 	if not Network.IsGameHost() then
 		return;
 	end
@@ -4926,12 +4931,20 @@ end
 -------------------------------------------------
 -- MPT_IsCheckActive
 -- 功能总开关：热座/PBC 不启用（value 通道在 PBC 行为未验证），退房后停止。
+-- 条目4.1修复（功能暂停）：多人房准备倒计时结束（Network.LaunchGame 启动序列化期）游戏崩溃，
+-- 怀疑本功能的 BroadcastPlayerInfo/SetValue 落在「倒计时归零→房间隐藏」的未设防窗口——
+-- 此刻网络会话仍活跃、房间 ContextPtr 尚未隐藏，tick 的可见性门拦不住；单人房无远程对端
+-- 不复现。经用户裁决先整体暂停运行时以定位：本开关恒 false，tick 全链（发布/回报/对账/
+-- 比对）与 MPT_PublishCheckList 直调（重新校验按钮）一并停摆；恢复 = 删除下面这行 return。
 -------------------------------------------------
 function MPT_IsCheckActive()
+	return false;	-- 条目4.1修复：多人倒计时结束崩溃，功能整体暂停（见头注）
+	--[[
 	if GameConfiguration.IsHotseat() or GameConfiguration.IsPlayByCloud() then
 		return false;
 	end
 	return Network.IsInSession();
+	--]]
 end
 
 -------------------------------------------------
