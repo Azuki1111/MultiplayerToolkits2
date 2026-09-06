@@ -20,7 +20,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>154</Version>
+		<Version>155</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢；版本号/GUID 元数据见 FrontEnd/Text/ModMeta_Data.sql） -->
 	<LocalizedText>
@@ -132,6 +132,14 @@
 			<ConfigurationValueMatches>
 				<Group>Game</Group>
 				<ConfigurationId>MPT_SAVE_SETTLER</ConfigurationId>
+				<Value>1</Value>
+			</ConfigurationValueMatches>
+		</Criteria>
+		<!-- 条目34：反作弊监控开关（高级选项 MPT_HASH_CHECK，默认关；criteria 同时门控 FE 的 GameCores 重定向与 IG 的监测面板，条目34 实证 FE 侧 criteria 同样生效） -->
+		<Criteria id="MPT_HASH_CHECK">
+			<ConfigurationValueMatches>
+				<Group>Game</Group>
+				<ConfigurationId>MPT_HASH_CHECK</ConfigurationId>
 				<Value>1</Value>
 			</ConfigurationValueMatches>
 		</Criteria>
@@ -465,6 +473,28 @@
 			</Properties>
 			<File>InGame/SaveSettler/SaveSettler_zh_Hans_CN.sql</File>
 			<File>InGame/SaveSettler/SaveSettler_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目34：反作弊监控参数（高级选项布尔 MPT_HASH_CHECK；本 action 不门控，保证开关在高级选项恒可见） -->
+		<UpdateDatabase id="FE_HashCheck_Config">
+			<Properties>
+				<LoadOrder>10</LoadOrder>
+			</Properties>
+			<File>InGame/HashCheck/Config_HashCheck.xml</File>
+		</UpdateDatabase>
+		<!-- 条目34：反作弊监控 GameCore 重定向（GameCores DllPrefix → 本 mod 钩子 DLL；criteria 门控不勾选不写入不加载，DLL 零加载） -->
+		<UpdateDatabase id="FE_HashCheck_GameCores" criteria="MPT_HASH_CHECK">
+			<Properties>
+				<LoadOrder>50</LoadOrder>
+			</Properties>
+			<File>InGame/HashCheck/HashCheck_GameCores.sql</File>
+		</UpdateDatabase>
+		<!-- 条目34：反作弊监控文本（参数名/描述 FE 设置界面消费；同文件 IG 侧再注册一次，条目33 双环境先例） -->
+		<UpdateText id="FE_HashCheck_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/HashCheck/HashCheck_zh_Hans_CN.sql</File>
+			<File>InGame/HashCheck/HashCheck_en_US.sql</File>
 		</UpdateText>
 	</FrontEndActions>
 	<InGameActions>
@@ -1186,6 +1216,26 @@
 			<File>InGame/SaveSettler/SaveSettler_zh_Hans_CN.sql</File>
 			<File>InGame/SaveSettler/SaveSettler_en_US.sql</File>
 		</UpdateText>
+		<!-- 条目34：反作弊监测面板文本（面板 UI 消费侧注册 + 同文件 FE 侧注册；criteria 门控不勾选零加载） -->
+		<UpdateText id="IG_HashCheck_Text" criteria="MPT_HASH_CHECK">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/HashCheck/HashCheck_zh_Hans_CN.sql</File>
+			<File>InGame/HashCheck/HashCheck_en_US.sql</File>
+		</UpdateText>
+		<!-- 条目34：反作弊监测面板（空 Context AddUserInterfaces，入口=条目8 QuickPanel「反作弊监测」按钮；criteria 门控不勾选零加载） -->
+		<AddUserInterfaces id="IG_MPT_HashCheckUI" criteria="MPT_HASH_CHECK">
+			<Properties>
+				<LoadOrder>900</LoadOrder>
+				<Context>InGame</Context>
+			</Properties>
+			<File>InGame/HashCheck/MPT_HashCheckUI.xml</File>
+		</AddUserInterfaces>
+		<!-- 条目34：反作弊监测面板脚本（与 XML 同名自动执行；criteria 门控不勾选零加载） -->
+		<ImportFiles id="IG_MPT_HashCheckUI_Import" criteria="MPT_HASH_CHECK">
+			<File>InGame/HashCheck/MPT_HashCheckUI.lua</File>
+		</ImportFiles>
 	</InGameActions>
 	<!-- 包含文件：随功能条目落地逐步登记 -->
 	<Files>
@@ -1357,5 +1407,13 @@
 		<File>InGame/SaveSettler/SaveSettler_Gameplay.lua</File>
 		<File>InGame/SaveSettler/SaveSettler_zh_Hans_CN.sql</File>
 		<File>InGame/SaveSettler/SaveSettler_en_US.sql</File>
+		<!-- 条目34：反作弊监控（参数/GameCores 重定向/监测面板/文本/钩子 DLL） -->
+		<File>InGame/HashCheck/Config_HashCheck.xml</File>
+		<File>InGame/HashCheck/HashCheck_GameCores.sql</File>
+		<File>InGame/HashCheck/MPT_HashCheckUI.xml</File>
+		<File>InGame/HashCheck/MPT_HashCheckUI.lua</File>
+		<File>InGame/HashCheck/HashCheck_zh_Hans_CN.sql</File>
+		<File>InGame/HashCheck/HashCheck_en_US.sql</File>
+		<File>InGame/HashCheck/Binaries/Win64/GameCore_XP2_Mz_FinalRelease.dll</File>
 	</Files>
 </Mod>
