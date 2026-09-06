@@ -18,7 +18,7 @@ VALUES
 	('LOC_MPT_SETTINGS_BER_TT',				'zh_Hans_CN',	'在大将军下面显示所属时代标签'),
 	('LOC_MPT_SETTINGS_NDR_NAME',			'zh_Hans_CN',	'交易声音提醒'),
 	('LOC_MPT_SETTINGS_NDR_TT',				'zh_Hans_CN',	'其他玩家与您进行交易或发出外交请求时会响铃提示'),
-	('LOC_MPT_SETTINGS_GPR_NAME',			'zh_Hans_CN',	'他人招募伟人通知'),
+	('LOC_MPT_SETTINGS_GPR_NAME',			'zh_Hans_CN',	'招募伟人通知'),
 	('LOC_MPT_SETTINGS_GPR_TT',				'zh_Hans_CN',	'其他玩家招募伟人时向您发送通知'),
 	('LOC_MPT_SETTINGS_CSB_NAME',			'zh_Hans_CN',	'恢复城市远程攻击按钮位置'),
 	('LOC_MPT_SETTINGS_CSB_TT',				'zh_Hans_CN',	'将城市远程攻击按钮位置恢复到原版状态');

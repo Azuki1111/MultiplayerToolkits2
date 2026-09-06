@@ -20,4 +20,4 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_WORLD_TRACKER_HEADER', 'zh_Hans_CN', '联机工具箱'),
 -- 条目36扩展：顶栏真人玩家计数（初值为图标占位，进面板即由 Lua 刷新为真人数）
 ('LOC_MPT_FE_AMOUNT_NAME', 'zh_Hans_CN', '[icon_Global]'),
-('LOC_MPT_FE_AMOUNT_TOOLTIP', 'zh_Hans_CN', '当前房间真人玩家数（含自己）');
+('LOC_MPT_FE_AMOUNT_TOOLTIP', 'zh_Hans_CN', '房间玩家数');

@@ -16,7 +16,12 @@ CREATE TABLE IF NOT EXISTS MPT_TimerTiers (
 
 INSERT OR REPLACE INTO MPT_TimerTiers (Turn, Time)
 VALUES 
-	(0, 30),
-	(30, 60),
-	(50, 90),
-	(70, 180);
+	(0, 20),
+	(8, 30),
+	(15, 40),
+	(20, 50),
+	(30, 75),
+	(35, 100),
+	(50, 140),
+	(70, 180),
+	(90, 220);

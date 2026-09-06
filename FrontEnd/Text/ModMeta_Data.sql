@@ -5,5 +5,5 @@
 -- LOC_MPT_MOD_ID = 本 mod GUID（供 Lua Locale.Lookup 查取，不参与显示）
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
-('LOC_MPT_FE_VERSION', 'en_US', '2.0.2'),
+('LOC_MPT_FE_VERSION', 'en_US', '2.1.1'),
 ('LOC_MPT_MOD_ID', 'en_US', '00000000-7369-4685-ab5f-bf77bc22b54e');

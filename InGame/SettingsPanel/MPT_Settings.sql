@@ -42,11 +42,11 @@ CREATE TABLE IF NOT EXISTS MPT_Settings (
 INSERT OR REPLACE INTO MPT_Settings
 		(ParameterId,								String,								ToolTip,								DefaultValue)
 VALUES
-		("ForcedEndButton_Show",					"LOC_MPT_SETTINGS_SHOW_FEB_NAME",	"LOC_MPT_SETTINGS_SHOW_FEB_TT",			0),
+		("ForcedEndButton_Show",					"LOC_MPT_SETTINGS_SHOW_FEB_NAME",	"LOC_MPT_SETTINGS_SHOW_FEB_TT",				1),
 		("NotificationPanel_QuickClear",			"LOC_MPT_SETTINGS_NOC_DISABLE_NAME",	"LOC_MPT_SETTINGS_NOC_DISABLE_TT",		0),
-		("DiplomacyRibbon_PlayerInfo_PlayerName",	"LOC_MPT_SETTINGS_DPR_PNAME_NAME",	"LOC_MPT_SETTINGS_DPR_PNAME_TT",		1),
-		("DiplomacyRibbon_PlayerInfo_CiviName",		"LOC_MPT_SETTINGS_DPR_CNAME_NAME",	"LOC_MPT_SETTINGS_DPR_CNAME_TT",		1),
-		("GreatGeneralEraReminder_Show",			"LOC_MPT_SETTINGS_BER_NAME",		"LOC_MPT_SETTINGS_BER_TT",			1),
-		("NotificationPanel_DealRemind",			"LOC_MPT_SETTINGS_NDR_NAME",		"LOC_MPT_SETTINGS_NDR_TT",			1),
-		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",			1),
-		("CityStrikeButton_Back",					"LOC_MPT_SETTINGS_CSB_NAME",		"LOC_MPT_SETTINGS_CSB_TT",			0);
+		("DiplomacyRibbon_PlayerInfo_PlayerName",	"LOC_MPT_SETTINGS_DPR_PNAME_NAME",	"LOC_MPT_SETTINGS_DPR_PNAME_TT",			1),
+		("DiplomacyRibbon_PlayerInfo_CiviName",		"LOC_MPT_SETTINGS_DPR_CNAME_NAME",	"LOC_MPT_SETTINGS_DPR_CNAME_TT",			1),
+		("GreatGeneralEraReminder_Show",			"LOC_MPT_SETTINGS_BER_NAME",		"LOC_MPT_SETTINGS_BER_TT",					1),
+		("NotificationPanel_DealRemind",			"LOC_MPT_SETTINGS_NDR_NAME",		"LOC_MPT_SETTINGS_NDR_TT",					1),
+		("NotificationPanel_GreatPersonRecruited",	"LOC_MPT_SETTINGS_GPR_NAME",		"LOC_MPT_SETTINGS_GPR_TT",					1),
+		("CityStrikeButton_Back",					"LOC_MPT_SETTINGS_CSB_NAME",		"LOC_MPT_SETTINGS_CSB_TT",					0);

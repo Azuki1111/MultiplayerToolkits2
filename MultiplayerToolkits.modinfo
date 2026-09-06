@@ -25,8 +25,8 @@
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢；版本号/GUID 元数据见 FrontEnd/Text/ModMeta_Data.sql） -->
 	<LocalizedText>
 		<Text id="LOC_MPT_FE_NAME">
-			<en_US>Multiplayer [COLOR:ResGoldLabelCS]Toolkits 2.0.2[ENDCOLOR]</en_US>
-			<zh_Hans_CN>Team PVP Toolkits [COLOR:ResGoldLabelCS]联机工具箱 2.0.2[ENDCOLOR]</zh_Hans_CN>
+			<en_US>Multiplayer [COLOR:ResGoldLabelCS]Toolkits 2.1.1[ENDCOLOR]</en_US>
+			<zh_Hans_CN>Team PVP Toolkits [COLOR:ResGoldLabelCS]联机工具箱 2.1.1[ENDCOLOR]</zh_Hans_CN>
 		</Text>
 		<Text id="LOC_MPT_FE_DESCRIPTION">
 			<en_US>[ICON_Bolt][COLOR:ResGoldLabelCS]Multiplayer Toolkits[ENDCOLOR]
