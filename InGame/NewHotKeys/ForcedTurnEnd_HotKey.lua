@@ -1,8 +1,12 @@
 -- ===========================================================================
 -- 条目28：强制结束回合热键（从 1.65 NHK/UI/TurnTime_HotKey.lua 拆出强制结束回合段；
--- 条目20 已移植其 ]/[ 加减时与 P++/P-- 按钮，本文件只承载 Shift+F 自动强制结束模式）
+-- 条目20 已移植其 ]/[ 加减时与 P++/P-- 按钮，本文件承载两支热键）
 --
--- 功能：Shift+F 切换自动强制结束模式（多人局有效，1.65 原样门控 IsAnyMultiplayer）：
+-- 功能一 Shift+T 单次强制结束回合（条目28扩展二，用户裁决；ActionId 本 mod 自造）：
+--   按一次 ACTION_ENDTURN(UserForced) 立即强制结束本回合（等同条目12 FEB 按钮左键），
+--   不进自动模式、不限多人、无黑边提示
+-- 功能二 Shift+F 自动强制结束模式（原「强制结束回合」更名「自动强制结束回合」以区分；
+--   多人局有效，1.65 原样门控 IsAnyMultiplayer）：
 --   开启 → 立即 ACTION_ENDTURN(REASON="UserForced") 强制结束当前回合，屏幕四角压黑提示；
 --   之后每次本地回合开始若模式仍开则高频重复强制结束（GameCoreEventPublishComplete
 --   tick 计数节流），直到再按 Shift+F 关闭（ACTION_UNREADYTURN 取消结束状态）；
@@ -23,6 +27,7 @@
 --   与 1.65 兼容，原 Disable_TPT 让位门控废止；不受「更多快捷键」开关影响）
 -- ===========================================================================
 
+local m_ForceEndTurnOnceActionId : number = Input.GetActionId("HotKey_MPT_ForceEndTurnOnce");
 local m_ForcedTurnEndActionId : number = Input.GetActionId("HotKey_TPT_ForcedTurnEnd");
 
 local CanForcedTurnEnd : boolean = false		-- 自动强制结束模式开关
@@ -95,6 +100,12 @@ end
 -- 输入分发：Shift+F 切换自动强制结束模式（多人局有效，1.65 原样门控）
 -- ===========================================================================
 local function OnInputActionTriggered(actionId : number)
+	-- Shift+T：单次强制结束（条目28扩展二；等同 FEB 左键语义，单机多人均可用）
+	if actionId == m_ForceEndTurnOnceActionId then
+		UI.RequestAction(ActionTypes.ACTION_ENDTURN, { REASON = "UserForced" });
+		return
+	end
+	-- Shift+F：切换自动强制结束模式
 	if actionId == m_ForcedTurnEndActionId then
 		if IsMultiplayer then
 			ToggleForcedTurnEnd()

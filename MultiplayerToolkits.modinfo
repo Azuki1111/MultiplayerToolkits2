@@ -20,7 +20,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>153</Version>
+		<Version>154</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢；版本号/GUID 元数据见 FrontEnd/Text/ModMeta_Data.sql） -->
 	<LocalizedText>
@@ -406,7 +406,7 @@
 			</Properties>
 			<File>InGame/NewHotKeys/Config_NewHotKeys.xml</File>
 		</UpdateDatabase>
-		<!-- 条目28：NHK 快捷键注册（20 动作单文件，ActionId 沿用 1.65/CHS 原名，前后端各一次） -->
+		<!-- 条目28：NHK 快捷键注册（21 动作单文件，ActionId 沿用 1.65/CHS 原名 + 本 mod 自造 MPT 名，前后端各一次） -->
 		<UpdateDatabase id="FE_NHK_Input">
 			<Properties>
 				<LoadOrder>10</LoadOrder>

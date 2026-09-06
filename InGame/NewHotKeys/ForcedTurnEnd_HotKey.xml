@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
 条目28：强制结束回合热键上下文（从 1.65 NHK/UI/TurnTime_HotKey.xml 拆出强制结束回合段；
-条目20 已移植其 ]/[ 加减时热键与聊天框旁加减时两按钮，本上下文只承载 Shift+F 自动强制结束模式）。
+条目20 已移植其 ]/[ 加减时热键与聊天框旁加减时两按钮，本上下文承载两支热键：
+Shift+T 单次强制结束（条目28扩展二）+ Shift+F 自动强制结束模式切换）。
 AlphaIn 四角黑边动画 LateInitialize 时 ChangeParent 挂到 /InGame/WorldInput
 （强制结束模式激活时屏幕四周压黑 + 文字提示，1.65 原样）。
 脚本为同名 ForcedTurnEnd_HotKey.lua（AddUserInterfaces 迷你上下文 + ImportFiles 同名 Lua

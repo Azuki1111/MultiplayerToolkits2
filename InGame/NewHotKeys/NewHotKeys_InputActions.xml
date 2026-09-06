@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
 条目28：更多快捷键（NHK）键位注册——移植 1.65 NHK 四个 Config_*.xml + SQL/QueriesConfiguration.sql，
-	并入 CHS-PVP（工坊 3037861572）扩展单位热键，20 个动作合并在单一文件（优化：1.65 分散 5 处；
-	条目28扩展 +2：删除地貌 ExtraHotkeysRemoveFeature/收获资源 ExtraHotkeysHarvestResource）。
+	并入 CHS-PVP（工坊 3037861572）扩展单位热键，21 个动作合并在单一文件（优化：1.65 分散 5 处；
+	条目28扩展 +2：删除地貌 ExtraHotkeysRemoveFeature/收获资源 ExtraHotkeysHarvestResource；
+	条目28扩展二 +1：单次强制结束 HotKey_MPT_ForceEndTurnOnce，本 mod 自造 ActionId）。
 键位以 1.65 为准（用户裁决），两源重合且键位不同的动作（升级/晋升/取消）取 1.65 键位；
 CHS 专属且与 1.65 冲突的改键：编队 Shift+E 改 Ctrl+Shift+E（让位升级）、唤醒 Shift+W 改
 Ctrl+Shift+W（让位随机晋升）、组建军团 Shift+F 改 Shift+C（让位强制结束回合，Corps 首字母助记）。
@@ -39,7 +40,9 @@ Corps/Army/Wake/Teleport 沿用 CHS 选用的原版 LOC tag（官方多语言现
 		<InsertOrIgnore ActionId="ExtraHotkeysRemoveFeature" Name="LOC_MPT_NHK_REMOVE_FEATURE_NAME" Description="LOC_MPT_NHK_REMOVE_FEATURE_DESC" CategoryId="UNIT" ContextId="World"/>
 		<InsertOrIgnore ActionId="ExtraHotkeysHarvestResource" Name="LOC_MPT_NHK_HARVEST_NAME" Description="LOC_MPT_NHK_HARVEST_DESC" CategoryId="UNIT" ContextId="World"/>
 		<InsertOrIgnore ActionId="HotKey_TPT_FastPromote" Name="LOC_FAST_PROMOTE_NAME" Description="LOC_FAST_PROMOTE_DESC" CategoryId="UNIT" ContextId="World"/>
-		<!-- 强制结束回合（Lua 消费：ForcedTurnEnd_HotKey 迷你上下文；条目12 FEB 右键预留点对接同一事件） -->
+		<!-- 单次强制结束回合（条目28扩展二，用户裁决：只触发一次不进自动模式；Lua 消费：ForcedTurnEnd_HotKey） -->
+		<InsertOrIgnore ActionId="HotKey_MPT_ForceEndTurnOnce" Name="LOC_MPT_NHK_FORCE_END_ONCE_NAME" Description="LOC_MPT_NHK_FORCE_END_ONCE_DESC" CategoryId="ONLINE" ContextId="World"/>
+		<!-- 自动强制结束回合（原「强制结束回合」条目28扩展二更名以区分；切换自动模式，Lua 消费：ForcedTurnEnd_HotKey 迷你上下文；条目12 FEB 右键预留点对接同一事件） -->
 		<InsertOrIgnore ActionId="HotKey_TPT_ForcedTurnEnd" Name="LOC_TURNTIME_FORCED_TURNEND_NAME" Description="LOC_TURNTIME_FORCED_TURNEND_DESCRIPTION" CategoryId="ONLINE" ContextId="World"/>
 		<!-- 伟人自动招募（Lua 消费：AutoRecruit_GreatPerson_HotKey 迷你上下文） -->
 		<InsertOrIgnore ActionId="HotKey_TPT_AutoRecruit" Name="LOC_HOTKEY_AUTO_RECRUIT_NAME" Description="LOC_HOTKEY_AUTO_RECRUIT_DESCRIPTION" CategoryId="UI" ContextId="World"/>
@@ -68,6 +71,8 @@ Corps/Army/Wake/Teleport 沿用 CHS 选用的原版 LOC tag（官方多语言现
 		<InsertOrIgnore ActionId="ExtraHotkeysHarvestResource" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_B"/>
 		<!-- 随机晋升 Shift+W / 强制结束回合 Shift+F / 自动招募 Shift+K（1.65 键位） -->
 		<InsertOrIgnore ActionId="HotKey_TPT_FastPromote" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_W"/>
+		<!-- 单次强制结束 Shift+T（T 原版是科技树，Shift+T 原版/1.65/CHS 零占用） -->
+		<InsertOrIgnore ActionId="HotKey_MPT_ForceEndTurnOnce" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_T"/>
 		<InsertOrIgnore ActionId="HotKey_TPT_ForcedTurnEnd" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_F"/>
 		<InsertOrIgnore ActionId="HotKey_TPT_AutoRecruit" Index="0" GestureType="KBMouse" GestureData="LOC_OPTIONS_KEY_SHIFT+LOC_OPTIONS_KEY_K"/>
 		<!-- 地图钉：发坐标 Shift+Y / 建钉 Shift+A / 删钉 Shift+D / 显隐 Shift+M（1.65 键位） -->
