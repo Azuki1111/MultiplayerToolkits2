@@ -10,6 +10,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_FE_CHANGELOG_TITLE', 'zh_Hans_CN', '更新公告'),
 ('LOC_MPT_FE_CHANGELOG_CURRENT', 'zh_Hans_CN', '（当前版本）'),
 -- 公告内容（2.0.1 / 2026-09-05 与 2.0.0 / 2026-08-10，对应 Changelog_Data.sql 种子数据）
+('LOC_MPT_CHANGELOG_2_1_1_1', 'zh_Hans_CN', '修复了内存溢出Bug'),
 ('LOC_MPT_CHANGELOG_2_0_1_1', 'zh_Hans_CN', '模组版本不一致不再影响玩家准备与开局，仅显示红底提示（房主可用「重新校验」按钮强制全员重新回报）'),
 ('LOC_MPT_CHANGELOG_2_0_0_1', 'zh_Hans_CN', '联机房间玩家名长度上限由22提升至45'),
 ('LOC_MPT_CHANGELOG_2_0_0_2', 'zh_Hans_CN', '房间玩家槽位上限提升至20，并新增快捷打开/关闭全部AI槽位按钮'),
