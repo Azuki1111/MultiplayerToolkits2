@@ -132,50 +132,6 @@ local function MPT_AutoUpdate_UpdateSelf()
 end
 
 -- ============================================================================
--- 条目36扩展：反推本房间启用 mod 的订阅 ID（用户指示；FindSelf 的「GUID 经已安装表
--- 反查」模式推广到房间全量启用 mod——GameConfiguration.GetEnabledMods 条目只含
--- mod GUID，订阅 ID 必须经 Modding.GetInstalledMods 反查才能拿到）
--- ============================================================================
-
--------------------------------------------------
--- MPT_AutoUpdate_GetRoomSubscriptionIds
--- 反推本房间启用 mod 的订阅 ID：启用列表逐个取 GUID → 已安装表 [modId]=SubscriptionId
--- 映射反查（FindSelf 同款匹配推广到全量；映射建表法复用 UpdateAll）。
--- 仅非官方且有订阅者入表：官方 mod 与本地无订阅 mod（订阅 ID 空串/缺失）天然缺席。
--- 用法：local roomSubs = MPT_AutoUpdate_GetRoomSubscriptionIds();  roomSubs[modId] = 订阅ID。
--- 纯查询零副作用：只读数据、不触发 Modding.UpdateSubscription（条目13 崩溃机理隔离），可安全复用。
--- -------------------------------------------------
-local function MPT_AutoUpdate_GetRoomSubscriptionIds()
-	local roomSubs : table = {};
-	local derivedCount : number = 0;
-	local installedMods = Modding.GetInstalledMods();
-	if installedMods == nil then
-		return roomSubs;
-	end
-	local subscriptionMap : table = {};
-	for _, mod in ipairs(installedMods) do
-		if mod.SubscriptionId ~= nil and mod.SubscriptionId ~= "" then
-			subscriptionMap[mod.Id] = mod.SubscriptionId;
-		end
-	end
-	local enabledMods = GameConfiguration.GetEnabledMods();
-	if enabledMods ~= nil then
-		for _, curMod in ipairs(enabledMods) do
-			if not curMod.Official then
-				local subscriptionId = subscriptionMap[curMod.Id];
-				if subscriptionId ~= nil then
-					roomSubs[curMod.Id] = subscriptionId;
-					derivedCount = derivedCount + 1;
-					print("MPT 条目36扩展：房间启用 mod「" .. tostring(curMod.Title) .. "」订阅 ID=" .. subscriptionId);
-				end
-			end
-		end
-	end
-	print("MPT 条目36扩展：房间启用 mod 订阅 ID 反推完成，共 " .. derivedCount .. " 个有订阅的启用 mod");
-	return roomSubs;
-end
-
--- ============================================================================
 -- 条目36扩展：WorldTracker 头部显示「本 mod 名 + 展示版本」（用户指示移植 1.67 AutoUpdate
 -- OnLoadScreenClose 同款，推翻本文件原「不覆盖 WorldTracker 标题控件」不移植裁决）
 -- 时机 = Events.LoadScreenClose（游戏 UI 全载入后，1.67 同款时机）；跨上下文
@@ -210,7 +166,6 @@ end
 local function MPT_AutoUpdate_Initialize()
 	-- MPT_AutoUpdate_UpdateAll();		-- 1) 更新所有已启用的非官方工坊 mod【条目13调整禁用：运行中触发工坊下载替换本 mod 文件致第二局崩溃，见顶部禁用机理】
 	MPT_AutoUpdate_EnableSelf();	-- 2) 确保本 mod 已启用（唯一保留）
-	MPT_AutoUpdate_GetRoomSubscriptionIds();	-- 条目36扩展：进局反推本房间启用 mod 订阅 ID（纯查询，Lua.log 留痕）
 	--Events.ExitToMainMenu.Add(MPT_AutoUpdate_UpdateSelf);	-- 3) 退出游戏时更新本 mod【条目13调整禁用：同上】
 	Events.LoadScreenClose.Add(MPT_AutoUpdate_OnLoadScreenClose);	-- 4) 条目36扩展：WorldTracker 头部显示 mod 名 + 展示版本
 end
