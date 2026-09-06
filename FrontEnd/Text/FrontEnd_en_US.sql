@@ -20,4 +20,7 @@ INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_WORLD_TRACKER_HEADER', 'en_US', 'Multiplayer Toolkits'),
 -- 条目36扩展：顶栏真人玩家计数（初值为图标占位，进面板即由 Lua 刷新为真人数）
 ('LOC_MPT_FE_AMOUNT_NAME', 'en_US', '[icon_Global]'),
-('LOC_MPT_FE_AMOUNT_TOOLTIP', 'en_US', 'Human players in this lobby (including you)');
+('LOC_MPT_FE_AMOUNT_TOOLTIP', 'en_US', 'Human players in this lobby (including you)'),
+-- 条目36扩展：ESC 菜单订阅按钮（游戏内消费，InGameTopOptionsMenu_MPT.lua；跳转 LOC_MPT_WORKSHOP_ID 工坊页）
+('LOC_MPT_SUBSCRIBE_NAME', 'en_US', 'Subscribe to Multiplayer Toolkits'),
+('LOC_MPT_SUBSCRIBE_TOOLTIP', 'en_US', 'Open the Steam Workshop page to subscribe for auto-updates');
