@@ -1,5 +1,3 @@
--- 条目34：反作弊监控文本 en_US（参数名/描述 FE 设置界面消费 + 面板文本 InGame UI 消费，
--- 同文件双环境注册 = 条目33 先例；ENTRY_TT 改无参数纯文本，Steam ID 由 Lua .. 拼接）
 INSERT OR REPLACE INTO LocalizedText(Tag, Language, Text)
 VALUES
 	('LOC_MPT_HASHCHECK_NAME',			'en_US',	'Anti-Cheat Monitor'),

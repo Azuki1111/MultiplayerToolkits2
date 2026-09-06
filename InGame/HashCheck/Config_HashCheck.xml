@@ -1,10 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 条目34：反作弊监控参数——高级选项「反作弊监控」布尔开关（默认关）。
-	勾选后经本 modinfo ActionCriteria MPT_HASH_CHECK 门控 FrontEndActions 的
-	UpdateDatabase（GameCores DllPrefix 重定向到钩子 DLL）与 InGameActions 的
-	UpdateText / AddUserInterfaces / ImportFiles（监测面板），不勾选全部零加载；
-	criteria 对 FrontEnd 与 InGame action 均生效（条目34 实证首例 FE 门控）。
-	字段结构照抄条目16/28/31/32/33（AdvancedOptions 组，开局后不可改），SortIndex 2908 紧随条目33 的 2907 -->
 <GameInfo>
 	<Parameters>
 		<Row ParameterId="MPT_HASH_CHECK" Name="LOC_MPT_HASHCHECK_NAME" Description="LOC_MPT_HASHCHECK_DESC" Domain="bool" DefaultValue="0" ConfigurationGroup="Game" ConfigurationId="MPT_HASH_CHECK" GroupId="AdvancedOptions" ChangeableAfterGameStart="0" SortIndex="2908" />
