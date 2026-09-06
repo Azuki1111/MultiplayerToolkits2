@@ -2758,10 +2758,10 @@ end
 -- ===========================================================================
 function LateInitialize()
 	m_TopPanelConsideredHeight = Controls.Vignette:GetSizeY() - TOP_PANEL_OFFSET;
-	
+
 	PopulateStaticData();			-- Obtain unchanging, static data from game core
 	PopulatePolicyFilterData();		-- Filter support
-	
+
 	m_ePlayer = Game.GetLocalPlayer();
 	RealizeTabs();
 	Resize();
@@ -2844,7 +2844,7 @@ end
 --	CTOR
 -- ===========================================================================
 function Initialize()
-	
+
 	Controls.LabelMilitary:SetText(Locale.Lookup("{LOC_GOVT_POLICY_TYPE_MILITARY:upper}"));
 	Controls.LabelEconomic:SetText(Locale.Lookup("{LOC_GOVT_POLICY_TYPE_ECONOMIC:upper}"));
 	Controls.LabelDiplomatic:SetText(Locale.Lookup("{LOC_GOVT_POLICY_TYPE_DIPLOMATIC:upper}"));
@@ -2924,11 +2924,23 @@ end
 -- ============================================================================
 -- [MPT 条目21修复] 官方 LuaReplace 链重定义重建——本文件的 Base 副本函数定义在 include
 -- 链之后，把链上 XP1/XP2 的重定义全部遮蔽，须按官方 overlay 原文逐函数重放（顺序照官方：
--- XP1 层 → XP2 层 → Byzantium_Gaul 模式黄金层）。XP2_ 前缀保存的是本文件版/链上版的正确
--- 快照：XP2_PopulateLivePlayerData = 本文件版（含 ARISTOS 数据填充）、XP2_RealizeFilterTabs
--- = 本文件版（无时代页签，黑暗页签在下文补挂）、XP2_GetPolicyBGTexture = 本文件 Base 版
--- （普通卡底）
+-- XP1 层 → XP2 层 → Byzantium_Gaul 模式黄金层）。
+-- [MPT 条目21修复二] 快照纪律：官方链的 BASE_*/XP2_* 快照分处独立文件、天然捕获「别家」
+-- 版本；压平进同一 chunk 后快照行必须满足「被捕获层定义之后、引用它的包装层之前」——原实现
+-- 把 XP2_* 三行快照放在中层定义之后却让中层引用 XP2_*，中层调用自己的快照 = 无限自递归
+-- （LateInitialize→RealizeTabs 入口触发，每层带分配，实测进局即 32GB OOM 崩局，2026-09-06
+-- Lua.log MPT_EPC_BISECT 递归深度计实证；同毒的 XP2_GetPolicyBGTexture 中层引用在打开
+-- 政府界面渲染任意卡时触发）。修复 = 恢复官方两级快照分层：
+--   BASE_GetPolicyBGTexture / BASE_RealizeFilterTabs = 本文件 Base 副本版（区顶捕获，
+--     官方 XP1 文件同名快照同款）；
+--   XP2_* 快照（官方 BG 代理命名）= 捕获本文件 XP1 语义层（中层定义后、黄金层前）——
+--     XP2_RealizeFilterTabs = Base+黑暗页签层、XP2_GetPolicyBGTexture = 黑暗卡底层；
+--   XP2_PopulateLivePlayerData = 本文件 Base 副本版（含 ARISTOS 数据填充；官方 XP1 层的
+--     黑暗 NEW 标记由下方 BG 黄金层单次提供，官方双层重复为幂等冗余不重放）。
+-- 调用链：BG 黄金层 → XP2_* 快照（XP1 层）→ BASE_* 快照（Base 副本）。
 -- ============================================================================
+BASE_GetPolicyBGTexture = GetPolicyBGTexture;	-- [XP1 overlay] Base 副本版快照（官方 XP1 文件同名同款）
+BASE_RealizeFilterTabs = RealizeFilterTabs;		-- [XP1 overlay] Base 副本版快照（无时代页签）
 
 -- [XP2 overlay] 政策可用性：CanPolicyBeSlotted 为引擎时代卡判定（黑暗/黄金卡仅对应时代
 -- 可入目录）——**丢失即黑暗卡全量涌入古典目录（本 bug 实证）**
@@ -2987,29 +2999,28 @@ function FilterDarkPolicies(policy)
 	return false;
 end
 
--- [XP1 overlay + BG 模式代理] 黑暗/黄金卡页签、卡底色、NEW 图标
+-- [XP1 overlay] 黑暗卡底色（黄金分支在下方 BG 黄金层，官方分层勿合并）
 function GetPolicyBGTexture(policyType)
 	local expansionPolicy:table = GameInfo.Policies_XP1[policyType];
-	if expansionPolicy and expansionPolicy.RequiresGoldenAge then
-		return "Governments_GoldenCard";
-	end
 	if expansionPolicy and expansionPolicy.RequiresDarkAge then
 		return "Governments_DarkCard";
 	end
-	return XP2_GetPolicyBGTexture(policyType);
+	return BASE_GetPolicyBGTexture(policyType);
 end
 
 -- ===========================================================================
+-- [XP1 overlay] 黑暗页签：Base 副本版 + 黑暗（黄金页签在下方 BG 黄金层）
+-- ===========================================================================
 function RealizeFilterTabs()
-	XP2_RealizeFilterTabs();
+	BASE_RealizeFilterTabs();
 	CreatePolicyTabButton("LOC_GOVT_FILTER_DARK", FilterDarkPolicies);
-	CreatePolicyTabButton("LOC_GOVT_FILTER_GOLDEN", FilterGoldenPolicies);
 end
 
 -- ============================================================================
 -- [MPT 条目21修复] Byzantium_Gaul DramaticAges 模式代理重建（黄金层，照抄官方
 -- UI/Replacements/GovernmentScreen_Byzantium_Gaul_Expansion2_MODE.lua）——数据驱动
--- （Policies_XP1 无黄金行时空转），须在 Initialize() 之前重定义以捕获正确的包裹链
+-- （Policies_XP1 无黄金行时空转），须在 Initialize() 之前重定义以捕获正确的包裹链。
+-- 下方 XP2_* 快照捕获当前 XP1 语义层（中层定义后、黄金层定义前——条目21修复二快照纪律）
 -- ============================================================================
 XP2_GetPolicyBGTexture = GetPolicyBGTexture;
 XP2_PopulateLivePlayerData = PopulateLivePlayerData;
