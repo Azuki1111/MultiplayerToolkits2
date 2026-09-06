@@ -7242,17 +7242,3 @@ do
 	if Events.GameInfoUpdated ~= nil then Events.GameInfoUpdated.Add(MPT_UpdatePlayerAmount); end
 	MPT_UpdatePlayerAmount();
 end	-- 条目36扩展 do 块结束
-
--- ============================================================================
--- 【临时测试代码，验证后删除】加载时 print 所有已启用 mod 的名字与版本
--- （输出到 Lua.log，逐行带 MPT_TEST 前缀便于过滤）
--- 数据：GameConfiguration.GetEnabledMods()（Id/Title，原版 BuildAdditionalContent 同源）+
---      MPT_GetLocalModVersion（条目4.1 已安装 modinfo Version 缓存，缺失返回 "?"）
--- ============================================================================
-do
-	local enabledMods : table = GameConfiguration.GetEnabledMods() or {};
-	print("MPT_TEST 已启用 mod 数量: " .. tostring(#enabledMods));
-	for _, curMod in ipairs(enabledMods) do
-		print("MPT_TEST " .. tostring(curMod.Title) .. " | Version: " .. MPT_GetLocalModVersion(tostring(curMod.Id)) .. " | Id: " .. tostring(curMod.Id));
-	end
-end	-- 临时测试 do 块结束
