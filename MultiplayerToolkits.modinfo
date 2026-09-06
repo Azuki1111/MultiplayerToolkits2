@@ -20,7 +20,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>160</Version>
+		<Version>161</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢；版本号/GUID 元数据见 FrontEnd/Text/ModMeta_Data.sql） -->
 	<LocalizedText>

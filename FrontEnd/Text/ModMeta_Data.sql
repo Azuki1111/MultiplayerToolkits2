@@ -3,9 +3,7 @@
 -- LOC_MPT_FE_VERSION = 展示版本号（当前 2.1.1，供 Lua/后续功能查取；注意 modinfo 浏览器名称为直写版本号，
 --                      改展示版本须与本文件同步两处修改，条目36回退裁决废止名称 SQL 拼接）
 -- LOC_MPT_MOD_ID = 本 mod GUID（供 Lua Locale.Lookup 查取，不参与显示）
--- LOC_MPT_WORKSHOP_ID = 本 mod 创意工坊物品 ID（条目36扩展：ESC 菜单订阅按钮跳转用；与条目13 禁用机理所涉为同一订阅）
 -- ============================================================================
 INSERT OR REPLACE INTO LocalizedText (Tag, Language, Text) VALUES
 ('LOC_MPT_FE_VERSION', 'en_US', '2.1.1'),
-('LOC_MPT_MOD_ID', 'en_US', '00000000-7369-4685-ab5f-bf77bc22b54e'),
-('LOC_MPT_WORKSHOP_ID', 'en_US', '3795550166');
+('LOC_MPT_MOD_ID', 'en_US', '00000000-7369-4685-ab5f-bf77bc22b54e');
