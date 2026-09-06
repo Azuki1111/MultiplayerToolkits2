@@ -20,7 +20,7 @@
 		<AffectsSavedGames>0</AffectsSavedGames>
 		<CompatibleVersions>1.2,2.0</CompatibleVersions>
 		<!-- 模组版本一致性校验指纹：结构性更新必须递增 -->
-		<Version>156</Version>
+		<Version>158</Version>
 	</Properties>
 	<!-- 本地化文本（前端 mod 信息：名称/描述/宣传语/作者/致谢；版本号/GUID 元数据见 FrontEnd/Text/ModMeta_Data.sql） -->
 	<LocalizedText>
@@ -355,7 +355,7 @@
 			</Properties>
 			<File>InGame/DisableMapPins/Config_NoPins.xml</File>
 		</UpdateDatabase>
-		<!-- 条目16：禁用地图钉专属文本（仅前端注册，tag 沿用 1.67 原名） -->
+		<!-- 条目16：禁用地图钉专属文本（FE+IG 双注册——IG Config 同屏渲染参数复选框，tag 沿用 1.67 原名） -->
 		<UpdateText id="FE_DisableMapPins_Text">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
@@ -436,7 +436,7 @@
 			</Properties>
 			<File>InGame/NoIdleResearch/Config_NoIdleResearch.xml</File>
 		</UpdateDatabase>
-		<!-- 条目31：禁止空过研究文本（仅前端注册——参数复选框仅设置界面消费） -->
+		<!-- 条目31：禁止空过研究文本（FE+IG 双注册——IG Config 同屏渲染参数复选框，条目16 同形态先例） -->
 		<UpdateText id="FE_NoIdleResearch_Text">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
@@ -800,6 +800,14 @@
 			</Properties>
 			<File>InGame/DisableMapPins/DisableMapPins.xml</File>
 		</AddUserInterfaces>
+		<!-- 条目16修复：地图钉参数文本 IG 侧注册（IG Config 参数行消费，同条目33 双环境先例；参数恒可见不门控） -->
+		<UpdateText id="IG_DisableMapPins_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/DisableMapPins/DisableMapPins_zh_Hans_CN.sql</File>
+			<File>InGame/DisableMapPins/DisableMapPins_en_US.sql</File>
+		</UpdateText>
 		<!-- 条目17：建立城市免确认（RCT，整文件替换 UnitPanel，文件内重建原版 include 链后重定义坐城回调） -->
 		<ReplaceUIScript id="IG_NoCityPopup_UnitPanel">
 			<Properties>
@@ -1157,6 +1165,21 @@
 			</Properties>
 			<File>InGame/NoIdleResearch/NoIdleResearch_Gameplay.lua</File>
 		</AddGameplayScripts>
+		<!-- 条目31：同名覆盖工坊 3475004450 exploits/culture_fix.lua（其 AddGameplayScripts 未设 LoadOrder 先于本条目 900 加载，朴素最小 id 抢选）——ImportFiles 100010 后入 VFS 胜出置空其实现；随本条目开关门控 -->
+		<ImportFiles id="IG_NoIdleResearch_OverridePVP" criteria="MPT_NO_IDLE_RESEARCH">
+			<Properties>
+				<LoadOrder>100010</LoadOrder>
+			</Properties>
+			<File>exploits/culture_fix.lua</File>
+		</ImportFiles>
+		<!-- 条目31修复：禁止空过研究参数文本 IG 侧注册（IG Config 参数行消费，同条目33 双环境先例；参数恒可见不门控） -->
+		<UpdateText id="IG_NoIdleResearch_Text">
+			<Properties>
+				<LoadOrder>100</LoadOrder>
+			</Properties>
+			<File>InGame/NoIdleResearch/NoIdleResearch_zh_Hans_CN.sql</File>
+			<File>InGame/NoIdleResearch/NoIdleResearch_en_US.sql</File>
+		</UpdateText>
 		<!-- 条目32：万神殿面板增强（BPC，整文件替换原版 Choosers/PantheonChooser：名册全量列出+被抢信条实时置灰；「万神殿不排队」宗教按钮重定向，LoadOrder 100000 压过 1.65 BPC 同类注册的 10000） -->
 		<ReplaceUIScript id="IG_BPC_Replace">
 			<Properties>
@@ -1216,8 +1239,8 @@
 			<File>InGame/SaveSettler/SaveSettler_zh_Hans_CN.sql</File>
 			<File>InGame/SaveSettler/SaveSettler_en_US.sql</File>
 		</UpdateText>
-		<!-- 条目34：反作弊监测面板文本（面板 UI 消费侧注册 + 同文件 FE 侧注册；criteria 门控不勾选零加载） -->
-		<UpdateText id="IG_HashCheck_Text" criteria="MPT_HASH_CHECK">
+		<!-- 条目34修复：反作弊监测面板文本（面板 UI 消费侧注册 + 同文件 FE 侧注册；文本不门控——IG Config 参数行恒需文案，DLL 零加载由 GameCores 等其余 action 门控承担） -->
+		<UpdateText id="IG_HashCheck_Text">
 			<Properties>
 				<LoadOrder>100</LoadOrder>
 			</Properties>
@@ -1393,6 +1416,7 @@
 		<File>InGame/NoIdleResearch/Config_NoIdleResearch.xml</File>
 		<File>InGame/NoIdleResearch/NoIdleResearch_zh_Hans_CN.sql</File>
 		<File>InGame/NoIdleResearch/NoIdleResearch_en_US.sql</File>
+		<File>exploits/culture_fix.lua</File>
 		<File>InGame/BetterGreatPeople/GreatPeoplePopup_Text_zh_Hans_CN.sql</File>
 		<File>InGame/BetterGreatPeople/GreatPeoplePopup_Text_en_US.sql</File>
 		<File>InGame/BetterPantheonChooser/PantheonChooser.xml</File>
